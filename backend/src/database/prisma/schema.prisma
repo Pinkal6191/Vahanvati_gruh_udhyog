@@ -126,6 +126,7 @@ model Customer {
   city         String?      @db.VarChar(50)
   country      String       @default("India") @db.VarChar(50)
   notes        String?      @db.Text
+  gstin        String?      @db.VarChar(50)
   isActive     Boolean      @default(true) @map("is_active")
   createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -181,7 +182,9 @@ model Unit {
   symbol                 String   @db.VarChar(10)
   isWeightBased          Boolean  @default(true) @map("is_weight_based")
   conversionFactorToBase Decimal  @default(1.0000) @map("conversion_factor_to_base") @db.Decimal(10, 4)
+  isActive               Boolean  @default(true) @map("is_active")
   createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
   products                 Product[]
