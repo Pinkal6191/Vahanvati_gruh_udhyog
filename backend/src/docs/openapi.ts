@@ -1,10 +1,10 @@
 export const openApiSpec = {
   openapi: '3.0.3',
   info: {
-    title: 'Vahanvati Gruh Udhyog — API Documentation',
+    title: 'Vahanvati Gruh Udhyog — Master Data & Core API Documentation',
     version: '1.0.0',
     description:
-      'REST API backend for Vahanvati Gruh Udhyog Billing, Production & Business Management Software. Built with Node.js, Express, TypeScript, and PostgreSQL.',
+      'REST API backend for Vahanvati Gruh Udhyog Billing, Production & Business Management Software. Step 3 Master Data Module specification covering Categories, Subcategories, Units, Products, and Customers.',
     contact: {
       name: 'Vahanvati Tech Team',
       email: 'tech@vahanvati.com',
@@ -40,28 +40,57 @@ export const openApiSpec = {
           error: {
             type: 'object',
             properties: {
-              code: { type: 'string', example: 'VALIDATION_ERROR' },
-              message: { type: 'string', example: 'Invalid credentials or request data' },
+              code: { type: 'string', example: 'BAD_REQUEST' },
+              message: { type: 'string', example: 'Validation failed or constraint violation' },
               details: { type: 'array', items: { type: 'object' } },
             },
           },
         },
       },
-      LoginRequest: {
-        type: 'object',
-        required: ['username', 'password'],
-        properties: {
-          username: { type: 'string', example: 'outlet' },
-          password: { type: 'string', example: 'outlet123' },
-        },
-      },
-      UserResponse: {
+      Category: {
         type: 'object',
         properties: {
           id: { type: 'string', format: 'uuid' },
-          username: { type: 'string', example: 'outlet' },
-          fullName: { type: 'string', example: 'Counter Staff' },
-          role: { type: 'string', enum: ['ADMIN', 'OUTLET', 'PRODUCTION'] },
+          name: { type: 'string', example: 'Farsan' },
+          code: { type: 'string', example: 'FARSAN' },
+          displayOrder: { type: 'integer', example: 1 },
+          isActive: { type: 'boolean', example: true },
+        },
+      },
+      Subcategory: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          categoryId: { type: 'string', format: 'uuid' },
+          name: { type: 'string', example: 'Dry Snacks' },
+          code: { type: 'string', example: 'DRY_SNACKS' },
+          displayOrder: { type: 'integer', example: 1 },
+          isActive: { type: 'boolean', example: true },
+        },
+      },
+      Unit: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          name: { type: 'string', example: 'Kilogram' },
+          symbol: { type: 'string', example: 'kg' },
+          isWeightBased: { type: 'boolean', example: true },
+          conversionFactorToBase: { type: 'number', example: 1000.0 },
+          isActive: { type: 'boolean', example: true },
+        },
+      },
+      Product: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          subcategoryId: { type: 'string', format: 'uuid' },
+          primaryUnitId: { type: 'string', format: 'uuid' },
+          name: { type: 'string', example: 'Papdi (Farsan)' },
+          gujaratiName: { type: 'string', example: 'પાપડી' },
+          code: { type: 'string', example: 'PAPDI' },
+          barcode: { type: 'string', example: '890123456701' },
+          isLooseWeightAllowed: { type: 'boolean', example: true },
+          isActive: { type: 'boolean', example: true },
         },
       },
       Customer: {
@@ -71,8 +100,11 @@ export const openApiSpec = {
           name: { type: 'string', example: 'Rameshbhai Patel' },
           customerType: { type: 'string', enum: ['INDIAN', 'NRI'], example: 'INDIAN' },
           mobile: { type: 'string', example: '9825012345' },
+          email: { type: 'string', example: 'ramesh@example.com' },
+          gstin: { type: 'string', example: '24AAAAA0000A1Z5' },
           city: { type: 'string', example: 'Ahmedabad' },
           country: { type: 'string', example: 'India' },
+          isActive: { type: 'boolean', example: true },
         },
       },
     },
@@ -81,88 +113,188 @@ export const openApiSpec = {
     '/health': {
       get: {
         summary: 'System Health Check',
-        description: 'Returns operational status of API and PostgreSQL database connection.',
-        responses: {
-          '200': {
-            description: 'System is healthy',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    status: { type: 'string', example: 'healthy' },
-                    timestamp: { type: 'string', format: 'date-time' },
-                    service: { type: 'string', example: 'Vahanvati Gruh Udhyog Backend' },
-                    database: { type: 'string', example: 'connected' },
-                  },
-                },
-              },
-            },
-          },
-        },
+        responses: { '200': { description: 'System healthy' } },
       },
     },
     '/auth/login': {
       post: {
-        summary: 'User Login',
-        description: 'Authenticates user with username & password. Returns JWT Access Token (15m) and Refresh Token (7d).',
+        summary: 'Login User',
         requestBody: {
           required: true,
           content: {
             'application/json': {
-              schema: { $ref: '#/components/schemas/LoginRequest' },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Login successful',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean', example: true },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        user: { $ref: '#/components/schemas/UserResponse' },
-                        tokens: {
-                          type: 'object',
-                          properties: {
-                            accessToken: { type: 'string' },
-                            refreshToken: { type: 'string' },
-                            expiresIn: { type: 'string', example: '15m' },
-                          },
-                        },
-                      },
-                    },
-                  },
+              schema: {
+                type: 'object',
+                required: ['username', 'password'],
+                properties: {
+                  username: { type: 'string' },
+                  password: { type: 'string' },
                 },
               },
             },
           },
-          '401': {
-            description: 'Invalid credentials',
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
-          },
         },
+        responses: { '200': { description: 'Authenticated' } },
       },
     },
-    '/auth/me': {
+    '/catalog/categories': {
       get: {
-        summary: 'Current User Profile',
+        summary: 'List Categories',
         security: [{ BearerAuth: [] }],
-        responses: {
-          '200': {
-            description: 'User profile returned',
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/StandardResponse' } } },
-          },
-          '401': {
-            description: 'Unauthorized',
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'inactive', 'all'] } },
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: { '200': { description: 'Categories list' } },
+      },
+      post: {
+        summary: 'Create Category (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name', 'code'],
+                properties: {
+                  name: { type: 'string', example: 'Sweets' },
+                  code: { type: 'string', example: 'SWEETS' },
+                  displayOrder: { type: 'integer', default: 0 },
+                },
+              },
+            },
           },
         },
+        responses: { '201': { description: 'Category created' } },
+      },
+    },
+    '/catalog/categories/{id}/status': {
+      patch: {
+        summary: 'Activate/Deactivate Category (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object', required: ['isActive'], properties: { isActive: { type: 'boolean' } } } } },
+        },
+        responses: { '200': { description: 'Status updated' } },
+      },
+    },
+    '/catalog/subcategories': {
+      get: {
+        summary: 'List Subcategories',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'categoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'inactive', 'all'] } },
+        ],
+        responses: { '200': { description: 'Subcategories list' } },
+      },
+      post: {
+        summary: 'Create Subcategory (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['categoryId', 'name', 'code'],
+                properties: {
+                  categoryId: { type: 'string', format: 'uuid' },
+                  name: { type: 'string', example: 'Milk Sweets' },
+                  code: { type: 'string', example: 'MILK_SWEETS' },
+                  displayOrder: { type: 'integer', default: 0 },
+                },
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'Subcategory created' } },
+      },
+    },
+    '/catalog/units': {
+      get: {
+        summary: 'List Units / Weights',
+        security: [{ BearerAuth: [] }],
+        responses: { '200': { description: 'Units list' } },
+      },
+      post: {
+        summary: 'Create Unit (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name', 'symbol'],
+                properties: {
+                  name: { type: 'string', example: 'Box' },
+                  symbol: { type: 'string', example: 'box' },
+                  isWeightBased: { type: 'boolean', default: false },
+                  conversionFactorToBase: { type: 'number', default: 1.0 },
+                },
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'Unit created' } },
+      },
+    },
+    '/catalog/products': {
+      get: {
+        summary: 'List Products (with search, category/subcategory filter, and stock)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+          { name: 'categoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'subcategoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'inactive', 'all'] } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+        ],
+        responses: { '200': { description: 'Paginated product list' } },
+      },
+      post: {
+        summary: 'Create Product with Hierarchy Validation (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['subcategoryId', 'primaryUnitId', 'name', 'code'],
+                properties: {
+                  categoryId: { type: 'string', format: 'uuid', description: 'Optional: If provided, backend validates that subcategoryId belongs to it' },
+                  subcategoryId: { type: 'string', format: 'uuid' },
+                  primaryUnitId: { type: 'string', format: 'uuid' },
+                  name: { type: 'string', example: 'Fafda' },
+                  gujaratiName: { type: 'string', example: 'ફાફડા' },
+                  code: { type: 'string', example: 'FAFDA' },
+                  barcode: { type: 'string', example: '890123456709' },
+                  isLooseWeightAllowed: { type: 'boolean', default: true },
+                  minimumStockThreshold: { type: 'number', default: 0 },
+                },
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'Product created' }, '400': { description: 'Hierarchy mismatch or validation error' } },
+      },
+    },
+    '/catalog/products/{id}/status': {
+      patch: {
+        summary: 'Activate/Deactivate Product (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object', required: ['isActive'], properties: { isActive: { type: 'boolean' } } } } },
+        },
+        responses: { '200': { description: 'Product status updated' } },
       },
     },
     '/customers': {
@@ -170,15 +302,16 @@ export const openApiSpec = {
         summary: 'List / Search Customers',
         security: [{ BearerAuth: [] }],
         parameters: [
-          { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search by name or mobile' },
+          { name: 'search', in: 'query', schema: { type: 'string' } },
           { name: 'type', in: 'query', schema: { type: 'string', enum: ['INDIAN', 'NRI'] } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'inactive', 'all'] } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
         ],
-        responses: {
-          '200': { description: 'Paginated customer list' },
-        },
+        responses: { '200': { description: 'Customer list' } },
       },
       post: {
-        summary: 'Create Customer',
+        summary: 'Create Customer (Admin & Outlet)',
         security: [{ BearerAuth: [] }],
         requestBody: {
           required: true,
@@ -188,68 +321,41 @@ export const openApiSpec = {
                 type: 'object',
                 required: ['name'],
                 properties: {
-                  name: { type: 'string', example: 'Pravin Patel' },
+                  name: { type: 'string', example: 'Hasmukh Patel' },
                   customerType: { type: 'string', enum: ['INDIAN', 'NRI'], default: 'INDIAN' },
-                  mobile: { type: 'string', example: '+91 98250 12345' },
+                  mobile: { type: 'string', example: '+91 98250 99999' },
+                  email: { type: 'string', example: 'hasmukh@example.com' },
+                  gstin: { type: 'string', example: '24ABCDE1234F1Z5' },
                   city: { type: 'string', example: 'Ahmedabad' },
                 },
               },
             },
           },
         },
-        responses: {
-          '201': { description: 'Customer created' },
-        },
+        responses: { '201': { description: 'Customer created' } },
       },
     },
-    '/catalog/products': {
-      get: {
-        summary: 'List Products with Packs & Current Stock',
+    '/customers/{id}/status': {
+      patch: {
+        summary: 'Activate/Deactivate Customer (Admin Only)',
         security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'search', in: 'query', schema: { type: 'string' } },
-          { name: 'subcategoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
-        ],
-        responses: {
-          '200': { description: 'List of products' },
-        },
-      },
-    },
-    '/pricing/resolve-cart': {
-      post: {
-        summary: 'Authoritative Price Resolution',
-        description: 'Calculates true server prices based on customer tier (Indian vs NRI) without exposing tier markup to customers.',
-        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
         requestBody: {
           required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['items'],
-                properties: {
-                  customerId: { type: 'string', format: 'uuid', nullable: true },
-                  items: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      required: ['productId', 'quantity'],
-                      properties: {
-                        productId: { type: 'string', format: 'uuid' },
-                        packConfigId: { type: 'string', format: 'uuid', nullable: true },
-                        quantity: { type: 'number', example: 2 },
-                        looseWeightInGrams: { type: 'number', example: 340, nullable: true },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
+          content: { 'application/json': { schema: { type: 'object', required: ['isActive'], properties: { isActive: { type: 'boolean' } } } } },
         },
-        responses: {
-          '200': { description: 'Authoritative cart pricing' },
-        },
+        responses: { '200': { description: 'Customer status updated' } },
+      },
+    },
+    '/audit-logs': {
+      get: {
+        summary: 'View Audit Logs (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'entityType', in: 'query', schema: { type: 'string' } },
+          { name: 'entityId', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: { '200': { description: 'Audit log entries' } },
       },
     },
   },
