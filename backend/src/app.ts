@@ -20,6 +20,7 @@ import returnsRoutes from './modules/returns/returns.routes.js';
 import productionRoutes from './modules/production/production.routes.js';
 import inventoryRoutes from './modules/inventory/inventory.routes.js';
 import settingsRoutes from './modules/settings/settings.routes.js';
+import auditRoutes from './modules/audit/audit.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -99,6 +100,7 @@ export function createApp(): Express {
   app.use(`${env.API_PREFIX}/production`, productionRoutes);
   app.use(`${env.API_PREFIX}/inventory`, inventoryRoutes);
   app.use(`${env.API_PREFIX}/settings`, settingsRoutes);
+  app.use(`${env.API_PREFIX}/audit-logs`, auditRoutes);
 
   // 404 Handler
   app.use((req: Request, _res: Response, next: NextFunction) => {

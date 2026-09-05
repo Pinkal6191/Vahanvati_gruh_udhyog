@@ -22,7 +22,7 @@ export class CustomersController {
 
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const customer = await CustomersService.create(req.body);
+      const customer = await CustomersService.create(req.body, req.user?.id, req.user?.role);
       res.status(201).json({ success: true, data: customer });
     } catch (err) {
       next(err);
@@ -31,7 +31,21 @@ export class CustomersController {
 
   static async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const customer = await CustomersService.update(req.params.id, req.body);
+      const customer = await CustomersService.update(req.params.id, req.body, req.user?.id, req.user?.role);
+      res.status(200).json({ success: true, data: customer });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async updateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const customer = await CustomersService.updateStatus(
+        req.params.id,
+        req.body.isActive,
+        req.user?.id,
+        req.user?.role
+      );
       res.status(200).json({ success: true, data: customer });
     } catch (err) {
       next(err);
