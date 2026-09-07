@@ -107,6 +107,36 @@ export const openApiSpec = {
           isActive: { type: 'boolean', example: true },
         },
       },
+      ProductPrice: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          productId: { type: 'string', format: 'uuid' },
+          packConfigId: { type: 'string', format: 'uuid', nullable: true },
+          customerType: { type: 'string', enum: ['INDIAN', 'NRI'], example: 'INDIAN' },
+          rate: { type: 'number', example: 350.0 },
+          effectiveFrom: { type: 'string', format: 'date-time' },
+          effectiveTo: { type: 'string', format: 'date-time', nullable: true },
+          isActive: { type: 'boolean', example: true },
+          createdById: { type: 'string', format: 'uuid', nullable: true },
+        },
+      },
+      ResolvedItem: {
+        type: 'object',
+        properties: {
+          productId: { type: 'string', format: 'uuid' },
+          productName: { type: 'string', example: 'Chorafali' },
+          gujaratiName: { type: 'string', example: 'ચોરાફળી' },
+          packConfigId: { type: 'string', format: 'uuid', nullable: true },
+          weightOrPackName: { type: 'string', example: '500 GM Pack' },
+          unitSymbol: { type: 'string', example: 'kg' },
+          quantity: { type: 'number', example: 2 },
+          baseWeightDeducted: { type: 'number', example: 1000 },
+          unitRate: { type: 'number', example: 180.0 },
+          totalAmount: { type: 'number', example: 360.0 },
+          customerType: { type: 'string', enum: ['INDIAN', 'NRI'] },
+        },
+      },
     },
   },
   paths: {
@@ -356,6 +386,211 @@ export const openApiSpec = {
           { name: 'entityId', in: 'query', schema: { type: 'string' } },
         ],
         responses: { '200': { description: 'Audit log entries' } },
+      },
+    },
+    '/pricing': {
+      post: {
+        summary: 'Create Product Price (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['productId', 'customerType', 'rate'],
+                properties: {
+                  productId: { type: 'string', format: 'uuid' },
+                  packConfigId: { type: 'string', format: 'uuid', nullable: true },
+                  customerType: { type: 'string', enum: ['INDIAN', 'NRI'] },
+                  rate: { type: 'number', example: 350.0 },
+                  effectiveFrom: { type: 'string', format: 'date-time' },
+                  effectiveTo: { type: 'string', format: 'date-time', nullable: true },
+                  isActive: { type: 'boolean', default: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Price created successfully' },
+          '400': { description: 'Validation error or overlapping period' },
+          '403': { description: 'Forbidden (Admin only)' },
+        },
+      },
+    },
+    '/pricing/{id}': {
+      put: {
+        summary: 'Update Product Price (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  rate: { type: 'number', example: 380.0 },
+                  effectiveFrom: { type: 'string', format: 'date-time' },
+                  effectiveTo: { type: 'string', format: 'date-time', nullable: true },
+                  isActive: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Price updated successfully' },
+          '400': { description: 'Validation error or overlapping period' },
+          '403': { description: 'Forbidden (Admin only)' },
+        },
+      },
+    },
+    '/pricing/{id}/status': {
+      patch: {
+        summary: 'Toggle Price Active Status (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['isActive'],
+                properties: { isActive: { type: 'boolean' } },
+              },
+            },
+          },
+        },
+        responses: { '200': { description: 'Price status updated' } },
+      },
+    },
+    '/pricing/current': {
+      get: {
+        summary: 'Get Current Applicable Prices (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'productId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'customerType', in: 'query', schema: { type: 'string', enum: ['INDIAN', 'NRI'] } },
+          { name: 'date', in: 'query', schema: { type: 'string', format: 'date-time' } },
+        ],
+        responses: { '200': { description: 'Current active prices' } },
+      },
+    },
+    '/pricing/history/{productId}': {
+      get: {
+        summary: 'Get Price History for a Product (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'productId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'customerType', in: 'query', schema: { type: 'string', enum: ['INDIAN', 'NRI'] } },
+        ],
+        responses: { '200': { description: 'Chronological price records' } },
+      },
+    },
+    '/pricing/resolve': {
+      post: {
+        summary: 'Resolve Applicable Price for Item (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['productId', 'customerType'],
+                properties: {
+                  productId: { type: 'string', format: 'uuid' },
+                  customerType: { type: 'string', enum: ['INDIAN', 'NRI'] },
+                  packConfigId: { type: 'string', format: 'uuid', nullable: true },
+                  looseWeightInGrams: { type: 'number', nullable: true },
+                  quantity: { type: 'number', default: 1 },
+                  targetDate: { type: 'string', format: 'date-time' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Resolved price and calculated total' },
+          '400': { description: 'Pricing not configured for customer type or product inactive' },
+        },
+      },
+    },
+    '/pricing/resolve-cart': {
+      post: {
+        summary: 'Resolve Complete Cart Rates (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['items'],
+                properties: {
+                  customerId: { type: 'string', format: 'uuid', nullable: true },
+                  customerType: { type: 'string', enum: ['INDIAN', 'NRI'] },
+                  targetDate: { type: 'string', format: 'date-time' },
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['productId', 'quantity'],
+                      properties: {
+                        productId: { type: 'string', format: 'uuid' },
+                        packConfigId: { type: 'string', format: 'uuid', nullable: true },
+                        quantity: { type: 'number' },
+                        looseWeightInGrams: { type: 'number', nullable: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: { '200': { description: 'Resolved cart with line items and total' } },
+      },
+    },
+    '/pricing/batch': {
+      post: {
+        summary: 'Atomic Batch Update / Create Prices (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['prices'],
+                properties: {
+                  prices: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['productId', 'customerType', 'rate'],
+                      properties: {
+                        productId: { type: 'string', format: 'uuid' },
+                        packConfigId: { type: 'string', format: 'uuid', nullable: true },
+                        customerType: { type: 'string', enum: ['INDIAN', 'NRI'] },
+                        rate: { type: 'number' },
+                        effectiveFrom: { type: 'string', format: 'date-time' },
+                        effectiveTo: { type: 'string', format: 'date-time', nullable: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Batch update succeeded' },
+          '400': { description: 'Batch transaction rolled back due to error' },
+        },
       },
     },
   },

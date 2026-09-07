@@ -177,6 +177,16 @@ async function runTests() {
   console.assert(Number(historicalItem!.unitRate) === 140, 'Historical bill must retain ₹140');
   console.log('  ✅ Historical Price Rule confirmed: Past sales are completely immutable.\n');
 
+  // Restore price for idempotency
+  await prisma.productPrice.updateMany({
+    where: {
+      productId: papdi.id,
+      packConfigId: pack500gm.id,
+      customerType: CustomerType.INDIAN,
+    },
+    data: { rate: 140 },
+  });
+
   console.log('🎉 ========================================================');
   console.log('🎉 ALL TESTS PASSED! BACKEND & DATABASE ARE ROCK SOLID!');
   console.log('🎉 ========================================================');
