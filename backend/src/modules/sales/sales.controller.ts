@@ -4,8 +4,28 @@ import { SalesService } from './sales.service.js';
 export class SalesController {
   static async createSale(req: Request, res: Response, next: NextFunction) {
     try {
-      const sale = await SalesService.createSale(req.user!.id, req.body);
+      const sale = await SalesService.createSale(
+        (req as any).user!.id,
+        (req as any).user!.role,
+        req.body,
+        req.ip
+      );
       res.status(201).json({ success: true, data: sale });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async cancelSale(req: Request, res: Response, next: NextFunction) {
+    try {
+      const cancelled = await SalesService.cancelSale(
+        req.params.id,
+        (req as any).user!.id,
+        (req as any).user!.role,
+        req.body,
+        req.ip
+      );
+      res.status(200).json({ success: true, data: cancelled });
     } catch (err) {
       next(err);
     }
