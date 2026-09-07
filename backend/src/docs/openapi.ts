@@ -137,6 +137,46 @@ export const openApiSpec = {
           customerType: { type: 'string', enum: ['INDIAN', 'NRI'] },
         },
       },
+      Sale: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          billNumber: { type: 'string', example: 'VGU-20260907-0001' },
+          customerId: { type: 'string', format: 'uuid' },
+          customerNameSnapshot: { type: 'string', example: 'Walk-in Customer' },
+          customerMobileSnapshot: { type: 'string', nullable: true },
+          totalItemsCount: { type: 'integer', example: 2 },
+          subtotalAmount: { type: 'number', example: 450.0 },
+          discountAmount: { type: 'number', example: 0.0 },
+          finalTotalAmount: { type: 'number', example: 450.0 },
+          paidAmount: { type: 'number', example: 500.0 },
+          changeReturned: { type: 'number', example: 50.0 },
+          paymentStatus: { type: 'string', example: 'PAID' },
+          saleStatus: { type: 'string', example: 'COMPLETED' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      SaleItem: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          productId: { type: 'string', format: 'uuid' },
+          productNameSnapshot: { type: 'string', example: 'Chorafali' },
+          weightOrPackSnapshot: { type: 'string', example: '500 GM Pack' },
+          quantity: { type: 'number', example: 2 },
+          unitRate: { type: 'number', example: 180.0 },
+          total: { type: 'number', example: 360.0 },
+        },
+      },
+      SalePayment: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          paymentMode: { type: 'string', enum: ['CASH', 'UPI', 'CARD', 'OTHER'], example: 'CASH' },
+          amount: { type: 'number', example: 450.0 },
+          transactionReference: { type: 'string', nullable: true },
+        },
+      },
     },
   },
   paths: {
@@ -590,6 +630,122 @@ export const openApiSpec = {
         responses: {
           '200': { description: 'Batch update succeeded' },
           '400': { description: 'Batch transaction rolled back due to error' },
+        },
+      },
+    },
+    '/sales': {
+      post: {
+        summary: 'Create Sale / Complete POS Checkout (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['items', 'payments', 'paidAmount'],
+                properties: {
+                  customerId: { type: 'string', format: 'uuid', nullable: true },
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['productId', 'quantity'],
+                      properties: {
+                        productId: { type: 'string', format: 'uuid' },
+                        packConfigId: { type: 'string', format: 'uuid', nullable: true },
+                        quantity: { type: 'number', example: 2 },
+                        looseWeightInGrams: { type: 'number', nullable: true },
+                      },
+                    },
+                  },
+                  discountAmount: { type: 'number', default: 0 },
+                  paidAmount: { type: 'number', example: 500.0 },
+                  payments: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['paymentMode', 'amount'],
+                      properties: {
+                        paymentMode: { type: 'string', enum: ['CASH', 'UPI', 'CARD', 'OTHER'] },
+                        amount: { type: 'number', example: 450.0 },
+                        transactionReference: { type: 'string', nullable: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Sale completed successfully' },
+          '400': { description: 'Validation error, insufficient payment, or missing price' },
+          '403': { description: 'Forbidden (Production role blocked)' },
+        },
+      },
+      get: {
+        summary: 'List & Search Sales History (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'billNumber', in: 'query', schema: { type: 'string' } },
+          { name: 'customerId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'saleStatus', in: 'query', schema: { type: 'string', enum: ['COMPLETED', 'CANCELLED'] } },
+          { name: 'paymentMode', in: 'query', schema: { type: 'string', enum: ['CASH', 'UPI', 'CARD', 'OTHER'] } },
+          { name: 'date', in: 'query', schema: { type: 'string' } },
+          { name: 'startDate', in: 'query', schema: { type: 'string' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: { '200': { description: 'Paginated sales list' } },
+      },
+    },
+    '/sales/{id}': {
+      get: {
+        summary: 'Get Sale by ID (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Sale details with items and payments' } },
+      },
+    },
+    '/sales/bill/{billNumber}': {
+      get: {
+        summary: 'Get Sale by Bill Number (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'billNumber', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Sale details' } },
+      },
+    },
+    '/sales/{id}/print': {
+      get: {
+        summary: 'Get 3-inch Thermal Print Receipt Data (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: { '200': { description: 'Thermal receipt formatted payload' } },
+      },
+    },
+    '/sales/{id}/cancel': {
+      post: {
+        summary: 'Cancel Sale & Reverse Stock (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['reason'],
+                properties: { reason: { type: 'string', example: 'Customer returned items immediately' } },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Sale cancelled and stock reversed' },
+          '400': { description: 'Sale already cancelled' },
+          '403': { description: 'Forbidden (Admin only)' },
         },
       },
     },
