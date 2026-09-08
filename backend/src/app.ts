@@ -97,6 +97,7 @@ export function createApp(): Express {
   app.use(`${env.API_PREFIX}/pricing`, pricingRoutes);
   app.use(`${env.API_PREFIX}/sales`, salesRoutes);
   app.use(`${env.API_PREFIX}/returns`, returnsRoutes);
+  app.use(`${env.API_PREFIX}/sales-returns`, returnsRoutes);
   app.use(`${env.API_PREFIX}/production`, productionRoutes);
   app.use(`${env.API_PREFIX}/inventory`, inventoryRoutes);
   app.use(`${env.API_PREFIX}/settings`, settingsRoutes);

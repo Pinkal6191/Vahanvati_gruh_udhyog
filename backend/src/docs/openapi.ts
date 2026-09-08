@@ -981,6 +981,179 @@ export const openApiSpec = {
         },
       },
     },
+    '/sales-returns/preview/{saleId}': {
+      get: {
+        summary: 'Returnable preview for an original bill/sale',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'saleId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          '200': { description: 'Breakdown of sold, returned, remaining returnable quantities and max refund' },
+          '404': { description: 'Sale not found' },
+        },
+      },
+    },
+    '/sales-returns/summary': {
+      get: {
+        summary: 'Sales return metrics summary dashboard',
+        security: [{ BearerAuth: [] }],
+        responses: {
+          '200': { description: 'Summary metrics including today return count/amount, totals, and status breakdown' },
+        },
+      },
+    },
+    '/sales-returns': {
+      get: {
+        summary: 'List sales returns with rich filters and pagination',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'returnNumber', in: 'query', schema: { type: 'string' } },
+          { name: 'originalBillNumber', in: 'query', schema: { type: 'string' } },
+          { name: 'customerId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'productId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'COMPLETED', 'CANCELLED'] } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: {
+          '200': { description: 'Paginated sales returns list' },
+        },
+      },
+      post: {
+        summary: 'Create a new sales return (DRAFT or COMPLETED)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['originalSaleId', 'reason', 'items'],
+                properties: {
+                  originalSaleId: { type: 'string', format: 'uuid' },
+                  reason: { type: 'string', minLength: 3 },
+                  refundPaymentMode: { type: 'string', enum: ['CASH', 'UPI', 'STORE_CREDIT'], default: 'CASH' },
+                  status: { type: 'string', enum: ['DRAFT', 'COMPLETED'], default: 'COMPLETED' },
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['saleItemId', 'returnedQuantity'],
+                      properties: {
+                        saleItemId: { type: 'string', format: 'uuid' },
+                        returnedQuantity: { type: 'number', minimum: 0.001 },
+                        restockCondition: { type: 'string', enum: ['RESTOCKABLE', 'DAMAGED_DISCARD'], default: 'RESTOCKABLE' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Sales return created successfully' },
+          '400': { description: 'Exceeded returnable quantity, cancelled sale, or validation error' },
+          '404': { description: 'Original sale or sale item not found' },
+        },
+      },
+    },
+    '/sales-returns/{id}': {
+      get: {
+        summary: 'Get detailed sales return by ID',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: {
+          '200': { description: 'Sales return details with nested items' },
+          '404': { description: 'Sales return not found' },
+        },
+      },
+      put: {
+        summary: 'Update a draft sales return',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  reason: { type: 'string', minLength: 3 },
+                  refundPaymentMode: { type: 'string', enum: ['CASH', 'UPI', 'STORE_CREDIT'] },
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['saleItemId', 'returnedQuantity'],
+                      properties: {
+                        saleItemId: { type: 'string', format: 'uuid' },
+                        returnedQuantity: { type: 'number', minimum: 0.001 },
+                        restockCondition: { type: 'string', enum: ['RESTOCKABLE', 'DAMAGED_DISCARD'] },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Draft sales return updated' },
+          '400': { description: 'Return not in DRAFT status or validation error' },
+          '404': { description: 'Sales return not found' },
+        },
+      },
+    },
+    '/sales-returns/{id}/complete': {
+      post: {
+        summary: 'Complete draft sales return and restock via StockService',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: {
+          '200': { description: 'Sales return completed and stock incremented' },
+          '400': { description: 'Return already completed/cancelled or quantity exceeded' },
+          '404': { description: 'Sales return not found' },
+        },
+      },
+    },
+    '/sales-returns/{id}/cancel': {
+      post: {
+        summary: 'Cancel sales return (reverses stock if previously completed)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['reason'],
+                properties: {
+                  reason: { type: 'string', minLength: 3 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Sales return cancelled and stock reversed if completed' },
+          '400': { description: 'Return already cancelled or validation error' },
+          '404': { description: 'Sales return not found' },
+        },
+      },
+    },
   },
 };
+
 
