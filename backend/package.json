@@ -18,6 +18,7 @@
     "test:step6": "tsx tests/step6-stock.test.ts",
     "test:step7": "tsx tests/step7-production.test.ts",
     "test:step8": "tsx tests/step8-sales-returns.test.ts",
+    "test:step9": "tsx tests/step9-reporting.test.ts",
     "test:all": "tsx tests/verify-all.ts"
   },
   "dependencies": {
