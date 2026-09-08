@@ -3,6 +3,7 @@ import { NotFoundError, BadRequestError, InsufficientStockError } from '../../co
 import { PricingService } from '../pricing/pricing.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CreateSaleInput, CreateSaleItemInput, SalesQueryInput, CancelSaleInput } from './sales.validation.js';
+import { StockService } from '../inventory/stock.service.js';
 import { MovementType, ReferenceType, PaymentStatus, SaleStatus, Prisma } from '@prisma/client';
 
 export class SalesService {
@@ -93,26 +94,7 @@ export class SalesService {
       const prefix = settings?.invoice_prefix ?? 'VGU';
       const allowNegative = settings?.allow_negative_stock ?? false;
 
-      // 4.2 Row-Level Locking & Stock Verification
-      for (const item of resolvedCart.items) {
-        // Lock stock row FOR UPDATE to prevent race conditions across concurrent checkouts
-        const stockRows = await tx.$queryRaw<Array<{ id: string; current_balance: Prisma.Decimal }>>`
-          SELECT id, current_balance FROM stocks WHERE product_id = ${item.productId}::uuid FOR UPDATE
-        `;
-
-        if (!stockRows || stockRows.length === 0) {
-          throw new BadRequestError(`Stock record missing for product ${item.productName}`);
-        }
-
-        const currentBalance = Number(stockRows[0].current_balance);
-        if (!allowNegative && currentBalance < item.baseWeightDeducted) {
-          throw new InsufficientStockError(
-            `Insufficient stock for ${item.productName}. Available: ${currentBalance} GM, Required: ${item.baseWeightDeducted} GM`
-          );
-        }
-      }
-
-      // 4.3 Generate Sequential Bill Number (e.g. VGU-YYYYMMDD-0001)
+      // 4.2 Generate Sequential Bill Number (e.g. VGU-YYYYMMDD-0001)
       const now = new Date();
       const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -142,7 +124,7 @@ export class SalesService {
       const sequenceNumber = String(nextSeq).padStart(4, '0');
       const billNumber = `${prefix}-${datePart}-${sequenceNumber}`;
 
-      // 4.4 Create Sale Header
+      // 4.3 Create Sale Header
       const sale = await tx.sale.create({
         data: {
           billNumber,
@@ -163,7 +145,7 @@ export class SalesService {
         },
       });
 
-      // 4.5 Create Sale Line Items & Deduct Stock
+      // 4.4 Create Sale Line Items
       for (const item of resolvedCart.items) {
         await tx.saleItem.create({
           data: {
@@ -181,29 +163,25 @@ export class SalesService {
             total: new Prisma.Decimal(item.totalAmount),
           },
         });
-
-        // Decrement cached stock balance
-        const updatedStock = await tx.stock.update({
-          where: { productId: item.productId },
-          data: {
-            currentBalance: { decrement: item.baseWeightDeducted },
-          },
-        });
-
-        // Append to immutable movement ledger
-        await tx.stockMovement.create({
-          data: {
-            productId: item.productId,
-            movementType: MovementType.SALE_OUT,
-            referenceType: ReferenceType.SALE,
-            referenceId: sale.id,
-            quantityDelta: new Prisma.Decimal(-item.baseWeightDeducted),
-            balanceAfter: updatedStock.currentBalance,
-            notes: `Sold in Bill #${billNumber}`,
-            createdBy: userId,
-          },
-        });
       }
+
+      // 4.5 Deduct Stock via Centralized StockService (with row locks & sufficiency checks)
+      await StockService.batchDecreaseStock(
+        resolvedCart.items.map((item) => ({
+          productId: item.productId,
+          quantityDelta: item.baseWeightDeducted,
+          productName: item.productName,
+        })),
+        {
+          movementType: MovementType.SALE_OUT,
+          referenceType: ReferenceType.SALE,
+          referenceId: sale.id,
+          billNumber,
+          userId,
+          allowNegativeStock: allowNegative,
+        },
+        tx
+      );
 
       // 4.6 Record Payments
       for (const payment of input.payments) {
@@ -276,27 +254,20 @@ export class SalesService {
         throw new BadRequestError('Sale is already cancelled');
       }
 
-      // 1. Reverse stock movements for each line item
+      // 1. Reverse stock movements for each line item via centralized StockService
       for (const item of sale.items) {
-        const updatedStock = await tx.stock.update({
-          where: { productId: item.productId },
-          data: {
-            currentBalance: { increment: item.baseWeightDeducted },
-          },
-        });
-
-        await tx.stockMovement.create({
-          data: {
+        await StockService.increaseStock(
+          {
             productId: item.productId,
+            quantityDelta: Number(item.baseWeightDeducted),
             movementType: MovementType.ADJUSTMENT_IN,
             referenceType: ReferenceType.SALE,
             referenceId: sale.id,
-            quantityDelta: item.baseWeightDeducted,
-            balanceAfter: updatedStock.currentBalance,
             notes: `Cancelled Bill #${sale.billNumber}: ${input.reason}`,
-            createdBy: userId,
+            userId,
           },
-        });
+          tx
+        );
       }
 
       // 2. Mark Sale as CANCELLED
