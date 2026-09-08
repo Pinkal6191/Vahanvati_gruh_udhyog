@@ -1153,6 +1153,187 @@ export const openApiSpec = {
         },
       },
     },
+    '/reports/sales': {
+      get: {
+        summary: 'Comprehensive sales report with time series and payment mode breakdown',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'period', in: 'query', schema: { type: 'string', enum: ['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom'] } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'groupBy', in: 'query', schema: { type: 'string', enum: ['DAY', 'WEEK', 'MONTH'], default: 'DAY' } },
+          { name: 'paymentMode', in: 'query', schema: { type: 'string', enum: ['CASH', 'UPI', 'CARD', 'OTHER'] } },
+          { name: 'customerId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: {
+          '200': { description: 'Sales report data and metrics' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+        },
+      },
+    },
+    '/reports/sales/products': {
+      get: {
+        summary: 'Product-wise sales aggregation and ranking',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'period', in: 'query', schema: { type: 'string', enum: ['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom'] } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'categoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'subcategoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['amount', 'quantity', 'bills'], default: 'amount' } },
+          { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+        ],
+        responses: {
+          '200': { description: 'Product-wise sales list and summary' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+        },
+      },
+    },
+    '/reports/sales/customers': {
+      get: {
+        summary: 'Customer-wise sales report with repeat customer metrics',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'period', in: 'query', schema: { type: 'string', enum: ['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom'] } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'minBills', in: 'query', schema: { type: 'integer' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['purchases', 'bills', 'lastPurchase'], default: 'purchases' } },
+          { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+        ],
+        responses: {
+          '200': { description: 'Customer sales report and repeat customer metrics' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+        },
+      },
+    },
+    '/reports/customers/{customerId}': {
+      get: {
+        summary: 'Detailed customer purchase history and past bills',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'customerId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: {
+          '200': { description: 'Customer purchase history' },
+          '404': { description: 'Customer not found' },
+        },
+      },
+    },
+    '/reports/production': {
+      get: {
+        summary: 'Production report by product, status, and time series',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'period', in: 'query', schema: { type: 'string', enum: ['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom'] } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'productId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'COMPLETED', 'CANCELLED'] } },
+          { name: 'groupBy', in: 'query', schema: { type: 'string', enum: ['DAY', 'WEEK', 'MONTH'], default: 'DAY' } },
+        ],
+        responses: {
+          '200': { description: 'Production report data and metrics' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+        },
+      },
+    },
+    '/reports/stock': {
+      get: {
+        summary: 'Current stock inventory report with threshold classifications',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['ALL', 'LOW_STOCK', 'OUT_OF_STOCK', 'IN_STOCK'], default: 'ALL' } },
+          { name: 'categoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'subcategoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+        ],
+        responses: {
+          '200': { description: 'Stock inventory report' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+        },
+      },
+    },
+    '/reports/stock/movements': {
+      get: {
+        summary: 'Aggregated stock ledger movements report',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'period', in: 'query', schema: { type: 'string', enum: ['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom'] } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'productId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'movementType', in: 'query', schema: { type: 'string' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+        ],
+        responses: {
+          '200': { description: 'Stock movements report' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+        },
+      },
+    },
+    '/reports/stock/reconciliation': {
+      get: {
+        summary: 'Admin audit: Zero-drift stock balance reconciliation report',
+        security: [{ BearerAuth: [] }],
+        responses: {
+          '200': { description: 'Reconciliation status across products' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden (Admin only)' },
+        },
+      },
+    },
+    '/reports/returns': {
+      get: {
+        summary: 'Sales return report, refund breakdowns, and return rate against sales',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'period', in: 'query', schema: { type: 'string', enum: ['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom'] } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'productId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'COMPLETED', 'CANCELLED'] } },
+          { name: 'refundPaymentMode', in: 'query', schema: { type: 'string', enum: ['CASH', 'UPI', 'CARD', 'CREDIT_NOTE'] } },
+        ],
+        responses: {
+          '200': { description: 'Sales return report data' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden' },
+        },
+      },
+    },
+    '/reports/business-summary': {
+      get: {
+        summary: 'Executive real-time business summary dashboard (KPIs, Net Sales, Top Products)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'date', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'period', in: 'query', schema: { type: 'string', enum: ['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom'] } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
+        ],
+        responses: {
+          '200': { description: 'Business summary dashboard metrics' },
+          '401': { description: 'Unauthorized' },
+          '403': { description: 'Forbidden (Admin only)' },
+        },
+      },
+    },
   },
 };
 
