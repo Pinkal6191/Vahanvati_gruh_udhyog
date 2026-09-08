@@ -727,7 +727,7 @@ export const openApiSpec = {
     },
     '/sales/{id}/cancel': {
       post: {
-        summary: 'Cancel Sale & Reverse Stock (Admin Only)',
+        summary: 'Cancel Sale & Reverse Stock (Admin & Outlet)',
         security: [{ BearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
         requestBody: {
@@ -745,6 +745,96 @@ export const openApiSpec = {
         responses: {
           '200': { description: 'Sale cancelled and stock reversed' },
           '400': { description: 'Sale already cancelled' },
+          '403': { description: 'Forbidden' },
+        },
+      },
+    },
+    '/inventory/status': {
+      get: {
+        summary: 'List Inventory Stock Balances (Admin, Outlet, Production)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+          { name: 'lowStockOnly', in: 'query', schema: { type: 'boolean' } },
+          { name: 'outOfStockOnly', in: 'query', schema: { type: 'boolean' } },
+          { name: 'subcategoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'categoryId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+        ],
+        responses: { '200': { description: 'Stock list with pagination' } },
+      },
+    },
+    '/inventory/summary': {
+      get: {
+        summary: 'Inventory Dashboard Summary (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        responses: { '200': { description: 'Total active products, in-stock, low-stock, out-of-stock counts and recent movements' } },
+      },
+    },
+    '/inventory/product/{productId}': {
+      get: {
+        summary: 'Get Product Stock Details (Admin, Outlet, Production)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'productId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Product stock balance and threshold details' },
+          '404': { description: 'Product not found' },
+        },
+      },
+    },
+    '/inventory/movements': {
+      get: {
+        summary: 'Get Chronological Stock Movements Ledger (Admin & Outlet)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'productId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'movementType', in: 'query', schema: { type: 'string', enum: ['SALE_OUT', 'SALES_RETURN_IN', 'PRODUCTION_IN', 'ADJUSTMENT_IN', 'ADJUSTMENT_OUT'] } },
+          { name: 'referenceType', in: 'query', schema: { type: 'string', enum: ['SALE', 'SALES_RETURN', 'PRODUCTION', 'MANUAL'] } },
+          { name: 'referenceId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+        ],
+        responses: { '200': { description: 'Paginated stock movements' } },
+      },
+    },
+    '/inventory/adjust': {
+      post: {
+        summary: 'Manual Stock Adjustment with Audit Trail (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['productId', 'quantityDelta', 'reason'],
+                properties: {
+                  productId: { type: 'string', format: 'uuid' },
+                  quantityDelta: { type: 'number', example: 500, description: 'Positive for inward (+), Negative for outward (-)' },
+                  reason: { type: 'string', minLength: 3, example: 'Physical stock count correction' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Stock adjusted and ledger recorded' },
+          '400': { description: 'Validation error or zero delta' },
+          '403': { description: 'Forbidden (Admin only)' },
+        },
+      },
+    },
+    '/inventory/reconcile/{productId}': {
+      get: {
+        summary: 'Reconcile Authoritative Cached Balance with Movement Ledger Sum (Admin Only)',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'productId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': { description: 'Reconciliation status showing cachedBalance, ledgerTotal, and isConsistent' },
+          '404': { description: 'Stock record not found' },
           '403': { description: 'Forbidden (Admin only)' },
         },
       },

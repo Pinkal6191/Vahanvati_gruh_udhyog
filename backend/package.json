@@ -15,6 +15,7 @@
     "test:step3": "tsx tests/step3-master-data.test.ts",
     "test:step4": "tsx tests/step4-pricing.test.ts",
     "test:step5": "tsx tests/step5-billing.test.ts",
+    "test:step6": "tsx tests/step6-stock.test.ts",
     "test:all": "tsx tests/verify-all.ts"
   },
   "dependencies": {
