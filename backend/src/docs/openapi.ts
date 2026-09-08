@@ -839,5 +839,148 @@ export const openApiSpec = {
         },
       },
     },
+    '/production/summary': {
+      get: {
+        summary: 'Production summary metrics dashboard',
+        security: [{ BearerAuth: [] }],
+        responses: {
+          '200': { description: 'Summary metrics including today production weight, counts, and recent entries' },
+        },
+      },
+    },
+    '/production': {
+      get: {
+        summary: 'List production entries with filtering and pagination',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'productId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'batchNumber', in: 'query', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'COMPLETED', 'CANCELLED'] } },
+          { name: 'date', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: {
+          '200': { description: 'Paginated production entries' },
+        },
+      },
+      post: {
+        summary: 'Create a new production entry (DRAFT or COMPLETED)',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['productId', 'quantityProduced', 'unitId', 'productionDate'],
+                properties: {
+                  productId: { type: 'string', format: 'uuid' },
+                  quantityProduced: { type: 'number', minimum: 0.001 },
+                  unitId: { type: 'string', format: 'uuid' },
+                  batchNumber: { type: 'string' },
+                  productionDate: { type: 'string', format: 'date' },
+                  expiryDate: { type: 'string', format: 'date' },
+                  notes: { type: 'string' },
+                  status: { type: 'string', enum: ['DRAFT', 'COMPLETED'], default: 'COMPLETED' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Production entry created successfully' },
+          '400': { description: 'Validation error or unit incompatibility' },
+          '403': { description: 'Forbidden (Production or Admin only)' },
+        },
+      },
+    },
+    '/production/{id}': {
+      get: {
+        summary: 'Get production entry by ID',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: {
+          '200': { description: 'Production entry details' },
+          '404': { description: 'Production entry not found' },
+        },
+      },
+      put: {
+        summary: 'Update a draft production entry',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  quantityProduced: { type: 'number', minimum: 0.001 },
+                  unitId: { type: 'string', format: 'uuid' },
+                  batchNumber: { type: 'string' },
+                  productionDate: { type: 'string', format: 'date' },
+                  expiryDate: { type: 'string', format: 'date' },
+                  notes: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Production draft updated successfully' },
+          '400': { description: 'Validation error or entry not in DRAFT status' },
+          '404': { description: 'Production entry not found' },
+        },
+      },
+    },
+    '/production/{id}/complete': {
+      post: {
+        summary: 'Complete a draft production entry and increment stock',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        responses: {
+          '200': { description: 'Production entry completed and stock incremented' },
+          '400': { description: 'Entry already completed or cancelled' },
+          '404': { description: 'Production entry not found' },
+        },
+      },
+    },
+    '/production/{id}/cancel': {
+      post: {
+        summary: 'Cancel a production entry (reverses stock if completed)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['reason'],
+                properties: {
+                  reason: { type: 'string', minLength: 3 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Production entry cancelled successfully' },
+          '400': { description: 'Entry already cancelled or validation error' },
+          '404': { description: 'Production entry not found' },
+        },
+      },
+    },
   },
 };
+
