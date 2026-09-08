@@ -58,6 +58,12 @@ enum SaleStatus {
   CANCELLED
 }
 
+enum ProductionStatus {
+  DRAFT
+  COMPLETED
+  CANCELLED
+}
+
 enum RefundPaymentMode {
   CASH
   UPI
@@ -440,18 +446,21 @@ model SalesReturnItem {
 // ==========================================
 
 model ProductionEntry {
-  id               String   @id @default(uuid()) @db.Uuid
-  productionNumber String   @unique @map("production_number") @db.VarChar(50)
-  batchNumber      String?  @map("batch_number") @db.VarChar(50)
-  productId        String   @map("product_id") @db.Uuid
-  quantityProduced Decimal  @map("quantity_produced") @db.Decimal(10, 3)
-  unitId           String   @map("unit_id") @db.Uuid
-  baseWeightAdded  Decimal  @map("base_weight_added") @db.Decimal(10, 3)
-  productionDate   DateTime @map("production_date") @db.Date
-  expiryDate       DateTime? @map("expiry_date") @db.Date
-  notes            String?  @db.Text
-  createdBy        String   @map("created_by") @db.Uuid
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id               String           @id @default(uuid()) @db.Uuid
+  productionNumber String           @unique @map("production_number") @db.VarChar(50)
+  batchNumber      String?          @map("batch_number") @db.VarChar(50)
+  productId        String           @map("product_id") @db.Uuid
+  quantityProduced Decimal          @map("quantity_produced") @db.Decimal(10, 3)
+  unitId           String           @map("unit_id") @db.Uuid
+  baseWeightAdded  Decimal          @map("base_weight_added") @db.Decimal(10, 3)
+  status           ProductionStatus @default(COMPLETED) @map("status")
+  productionDate   DateTime         @map("production_date") @db.Date
+  expiryDate       DateTime?        @map("expiry_date") @db.Date
+  completedAt      DateTime?        @map("completed_at") @db.Timestamptz(6)
+  notes            String?          @db.Text
+  createdBy        String           @map("created_by") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -460,6 +469,8 @@ model ProductionEntry {
 
   @@index([productionDate])
   @@index([batchNumber])
+  @@index([status])
+  @@index([productId, productionDate])
   @@map("production_entries")
 }
 
