@@ -1,0 +1,71 @@
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(32, 33, 36, 0.5);
+  z-index: var(--z-drawer);
+  animation: fadeIn 150ms ease-out;
+}
+
+.drawer-container {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  background-color: var(--color-bg-surface);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  z-index: calc(var(--z-drawer) + 1);
+  overflow: hidden;
+}
+
+.drawer-left {
+  left: 0;
+  animation: slideInLeft 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer-right {
+  right: 0;
+  animation: slideInRight 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.drawer-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.drawer-close-btn {
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-xs);
+  padding: var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawer-body {
+  padding: var(--space-4);
+  overflow-y: auto;
+  flex: 1;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}

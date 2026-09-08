@@ -1,0 +1,106 @@
+.login-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-header {
+  margin-bottom: var(--spacing-6);
+  text-align: center;
+}
+
+.login-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+  margin-bottom: var(--spacing-1);
+}
+
+.login-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+}
+
+.login-alert {
+  margin-bottom: var(--spacing-4);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.login-submit-btn {
+  width: 100%;
+  margin-top: var(--spacing-2);
+}
+
+.demo-accounts-card {
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-5);
+  border-top: 1px solid var(--color-gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.demo-accounts-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.demo-accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-2);
+}
+
+.demo-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-2);
+  background-color: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.demo-btn:hover {
+  background-color: var(--color-primary-50);
+  border-color: var(--color-primary-300);
+}
+
+.demo-btn-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.demo-btn-text strong {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-900);
+  line-height: 1.2;
+}
+
+.demo-btn-text span {
+  font-size: 10px;
+  color: var(--color-gray-500);
+}
+
+.admin-icon {
+  color: var(--color-primary-700);
+}
+
+.outlet-icon {
+  color: var(--color-success-600);
+}
+
+.prod-icon {
+  color: var(--color-warning-600);
+}

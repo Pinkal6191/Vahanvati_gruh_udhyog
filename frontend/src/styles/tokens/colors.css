@@ -1,0 +1,46 @@
+:root {
+  /* Brand Palette */
+  --color-primary: #3F438F;
+  --color-primary-dark: #292D68;
+  --color-primary-light: #ECEEF8;
+  --color-primary-hover: #333775;
+
+  --color-accent: #8A3038;
+  --color-accent-dark: #67252D;
+  --color-accent-light: #F9EBEB;
+  --color-accent-hover: #75282F;
+
+  /* Neutrals & Surfaces */
+  --color-bg-app: #F8F9FB;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-subtle: #F3F4F6;
+  --color-bg-muted: #E5E7EB;
+
+  /* Typography */
+  --color-text-primary: #202124;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-text-inverse: #FFFFFF;
+
+  /* Borders & Dividers */
+  --color-border: #E5E7EB;
+  --color-border-hover: #D1D5DB;
+  --color-border-focus: #3F438F;
+
+  /* Semantic Feedback */
+  --color-success: #16803C;
+  --color-success-bg: #EAF6ED;
+  --color-success-border: #A3D7B2;
+
+  --color-warning: #C47A00;
+  --color-warning-bg: #FFF7E6;
+  --color-warning-border: #F7D08A;
+
+  --color-error: #C62828;
+  --color-error-bg: #FDF2F2;
+  --color-error-border: #F8B4B4;
+
+  --color-info: #1D4ED8;
+  --color-info-bg: #EFF6FF;
+  --color-info-border: #BFDBFE;
+}

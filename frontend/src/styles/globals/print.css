@@ -1,0 +1,54 @@
+/* Print Stylesheet for Browser Printing & 3-Inch POS Thermal Receipts */
+
+@media print {
+  /* Hide interactive shell elements */
+  header,
+  aside,
+  nav,
+  .no-print,
+  button,
+  .btn,
+  .app-sidebar,
+  .app-header,
+  .toast-container {
+    display: none !important;
+  }
+
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 12pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Standard print document */
+  .printable-document {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+  }
+
+  /* 3-Inch (80mm) Thermal POS Receipt */
+  .thermal-receipt-80mm {
+    width: 72mm !important;
+    max-width: 72mm !important;
+    margin: 0 auto !important;
+    padding: 2mm !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+    color: #000000 !important;
+  }
+
+  .thermal-receipt-80mm table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .thermal-receipt-80mm hr {
+    border: none;
+    border-top: 1px dashed #000000;
+    margin: 4px 0;
+  }
+}

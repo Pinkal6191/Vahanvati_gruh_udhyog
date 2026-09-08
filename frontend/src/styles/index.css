@@ -1,0 +1,10 @@
+/* Vahanvati Gruh Udhyog Design System Core Stylesheet */
+
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/shadows.css';
+
+@import './globals/reset.css';
+@import './globals/utilities.css';
+@import './globals/print.css';
