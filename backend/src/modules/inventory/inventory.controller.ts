@@ -11,6 +11,24 @@ export class InventoryController {
     }
   }
 
+  static async getProductStock(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await InventoryService.getProductStock(req.params.productId);
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getStockSummary(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await InventoryService.getSummary();
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async getMovements(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await InventoryService.getMovements(req.query as any);
@@ -22,7 +40,12 @@ export class InventoryController {
 
   static async adjustStock(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await InventoryService.adjustStock(req.user!.id, req.body);
+      const result = await InventoryService.adjustStock(
+        req.user!.id,
+        req.user!.role,
+        req.body,
+        req.ip
+      );
       res.status(200).json({ success: true, data: result });
     } catch (err) {
       next(err);

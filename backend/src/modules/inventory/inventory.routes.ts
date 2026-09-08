@@ -7,14 +7,27 @@ import { stockQuerySchema, movementQuerySchema, adjustStockSchema } from './inve
 
 const router = Router();
 
+// All inventory endpoints require authentication
 router.use(authenticate);
 
-// View stock balances and movements
-router.get('/status', validate({ query: stockQuerySchema }), InventoryController.getStockStatus);
-router.get('/movements', validate({ query: movementQuerySchema }), InventoryController.getMovements);
-router.get('/reconcile/:productId', authorize(['ADMIN']), InventoryController.reconcileStock);
+// View overall stock balances (ADMIN, OUTLET, PRODUCTION)
+router.get('/status', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), validate({ query: stockQuerySchema }), InventoryController.getStockStatus);
+router.get('/stocks', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), validate({ query: stockQuerySchema }), InventoryController.getStockStatus);
 
-// Manual stock adjustment (Admin only)
+// View high-level inventory summary dashboard (ADMIN, OUTLET)
+router.get('/summary', authorize(['ADMIN', 'OUTLET']), InventoryController.getStockSummary);
+
+// View single product stock status (ADMIN, OUTLET, PRODUCTION)
+router.get('/product/:productId', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), InventoryController.getProductStock);
+router.get('/stocks/:productId', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), InventoryController.getProductStock);
+
+// View stock movement history (ADMIN, OUTLET)
+router.get('/movements', authorize(['ADMIN', 'OUTLET']), validate({ query: movementQuerySchema }), InventoryController.getMovements);
+
+// Manual stock adjustment (ADMIN only)
 router.post('/adjust', authorize(['ADMIN']), validate({ body: adjustStockSchema }), InventoryController.adjustStock);
+
+// Reconcile stock balance against ledger (ADMIN only)
+router.get('/reconcile/:productId', authorize(['ADMIN']), InventoryController.reconcileStock);
 
 export default router;
