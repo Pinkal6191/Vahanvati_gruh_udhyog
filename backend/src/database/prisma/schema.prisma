@@ -64,6 +64,12 @@ enum ProductionStatus {
   CANCELLED
 }
 
+enum ReturnStatus {
+  DRAFT
+  COMPLETED
+  CANCELLED
+}
+
 enum RefundPaymentMode {
   CASH
   UPI
@@ -400,15 +406,19 @@ model Payment {
 // ==========================================
 
 model SalesReturn {
-  id                String            @id @default(uuid()) @db.Uuid
-  returnNumber      String            @unique @map("return_number") @db.VarChar(50)
-  originalSaleId    String            @map("original_sale_id") @db.Uuid
-  customerId        String            @map("customer_id") @db.Uuid
-  totalReturnAmount Decimal           @map("total_return_amount") @db.Decimal(12, 2)
-  refundPaymentMode RefundPaymentMode @default(CASH) @map("refund_payment_mode")
-  reason            String            @db.VarChar(255)
-  createdBy         String            @map("created_by") @db.Uuid
-  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String            @id @default(uuid()) @db.Uuid
+  returnNumber       String            @unique @map("return_number") @db.VarChar(50)
+  originalSaleId     String            @map("original_sale_id") @db.Uuid
+  customerId         String            @map("customer_id") @db.Uuid
+  totalReturnAmount  Decimal           @map("total_return_amount") @db.Decimal(12, 2)
+  refundPaymentMode  RefundPaymentMode @default(CASH) @map("refund_payment_mode")
+  status             ReturnStatus      @default(COMPLETED) @map("status")
+  reason             String            @db.VarChar(255)
+  cancellationReason String?           @map("cancellation_reason") @db.VarChar(255)
+  createdBy          String            @map("created_by") @db.Uuid
+  completedAt        DateTime?         @map("completed_at") @db.Timestamptz(6)
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
   originalSale Sale              @relation(fields: [originalSaleId], references: [id], onDelete: Restrict)
@@ -418,6 +428,9 @@ model SalesReturn {
 
   @@index([returnNumber])
   @@index([originalSaleId])
+  @@index([status])
+  @@index([customerId])
+  @@index([createdAt])
   @@map("sales_returns")
 }
 
