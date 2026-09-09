@@ -1,4 +1,5 @@
 import { apiClient } from '../../services/api/api-client';
+import { storageService } from '../../services/storage/storage.service';
 
 export interface BusinessSummaryData {
   period: string;
@@ -55,7 +56,91 @@ export const DashboardApi = {
     startDate?: string;
     endDate?: string;
     date?: string;
+    role?: string;
   }): Promise<BusinessSummaryData> => {
+    const userRole = params?.role || storageService.getUser()?.role || 'ADMIN';
+    const period = params?.period || 'today';
+
+    // 1. OUTLET ROLE: Fetch permitted sales, returns, and stock reports
+    if (userRole === 'OUTLET') {
+      const [salesRes, returnsRes, stockRes, topProductsRes] = await Promise.allSettled([
+        apiClient.get<{ summary: any; paymentBreakdown: any }>(`/reports/sales?period=${period}`),
+        apiClient.get<{ summary: any }>(`/reports/returns?period=${period}`),
+        apiClient.get<any>('/reports/stock'),
+        apiClient.get<{ data: any[] }>(`/reports/sales/products?period=${period}&limit=5`),
+      ]);
+
+      const salesData = salesRes.status === 'fulfilled' ? salesRes.value.data : null;
+      const returnsData = returnsRes.status === 'fulfilled' ? returnsRes.value.data : null;
+      const stockData = stockRes.status === 'fulfilled' ? stockRes.value : null;
+      const topProductsData = topProductsRes.status === 'fulfilled' ? topProductsRes.value.data : null;
+
+      const totalSales = Number(salesData?.summary?.totalSalesAmount || 0);
+      const totalRefund = Number(returnsData?.summary?.totalRefundAmount || 0);
+
+      return {
+        period: salesData?.summary?.period || 'Today',
+        sales: {
+          totalSales,
+          billCount: Number(salesData?.summary?.completedBillsCount || 0),
+          averageBillValue: Number(salesData?.summary?.averageBillValue || 0),
+        },
+        returns: {
+          totalReturnsAmount: totalRefund,
+          returnsCount: Number(returnsData?.summary?.completedReturnsCount || 0),
+        },
+        netSales: totalSales - totalRefund,
+        production: {
+          totalProductionWeight: 0,
+          productionEntriesCount: 0,
+        },
+        inventory: {
+          totalItems: Number(stockData?.summary?.totalProductsCount || 0),
+          inStockCount: Number(stockData?.summary?.inStockCount || 0),
+          lowStockCount: Number(stockData?.summary?.lowStockCount || 0),
+          outOfStockCount: Number(stockData?.summary?.outOfStockCount || 0),
+        },
+        paymentSummary: salesData?.paymentBreakdown || {},
+        topProducts: (topProductsData?.data || []).map((p: any) => ({
+          productId: p.productId,
+          productName: p.productName,
+          revenue: Number(p.salesAmount || p.totalRevenue || 0),
+          quantity: Number(p.quantitySold || 0),
+        })),
+      };
+    }
+
+    // 2. PRODUCTION ROLE: Fetch permitted production and stock reports
+    if (userRole === 'PRODUCTION') {
+      const [prodRes, stockRes] = await Promise.allSettled([
+        apiClient.get<{ summary: any }>(`/reports/production?period=${period}`),
+        apiClient.get<any>('/reports/stock'),
+      ]);
+
+      const prodData = prodRes.status === 'fulfilled' ? prodRes.value.data : null;
+      const stockData = stockRes.status === 'fulfilled' ? stockRes.value : null;
+
+      return {
+        period: prodData?.summary?.period || 'Today',
+        sales: { totalSales: 0, billCount: 0, averageBillValue: 0 },
+        returns: { totalReturnsAmount: 0, returnsCount: 0 },
+        netSales: 0,
+        production: {
+          totalProductionWeight: Number(prodData?.summary?.totalCompletedBaseWeightAdded || 0),
+          productionEntriesCount: Number(prodData?.summary?.completedEntriesCount || 0),
+        },
+        inventory: {
+          totalItems: Number(stockData?.summary?.totalProductsCount || 0),
+          inStockCount: Number(stockData?.summary?.inStockCount || 0),
+          lowStockCount: Number(stockData?.summary?.lowStockCount || 0),
+          outOfStockCount: Number(stockData?.summary?.outOfStockCount || 0),
+        },
+        paymentSummary: {},
+        topProducts: [],
+      };
+    }
+
+    // 3. ADMIN ROLE (default): Call executive summary endpoint
     const query = new URLSearchParams();
     if (params?.period) query.set('period', params.period);
     if (params?.startDate) query.set('startDate', params.startDate);

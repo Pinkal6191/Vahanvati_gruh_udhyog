@@ -42,7 +42,7 @@ export const DashboardPage: React.FC = () => {
     setError(null);
     try {
       const [summaryData, salesData] = await Promise.all([
-        DashboardApi.getBusinessSummary({ period: 'today' }),
+        DashboardApi.getBusinessSummary({ period: 'today', role: user?.role }),
         DashboardApi.getRecentSales(5),
       ]);
       setSummary(summaryData);
@@ -55,7 +55,7 @@ export const DashboardPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.role]);
 
   useEffect(() => {
     loadDashboardData();
@@ -88,11 +88,25 @@ export const DashboardPage: React.FC = () => {
   const payments = summary.paymentSummary || {};
   const topProducts = summary.topProducts || [];
 
+  const dashboardTitle =
+    user?.role === 'OUTLET'
+      ? 'Store Outlet Dashboard'
+      : user?.role === 'PRODUCTION'
+        ? 'Kitchen Production Dashboard'
+        : 'Admin Operations Dashboard';
+
+  const dashboardSubtitle =
+    user?.role === 'OUTLET'
+      ? `Welcome back, ${user?.fullName || user?.username}. Real-time counter sales, billing, and inventory summary.`
+      : user?.role === 'PRODUCTION'
+        ? `Welcome back, ${user?.fullName || user?.username}. Kitchen production batches and inventory status.`
+        : `Welcome back, ${user?.fullName || user?.username}. Real-time operational summary for ${summary.period || 'Today'}.`;
+
   return (
     <div className="dashboard-page">
       <PageHeader
-        title="Admin Operations Dashboard"
-        subtitle={`Welcome back, ${user?.fullName || user?.username}. Real-time operational summary for ${summary.period || 'Today'}.`}
+        title={dashboardTitle}
+        subtitle={dashboardSubtitle}
         actions={
           <div className="dashboard-header-actions">
             <Button
@@ -244,34 +258,56 @@ export const DashboardPage: React.FC = () => {
       {/* QUICK ACTIONS ROW */}
       <Card title="Quick Management Actions" subtitle="Direct navigation to operational terminals">
         <div className="dashboard-quick-actions-bar">
-          <Button
-            variant="primary"
-            leftIcon={<ShoppingCart size={16} />}
-            onClick={() => navigate('/billing')}
-          >
-            New Bill (POS)
-          </Button>
-          <Button
-            variant="outline"
-            leftIcon={<PlusCircle size={16} />}
-            onClick={() => navigate('/products')}
-          >
-            Add Product
-          </Button>
-          <Button
-            variant="outline"
-            leftIcon={<Users size={16} />}
-            onClick={() => navigate('/customers')}
-          >
-            Add Customer
-          </Button>
-          <Button
-            variant="outline"
-            leftIcon={<ChefHat size={16} />}
-            onClick={() => navigate('/production')}
-          >
-            Add Production
-          </Button>
+          {(user?.role === 'ADMIN' || user?.role === 'OUTLET') && (
+            <Button
+              variant="primary"
+              leftIcon={<ShoppingCart size={16} />}
+              onClick={() => navigate('/billing')}
+            >
+              New Bill (POS)
+            </Button>
+          )}
+
+          {user?.role === 'ADMIN' && (
+            <Button
+              variant="outline"
+              leftIcon={<PlusCircle size={16} />}
+              onClick={() => navigate('/products')}
+            >
+              Add Product
+            </Button>
+          )}
+
+          {(user?.role === 'ADMIN' || user?.role === 'OUTLET') && (
+            <Button
+              variant="outline"
+              leftIcon={<Users size={16} />}
+              onClick={() => navigate('/customers')}
+            >
+              Add Customer
+            </Button>
+          )}
+
+          {(user?.role === 'ADMIN' || user?.role === 'OUTLET') && (
+            <Button
+              variant="outline"
+              leftIcon={<RotateCcw size={16} />}
+              onClick={() => navigate('/sales-returns')}
+            >
+              Sales Returns
+            </Button>
+          )}
+
+          {(user?.role === 'ADMIN' || user?.role === 'PRODUCTION') && (
+            <Button
+              variant="outline"
+              leftIcon={<ChefHat size={16} />}
+              onClick={() => navigate('/production')}
+            >
+              Add Production
+            </Button>
+          )}
+
           <Button
             variant="secondary"
             leftIcon={<Package size={16} />}
