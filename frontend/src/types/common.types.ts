@@ -2,6 +2,7 @@ export type BadgeVariant = 'success' | 'warning' | 'error' | 'danger' | 'info' |
 export type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type CustomerType = 'INDIAN' | 'NRI';
 
 export interface ToastMessage {
   id: string;
