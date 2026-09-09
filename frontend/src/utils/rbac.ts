@@ -6,7 +6,7 @@ import { NAVIGATION_GROUPS } from '../constants/navigation';
  * Checks if a user has one of the allowed roles
  */
 export function hasRole(user: User | null | undefined, allowedRoles?: Role | Role[]): boolean {
-  if (!user || !user.isActive) return false;
+  if (!user || user.isActive === false) return false;
   if (!allowedRoles) return true;
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
   if (roles.length === 0) return true;
@@ -23,7 +23,7 @@ export function canAccessRoute(
   const path = typeof first === 'string' ? first : typeof second === 'string' ? second : '';
   const user = (typeof first === 'object' ? first : second) as User | null | undefined;
 
-  if (!user || !user.isActive) return false;
+  if (!user || user.isActive === false) return false;
   if (path === '/' || path === '/dashboard') return true;
 
   // Check navigation groups
