@@ -83,7 +83,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
   };
 
   return (
-    <div className="pos-cart-pane">
+    <div className="pos-cart-content">
       {/* 1. CUSTOMER SELECTION BAR */}
       <div className="pos-customer-banner">
         <div className="pos-customer-profile">

@@ -5,7 +5,9 @@
 .pos-terminal-layout {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px);
+  height: calc(100vh - var(--header-height, 64px));
+  max-height: calc(100vh - var(--header-height, 64px));
+  min-height: 0;
   overflow: hidden;
   background-color: var(--color-gray-100);
 }
@@ -119,6 +121,8 @@
 .pos-workspace-container {
   display: flex;
   flex: 1;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
   position: relative;
 }
@@ -466,14 +470,26 @@
    3. RIGHT CART SUMMARY PANE (approx 40%)
    ------------------------------------------------------------ */
 .pos-cart-pane {
-  width: 420px;
-  min-width: 360px;
+  width: 440px;
+  min-width: 380px;
   max-width: 480px;
   background-color: var(--color-white);
+  border-left: 1px solid var(--color-gray-200);
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   flex-shrink: 0;
+}
+
+.pos-cart-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 /* CUSTOMER BANNER */
@@ -484,6 +500,7 @@
   padding: var(--spacing-3) var(--spacing-4);
   background-color: var(--color-gray-50);
   border-bottom: 1px solid var(--color-gray-200);
+  flex-shrink: 0;
 }
 
 .pos-customer-profile {
@@ -538,10 +555,13 @@
 
 /* CART TABLE */
 .pos-cart-items-wrapper {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
 }
 
 .pos-cart-table-header {
@@ -558,6 +578,7 @@
   position: sticky;
   top: 0;
   z-index: 2;
+  flex-shrink: 0;
 }
 
 .pos-cart-lines {
@@ -711,11 +732,13 @@
 .pos-cart-footer {
   border-top: 1px solid var(--color-gray-200);
   background-color: var(--color-white);
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: 10px 16px;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: 8px;
   flex-shrink: 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
+  z-index: 5;
 }
 
 .pos-clear-cart-row {
