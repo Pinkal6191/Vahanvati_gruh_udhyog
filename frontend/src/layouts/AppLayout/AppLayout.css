@@ -30,6 +30,17 @@
   margin: 0 auto;
 }
 
+/* POS Terminal Full-Bleed View */
+.app-main-content:has(.pos-terminal-layout) {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+  height: calc(100vh - var(--header-height, 64px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .app-mobile-sidebar-wrapper {
   margin: calc(var(--spacing-4) * -1);
   height: 100%;

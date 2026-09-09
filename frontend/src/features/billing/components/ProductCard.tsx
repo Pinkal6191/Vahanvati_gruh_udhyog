@@ -106,7 +106,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="pos-price-block">
           <span className="pos-currency-symbol">₹</span>
           <span className="pos-price-amount">{applicableRate.toFixed(2)}</span>
-          <span className="pos-price-tier">({customerType})</span>
         </div>
 
         <div className="pos-stock-badge-wrapper">
