@@ -1,6 +1,6 @@
 export interface ApiResponse<T = any> {
   success: boolean;
-  data?: T;
+  data: T;
   message?: string;
   summary?: Record<string, any>;
   pagination?: PaginationMeta;

@@ -1,4 +1,4 @@
-export type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'brand';
+export type BadgeVariant = 'success' | 'warning' | 'error' | 'danger' | 'info' | 'neutral' | 'brand';
 export type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 export type ToastType = 'success' | 'error' | 'warning' | 'info';

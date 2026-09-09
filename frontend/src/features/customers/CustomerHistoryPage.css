@@ -1,0 +1,206 @@
+.customer-history-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.customer-history-loading,
+.customer-history-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+/* Profile Card */
+.customer-profile-card {
+  padding: var(--spacing-5);
+}
+
+.profile-header-grid {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-4);
+}
+
+.profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary-50);
+  color: var(--color-primary-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  flex: 1;
+}
+
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.profile-name {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.profile-meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  flex-wrap: wrap;
+}
+
+.profile-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+}
+
+.profile-address {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+  margin: 0;
+}
+
+/* Lifetime KPI Grid: 3 columns */
+.history-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-4);
+}
+
+@media (max-width: 800px) {
+  .history-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Bill History Items */
+.history-bills-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.bill-history-item {
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  background-color: var(--color-gray-50);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.bill-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  border-bottom: 1px solid var(--color-gray-200);
+  padding-bottom: var(--spacing-2);
+}
+
+.bill-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.bill-number-tag {
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-bold);
+  color: var(--color-primary-700);
+}
+
+.bill-date-tag {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.bill-header-right {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+}
+
+.bill-amount-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.bill-amount-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+}
+
+/* Mini Table for Line Items */
+.bill-items-table-wrapper {
+  overflow-x: auto;
+}
+
+.bill-items-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+
+.bill-items-mini-table th {
+  text-align: left;
+  padding: var(--spacing-1) var(--spacing-2);
+  color: var(--color-gray-500);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.bill-items-mini-table td {
+  padding: var(--spacing-1) var(--spacing-2);
+  border-bottom: 1px solid var(--color-gray-100);
+  color: var(--color-gray-700);
+}
+
+.bill-item-subtotal {
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
+}
+
+.bill-payments-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+  margin-top: var(--spacing-1);
+}
+
+.payment-footer-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+  font-weight: var(--font-medium);
+}
+
+.payment-footer-badge {
+  font-size: 11px;
+  font-weight: var(--font-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-gray-200);
+  color: var(--color-gray-800);
+}

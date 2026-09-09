@@ -1,0 +1,130 @@
+.master-data-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+/* Master Filters Card */
+.master-filters-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3) var(--spacing-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.master-filters-grid {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.filter-search-input {
+  flex: 1;
+  min-width: 240px;
+}
+
+.filter-select-input {
+  min-width: 170px;
+}
+
+.filter-refresh-btn {
+  margin-left: auto;
+}
+
+/* Table Information Cells */
+.table-primary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-title {
+  font-weight: var(--font-semibold);
+  color: var(--color-gray-900);
+  font-size: var(--font-size-sm);
+}
+
+.info-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.gujarati-name {
+  font-family: 'Noto Sans Gujarati', sans-serif;
+  color: var(--color-primary-800);
+  font-size: 13px;
+  font-weight: var(--font-medium);
+}
+
+.mono-badge {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: var(--font-bold);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-200);
+}
+
+.date-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-600);
+}
+
+.price-text {
+  font-weight: var(--font-bold);
+  color: var(--color-gray-900);
+}
+
+.table-action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-1);
+}
+
+.text-danger {
+  color: var(--color-danger-600);
+}
+
+.text-success {
+  color: var(--color-success-600);
+}
+
+/* Modal Form Styles */
+.modal-form-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.modal-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-3);
+}
+
+@media (max-width: 600px) {
+  .modal-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-error-banner {
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  background-color: var(--color-danger-50);
+  border: 1px solid var(--color-danger-200);
+  color: var(--color-danger-700);
+  font-size: var(--font-size-sm);
+}
