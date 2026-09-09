@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Lock, ArrowRight, ShieldCheck, Store, ChefHat } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Store, ChefHat } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { Input } from '../../components/forms/Input/Input';
@@ -16,6 +16,7 @@ export const LoginPage: React.FC = () => {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
@@ -82,12 +83,24 @@ export const LoginPage: React.FC = () => {
         <Input
           label="Password"
           id="password"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter password"
           isRequired
           leftIcon={<Lock size={18} />}
+          rightIcon={
+            <button
+              type="button"
+              className="password-toggle-btn"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              title={showPassword ? 'Hide password' : 'Show password'}
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          }
           autoComplete="current-password"
         />
 
@@ -133,7 +146,7 @@ export const LoginPage: React.FC = () => {
           <button
             type="button"
             className="demo-btn"
-            onClick={() => handleDemoFill('production', 'Prod@123')}
+            onClick={() => handleDemoFill('production', 'Production@123')}
           >
             <ChefHat size={14} className="demo-icon prod-icon" />
             <div className="demo-btn-text">
