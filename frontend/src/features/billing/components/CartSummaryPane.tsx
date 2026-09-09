@@ -131,12 +131,21 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
 
       {/* 2. CART ITEMS LIST */}
       <div className="pos-cart-items-wrapper">
-        <div className="pos-cart-table-header">
-          <span className="pos-col-item">Item</span>
-          <span className="pos-col-qty">Qty</span>
-          <span className="pos-col-rate">Rate</span>
-          <span className="pos-col-amt">Amount</span>
-          <span className="pos-col-act"></span>
+        <div className="pos-cart-header-row">
+          <span className="pos-cart-section-title">
+            Items in Bill ({items.reduce((s, i) => s + i.quantity, 0)})
+          </span>
+          {items.length > 0 && (
+            <button
+              type="button"
+              className="pos-clear-cart-link"
+              onClick={onClearCart}
+              title="Clear all items from bill"
+            >
+              <Trash2 size={13} />
+              <span>Clear Bill</span>
+            </button>
+          )}
         </div>
 
         {items.length === 0 ? (
@@ -144,24 +153,44 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
             <ShoppingBag size={48} className="pos-empty-icon" />
             <p className="pos-empty-title">Cart is Empty</p>
             <p className="pos-empty-subtitle">
-              Click or tap items on the left catalog to add them to this bill.
+              Click or tap products on the left catalog to add them to this bill.
             </p>
           </div>
         ) : (
-          <div className="pos-cart-lines">
+          <div className="pos-cart-cards-list">
             {items.map((item) => (
-              <div key={item.id} className="pos-cart-line-row">
-                <div className="pos-col-item">
-                  <span className="pos-item-name">{item.productName}</span>
-                  {item.gujaratiName && (
-                    <span className="pos-item-gujarati">{item.gujaratiName}</span>
-                  )}
-                  {item.packName && (
-                    <span className="pos-item-pack">{item.packName}</span>
-                  )}
+              <div key={item.id} className="pos-cart-item-card">
+                {/* Top Row: Name, Gujarati, Pack, Delete */}
+                <div className="pos-item-card-top">
+                  <div className="pos-item-title-group">
+                    <div className="pos-item-names-line">
+                      <span className="pos-item-name">{item.productName}</span>
+                      {item.gujaratiName && (
+                        <span className="pos-item-gujarati-pill">{item.gujaratiName}</span>
+                      )}
+                    </div>
+                    {item.packName && (
+                      <span className="pos-item-pack-tag">{item.packName}</span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="pos-item-delete-btn"
+                    onClick={() => onRemoveItem(item.id)}
+                    title="Remove item"
+                    aria-label={`Remove ${item.productName}`}
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
 
-                <div className="pos-col-qty">
+                {/* Bottom Row: Unit Rate, Stepper, Line Total */}
+                <div className="pos-item-card-bottom">
+                  <div className="pos-item-rate-display">
+                    <span className="pos-item-rate-label">@ ₹{item.unitRate.toFixed(2)}</span>
+                  </div>
+
                   <div className="pos-qty-stepper">
                     <button
                       type="button"
@@ -169,7 +198,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
                       onClick={() => onUpdateQuantity(item.id, -1)}
                       aria-label="Decrease quantity"
                     >
-                      <Minus size={14} />
+                      <Minus size={13} />
                     </button>
                     <input
                       type="number"
@@ -188,29 +217,15 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
                       onClick={() => onUpdateQuantity(item.id, 1)}
                       aria-label="Increase quantity"
                     >
-                      <Plus size={14} />
+                      <Plus size={13} />
                     </button>
                   </div>
-                </div>
 
-                <div className="pos-col-rate">
-                  <span>₹{item.unitRate.toFixed(2)}</span>
-                </div>
-
-                <div className="pos-col-amt">
-                  <span className="pos-line-total">₹{item.totalAmount.toFixed(2)}</span>
-                </div>
-
-                <div className="pos-col-act">
-                  <button
-                    type="button"
-                    className="pos-remove-line-btn"
-                    onClick={() => onRemoveItem(item.id)}
-                    title="Remove item from bill"
-                    aria-label={`Remove ${item.productName}`}
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  <div className="pos-item-total-display">
+                    <span className="pos-item-line-total">
+                      ₹{item.totalAmount.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -220,22 +235,12 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
 
       {/* 3. TOTALS & FINANCIAL SUMMARY */}
       <div className="pos-cart-footer">
-        {items.length > 0 && (
+        {isResolvingPrices && (
           <div className="pos-clear-cart-row">
-            <button
-              type="button"
-              className="pos-clear-cart-link"
-              onClick={onClearCart}
-            >
-              <Trash2 size={13} />
-              <span>Clear Cart</span>
-            </button>
-            {isResolvingPrices && (
-              <span className="pos-pricing-syncing">
-                <Loader2 size={12} className="animate-spin" />
-                <span>Syncing rates with server...</span>
-              </span>
-            )}
+            <span className="pos-pricing-syncing">
+              <Loader2 size={12} className="animate-spin" />
+              <span>Syncing rates with server...</span>
+            </span>
           </div>
         )}
 
