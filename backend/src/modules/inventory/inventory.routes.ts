@@ -14,15 +14,15 @@ router.use(authenticate);
 router.get('/status', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), validate({ query: stockQuerySchema }), InventoryController.getStockStatus);
 router.get('/stocks', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), validate({ query: stockQuerySchema }), InventoryController.getStockStatus);
 
-// View high-level inventory summary dashboard (ADMIN, OUTLET)
-router.get('/summary', authorize(['ADMIN', 'OUTLET']), InventoryController.getStockSummary);
+// View high-level inventory summary dashboard (ADMIN, OUTLET, PRODUCTION)
+router.get('/summary', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), InventoryController.getStockSummary);
 
 // View single product stock status (ADMIN, OUTLET, PRODUCTION)
 router.get('/product/:productId', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), InventoryController.getProductStock);
 router.get('/stocks/:productId', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), InventoryController.getProductStock);
 
-// View stock movement history (ADMIN, OUTLET)
-router.get('/movements', authorize(['ADMIN', 'OUTLET']), validate({ query: movementQuerySchema }), InventoryController.getMovements);
+// View stock movement history (ADMIN, OUTLET, PRODUCTION)
+router.get('/movements', authorize(['ADMIN', 'OUTLET', 'PRODUCTION']), validate({ query: movementQuerySchema }), InventoryController.getMovements);
 
 // Manual stock adjustment (ADMIN only)
 router.post('/adjust', authorize(['ADMIN']), validate({ body: adjustStockSchema }), InventoryController.adjustStock);

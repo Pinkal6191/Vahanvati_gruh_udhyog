@@ -18,6 +18,7 @@ import { CustomerHistoryPage } from '../../features/customers/CustomerHistoryPag
 import { StockPage } from '../../features/inventory/StockPage';
 import { StockMovementsPage } from '../../features/inventory/StockMovementsPage';
 import { ProductionPage } from '../../features/production/ProductionPage';
+import { ProductionDetailPage } from '../../features/production/ProductionDetailPage';
 import { ProductionHistoryPage } from '../../features/production/ProductionHistoryPage';
 import { ProductsPage } from '../../features/products/ProductsPage';
 import { CategoriesPage } from '../../features/products/CategoriesPage';
@@ -125,6 +126,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'PRODUCTION']}>
               <ProductionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/production/:id"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'PRODUCTION']}>
+              <ProductionDetailPage />
             </ProtectedRoute>
           }
         />
