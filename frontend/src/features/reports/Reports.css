@@ -1,0 +1,199 @@
+/* Reports Feature Global Styling */
+
+.report-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6, 24px);
+  padding-bottom: var(--spacing-8, 32px);
+}
+
+.report-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* KPI Grids */
+.report-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-4, 16px);
+}
+
+.report-kpi-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-4, 16px);
+}
+
+.report-kpi-grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--spacing-4, 16px);
+}
+
+/* Two-column layout for charts and side summaries */
+.report-two-col {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--spacing-6, 24px);
+  align-items: start;
+}
+
+.report-two-col-equal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-6, 24px);
+  align-items: start;
+}
+
+/* Section headings */
+.report-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.report-section-title {
+  font-size: var(--font-size-lg, 18px);
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+}
+
+.report-section-desc {
+  font-size: var(--font-size-sm, 14px);
+  color: var(--text-secondary, #64748b);
+  margin-top: 2px;
+}
+
+/* Top Products / Mini List Card */
+.report-mini-list-card {
+  background: var(--surface-primary, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-5, 20px);
+  margin-bottom: var(--spacing-6, 24px);
+}
+
+.report-mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-mini-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background-color: var(--surface-hover, #f8fafc);
+  border-radius: var(--radius-md, 8px);
+  transition: background-color 0.15s ease;
+}
+
+.report-mini-item:hover {
+  background-color: #f1f5f9;
+}
+
+.report-mini-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-mini-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.report-mini-item-name {
+  font-size: var(--font-size-sm, 14px);
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.report-mini-item-sub {
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+}
+
+.report-mini-item-right {
+  text-align: right;
+}
+
+.report-mini-item-val {
+  font-size: var(--font-size-sm, 14px);
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+/* Data Table Card Wrapper */
+.report-table-card {
+  background: var(--surface-primary, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+}
+
+.report-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4, 16px) var(--spacing-5, 20px);
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  background-color: #ffffff;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.report-table-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1280px) {
+  .report-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .report-kpi-grid-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .report-two-col,
+  .report-two-col-equal {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .report-kpi-grid,
+  .report-kpi-grid-3,
+  .report-kpi-grid-5 {
+    grid-template-columns: 1fr;
+  }
+
+  .report-table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-table-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

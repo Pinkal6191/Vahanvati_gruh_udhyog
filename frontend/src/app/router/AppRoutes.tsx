@@ -25,6 +25,15 @@ import { ProductsPage } from '../../features/products/ProductsPage';
 import { CategoriesPage } from '../../features/products/CategoriesPage';
 import { SubcategoriesPage } from '../../features/products/SubcategoriesPage';
 import { ReportsPage } from '../../features/reports/ReportsPage';
+import { SalesReportPage } from '../../features/reports/SalesReportPage';
+import { ProductSalesReportPage } from '../../features/reports/ProductSalesReportPage';
+import { CustomerSalesReportPage } from '../../features/reports/CustomerSalesReportPage';
+import { CustomerReportDetailPage } from '../../features/reports/CustomerReportDetailPage';
+import { ProductionReportPage } from '../../features/reports/ProductionReportPage';
+import { StockReportPage } from '../../features/reports/StockReportPage';
+import { StockMovementsReportPage } from '../../features/reports/StockMovementsReportPage';
+import { StockReconciliationReportPage } from '../../features/reports/StockReconciliationReportPage';
+import { ReturnsReportPage } from '../../features/reports/ReturnsReportPage';
 import { UsersPage } from '../../features/users/UsersPage';
 import { WebsitePage } from '../../features/website/WebsitePage';
 import { SettingsPage } from '../../features/settings/SettingsPage';
@@ -180,11 +189,84 @@ export const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        {/* Reports & Analytics - Role Guarded */}
         <Route
           path="/reports"
           element={
             <ProtectedRoute allowedRoles={['ADMIN']}>
               <ReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/sales"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET']}>
+              <SalesReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/products"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET']}>
+              <ProductSalesReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/customers"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET']}>
+              <CustomerSalesReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/customers/:customerId"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET']}>
+              <CustomerReportDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/returns"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET']}>
+              <ReturnsReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/production"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'PRODUCTION']}>
+              <ProductionReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/stock"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET', 'PRODUCTION']}>
+              <StockReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/stock-movements"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'PRODUCTION']}>
+              <StockMovementsReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/reconciliation"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <StockReconciliationReportPage />
             </ProtectedRoute>
           }
         />

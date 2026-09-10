@@ -1,0 +1,81 @@
+.report-date-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.report-date-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--surface-primary, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 6px 12px;
+  border-radius: var(--radius-md, 8px);
+}
+
+.report-filter-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.report-filter-icon {
+  color: var(--text-secondary, #64748b);
+}
+
+.report-filter-select {
+  padding: 6px 12px;
+  font-size: var(--font-size-sm, 14px);
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: var(--radius-sm, 6px);
+  background-color: #fff;
+  color: var(--text-primary, #1e293b);
+  cursor: pointer;
+  outline: none;
+}
+
+.report-filter-select:focus {
+  border-color: var(--color-primary-600, #2563eb);
+}
+
+.report-custom-dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-date-input {
+  padding: 5px 8px;
+  font-size: var(--font-size-sm, 14px);
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: var(--radius-sm, 6px);
+  outline: none;
+}
+
+.report-date-input:focus {
+  border-color: var(--color-primary-600, #2563eb);
+}
+
+.report-date-separator {
+  font-size: var(--font-size-xs, 12px);
+  color: var(--text-secondary, #64748b);
+}
+
+@media (max-width: 640px) {
+  .report-date-filter-bar {
+    justify-content: stretch;
+  }
+  .report-date-filter-group {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .report-custom-dates {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

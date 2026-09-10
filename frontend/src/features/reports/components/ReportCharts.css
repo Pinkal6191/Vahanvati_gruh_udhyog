@@ -1,0 +1,188 @@
+.report-bar-chart-container {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-primary, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-5, 20px);
+  margin-bottom: var(--spacing-6, 24px);
+}
+
+.report-chart-title {
+  font-size: var(--font-size-md, 16px);
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  margin: 0 0 var(--spacing-4, 16px) 0;
+}
+
+.report-bar-chart-body {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.report-chart-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.report-chart-grid-line {
+  border-bottom: 1px dashed var(--border-color, #e2e8f0);
+  height: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.report-chart-grid-line span {
+  font-size: 10px;
+  color: var(--text-tertiary, #94a3b8);
+  margin-top: -12px;
+}
+
+.report-bars-row {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: calc(100% - 30px);
+  margin-top: 10px;
+  z-index: 1;
+}
+
+.report-bar-column {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.report-bar-track {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.report-bar-fill {
+  width: 70%;
+  max-width: 36px;
+  min-width: 8px;
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease, background 0.2s ease;
+}
+
+.report-bar-hovered {
+  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+  filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.3));
+}
+
+.report-bar-label {
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+  margin-top: 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.report-bar-tooltip {
+  position: absolute;
+  top: -45px;
+  background: #1e293b;
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.report-bar-subtext {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.report-chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border-color, #cbd5e1);
+  border-radius: var(--radius-md, 8px);
+  color: var(--text-secondary, #64748b);
+  font-size: var(--font-size-sm, 14px);
+}
+
+/* Payment Breakdown Card */
+.report-payment-card {
+  background: var(--surface-primary, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-5, 20px);
+  margin-bottom: var(--spacing-6, 24px);
+}
+
+.report-segmented-bar {
+  display: flex;
+  height: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #f1f5f9;
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.report-segment-slice {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.report-payment-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.report-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm, 13px);
+}
+
+.report-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.report-legend-label {
+  color: var(--text-secondary, #64748b);
+}
+
+.report-legend-val {
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.report-legend-pct {
+  font-size: 11px;
+  color: var(--text-tertiary, #94a3b8);
+}
+
+.report-chart-empty-text {
+  font-size: var(--font-size-sm, 14px);
+  color: var(--text-secondary, #64748b);
+  margin: 0;
+}
