@@ -12,6 +12,7 @@ import { DashboardPage } from '../../features/dashboard/DashboardPage';
 import { BillingPage } from '../../features/billing/BillingPage';
 import { BillHistoryPage } from '../../features/billing/BillHistoryPage';
 import { SalesReturnsPage } from '../../features/sales-returns/SalesReturnsPage';
+import { SalesReturnDetailPage } from '../../features/sales-returns/SalesReturnDetailPage';
 import { SalesReturnsHistoryPage } from '../../features/sales-returns/SalesReturnsHistoryPage';
 import { CustomersPage } from '../../features/customers/CustomersPage';
 import { CustomerHistoryPage } from '../../features/customers/CustomerHistoryPage';
@@ -72,6 +73,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET']}>
               <SalesReturnsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sales-returns/:id"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET']}>
+              <SalesReturnDetailPage />
             </ProtectedRoute>
           }
         />

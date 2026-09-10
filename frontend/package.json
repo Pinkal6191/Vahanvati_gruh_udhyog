@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "tsx tests/frontend-architecture.test.ts && tsx tests/step11-admin-masterdata.test.ts && tsx tests/step12-pos.test.ts && tsx tests/step13-production-inventory.test.ts",
+    "test": "tsx tests/frontend-architecture.test.ts && tsx tests/step11-admin-masterdata.test.ts && tsx tests/step12-pos.test.ts && tsx tests/step13-production-inventory.test.ts && tsx tests/step14-sales-returns.test.ts",
     "test:step11": "tsx tests/step11-admin-masterdata.test.ts",
     "test:step12": "tsx tests/step12-pos.test.ts",
-    "test:step13": "tsx tests/step13-production-inventory.test.ts"
+    "test:step13": "tsx tests/step13-production-inventory.test.ts",
+    "test:step14": "tsx tests/step14-sales-returns.test.ts"
   },
   "dependencies": {
     "lucide-react": "^0.475.0",
