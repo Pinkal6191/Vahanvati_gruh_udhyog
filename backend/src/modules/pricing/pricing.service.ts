@@ -340,8 +340,10 @@ export class PricingService {
       if (!product.isLooseWeightAllowed) {
         throw new BadRequestError(`Loose weight selling is not allowed for product: ${product.name}`);
       }
-      weightOrPackName = `${input.looseWeightInGrams} GM (Loose)`;
-      baseWeightDeducted = input.looseWeightInGrams;
+      weightOrPackName = input.looseWeightInGrams >= 1000
+        ? `${input.looseWeightInGrams / 1000} kg`
+        : `${input.looseWeightInGrams}g`;
+      baseWeightDeducted = input.looseWeightInGrams * quantity;
     } else {
       weightOrPackName = `${quantity} ${product.primaryUnit.symbol}`;
       baseWeightDeducted = quantity;
@@ -373,8 +375,8 @@ export class PricingService {
     let totalAmount = 0;
 
     if (input.looseWeightInGrams) {
-      // Loose calculation: (grams / 1000) * base per-kg rate
-      totalAmount = Math.round(((input.looseWeightInGrams / 1000) * unitRate) * 100) / 100;
+      // Loose calculation: (grams / 1000) * base per-kg rate * quantity
+      totalAmount = Math.round(((input.looseWeightInGrams / 1000) * unitRate * quantity) * 100) / 100;
     } else {
       totalAmount = Math.round(unitRate * quantity * 100) / 100;
     }

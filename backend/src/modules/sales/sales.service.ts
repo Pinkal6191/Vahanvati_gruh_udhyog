@@ -14,14 +14,11 @@ export class SalesService {
     const mergedMap = new Map<string, CreateSaleItemInput>();
 
     for (const item of items) {
-      const key = `${item.productId}_${item.packConfigId ?? 'loose'}`;
+      const weightKey = item.looseWeightInGrams ? `_w${item.looseWeightInGrams}` : '';
+      const key = `${item.productId}_${item.packConfigId ?? 'loose'}${weightKey}`;
       if (mergedMap.has(key)) {
         const existing = mergedMap.get(key)!;
-        if (item.looseWeightInGrams && existing.looseWeightInGrams) {
-          existing.looseWeightInGrams += item.looseWeightInGrams;
-        } else {
-          existing.quantity += item.quantity;
-        }
+        existing.quantity += item.quantity;
       } else {
         mergedMap.set(key, { ...item });
       }
@@ -382,6 +379,7 @@ export class SalesService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
+          items: true,
           payments: true,
           customer: { select: { id: true, name: true, mobile: true } },
           user: { select: { id: true, fullName: true, role: true } },
@@ -426,13 +424,18 @@ export class SalesService {
         customerName: sale.customerNameSnapshot,
         customerMobile: sale.customerMobileSnapshot,
       },
-      items: sale.items.map((i) => ({
-        name: i.productNameSnapshot,
-        variant: i.weightOrPackSnapshot,
-        qty: Number(i.quantity),
-        rate: Number(i.unitRate),
-        amount: Number(i.total),
-      })),
+      items: sale.items.map((i) => {
+        const qty = Number(i.quantity);
+        const amt = Number(i.total);
+        const lineRate = qty > 0 ? Math.round((amt / qty) * 100) / 100 : Number(i.unitRate);
+        return {
+          name: i.productNameSnapshot,
+          variant: i.weightOrPackSnapshot,
+          qty,
+          rate: lineRate,
+          amount: amt,
+        };
+      }),
       totals: {
         subtotal: Number(sale.subtotalAmount),
         discount: Number(sale.discountAmount),

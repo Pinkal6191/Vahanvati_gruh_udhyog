@@ -396,13 +396,33 @@ export class ProductsService {
           stock: {
             select: { currentBalance: true, minimumThreshold: true },
           },
+          prices: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              packConfigId: true,
+              customerType: true,
+              rate: true,
+              isActive: true,
+            },
+          },
         },
       }),
       prisma.product.count({ where }),
     ]);
 
+    const mappedItems = items.map((p: any) => {
+      const baseIndian = p.prices?.find((pr: any) => pr.customerType === 'INDIAN' && !pr.packConfigId);
+      const baseNri = p.prices?.find((pr: any) => pr.customerType === 'NRI' && !pr.packConfigId);
+      return {
+        ...p,
+        indianPrice: baseIndian ? Number(baseIndian.rate) : null,
+        nriPrice: baseNri ? Number(baseNri.rate) : null,
+      };
+    });
+
     return {
-      items,
+      items: mappedItems,
       pagination: {
         page,
         limit,

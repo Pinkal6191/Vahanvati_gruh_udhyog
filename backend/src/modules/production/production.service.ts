@@ -506,7 +506,7 @@ export class ProductionService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          product: { select: { id: true, name: true, code: true } },
+          product: { select: { id: true, name: true, code: true, gujaratiName: true } },
           unit: true,
           user: { select: { id: true, fullName: true, username: true } },
         },
@@ -534,6 +534,9 @@ export class ProductionService {
       createdBy: e.user ? { id: e.user.id, fullName: e.user.fullName, username: e.user.username } : null,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
+      product: e.product,
+      unit: e.unit,
+      user: e.user,
     }));
 
     return {
@@ -554,7 +557,7 @@ export class ProductionService {
     const entry = await prisma.productionEntry.findUnique({
       where: { id },
       include: {
-        product: { select: { id: true, name: true, code: true, primaryUnit: true } },
+        product: { select: { id: true, name: true, code: true, gujaratiName: true, primaryUnit: true } },
         unit: true,
         user: { select: { id: true, fullName: true, username: true } },
       },
@@ -584,6 +587,9 @@ export class ProductionService {
       createdBy: entry.user ? { id: entry.user.id, fullName: entry.user.fullName, username: entry.user.username } : null,
       createdAt: entry.createdAt,
       updatedAt: entry.updatedAt,
+      product: entry.product,
+      unit: entry.unit,
+      user: entry.user,
     };
   }
 }
