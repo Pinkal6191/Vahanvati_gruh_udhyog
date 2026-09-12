@@ -73,7 +73,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onItemClick, className }) => {
   return (
     <aside className={cn('app-sidebar', className)}>
       <div className="sidebar-brand">
-        <div className="sidebar-brand-logo">VG</div>
+        <div className="sidebar-brand-logo">
+          <img src="/logo.png" alt="Vahanvati" className="sidebar-brand-img" />
+        </div>
         <div className="sidebar-brand-info">
           <span className="sidebar-brand-title">Vahanvati</span>
           <span className="sidebar-brand-sub">Gruh Udhyog</span>

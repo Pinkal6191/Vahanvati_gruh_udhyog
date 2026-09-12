@@ -8,8 +8,9 @@ export interface DrawerProps {
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
+  footer?: ReactNode;
   position?: 'left' | 'right';
-  size?: 'sm' | 'md' | 'lg' | 'full';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   className?: string;
 }
 
@@ -18,6 +19,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   onClose,
   title,
   children,
+  footer,
   position = 'left',
   size = 'md',
   className,
@@ -52,6 +54,7 @@ export const Drawer: React.FC<DrawerProps> = ({
           </button>
         </div>
         <div className="drawer-body">{children}</div>
+        {footer && <div className="drawer-footer">{footer}</div>}
       </div>
     </div>
   );

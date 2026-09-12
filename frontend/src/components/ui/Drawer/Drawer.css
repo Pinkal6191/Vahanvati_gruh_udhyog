@@ -10,14 +10,35 @@
   position: fixed;
   top: 0;
   bottom: 0;
-  width: 280px;
-  max-width: 85vw;
+  width: 480px;
+  max-width: 90vw;
   background-color: var(--color-bg-surface);
   box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
   z-index: calc(var(--z-drawer) + 1);
   overflow: hidden;
+}
+
+.drawer-size-sm {
+  width: 340px;
+}
+
+.drawer-size-md {
+  width: 480px;
+}
+
+.drawer-size-lg {
+  width: 620px;
+}
+
+.drawer-size-xl {
+  width: 780px;
+}
+
+.drawer-size-full {
+  width: 100vw;
+  max-width: 100vw;
 }
 
 .drawer-left {
@@ -36,6 +57,7 @@
   justify-content: space-between;
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .drawer-title {
@@ -43,6 +65,9 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .drawer-close-btn {
@@ -52,12 +77,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.drawer-close-btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-gray-100);
 }
 
 .drawer-body {
   padding: var(--space-4);
   overflow-y: auto;
   flex: 1;
+}
+
+.drawer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-bg-surface);
+  flex-shrink: 0;
 }
 
 @keyframes slideInLeft {

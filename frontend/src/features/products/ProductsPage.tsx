@@ -373,7 +373,7 @@ export const ProductsPage: React.FC = () => {
         return (
           <div className="table-primary-info">
             <span className="info-title">
-              {symbol.toUpperCase() === 'GM' ? formatGramsToKg(balance) : `${balance} ${symbol}`}
+              {formatGramsToKg(balance)}
             </span>
             <span className="info-subtitle">Unit: {symbol}</span>
           </div>

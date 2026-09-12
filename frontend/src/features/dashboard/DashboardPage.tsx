@@ -195,9 +195,10 @@ export const DashboardPage: React.FC = () => {
             <span className="kpi-label">Net Sales</span>
             <div className="kpi-value-row">
               <span className="kpi-value">{formatCurrency(summary.netSales)}</span>
-              <Badge variant="brand" size="sm">Sales - Returns</Badge>
             </div>
-            <span className="kpi-subtext">Authoritative net turnover</span>
+            <span className="kpi-subtext" title="Net turnover = Gross Sales minus Returns">
+              Net turnover (Sales − Returns)
+            </span>
           </div>
         </Card>
 
@@ -396,14 +397,16 @@ export const DashboardPage: React.FC = () => {
         title="Recent Bills Activity"
         subtitle="Latest completed customer sales from local backend"
         action={
-          <Button
-            variant="ghost"
-            size="sm"
-            rightIcon={<ExternalLink size={14} />}
-            onClick={() => navigate('/billing/history')}
-          >
-            View All Invoices
-          </Button>
+          (user?.role === 'ADMIN' || user?.role === 'OUTLET') ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              rightIcon={<ExternalLink size={14} />}
+              onClick={() => navigate('/billing/history')}
+            >
+              View All Invoices
+            </Button>
+          ) : undefined
         }
       >
         {recentSales.length === 0 ? (

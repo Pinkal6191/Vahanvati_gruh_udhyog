@@ -22,16 +22,22 @@
 }
 
 .sidebar-brand-logo {
-  width: 36px;
-  height: 36px;
-  background-color: var(--color-primary);
-  color: var(--color-text-inverse);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-md);
+  width: 40px;
+  height: 40px;
+  background-color: var(--color-white);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  padding: 2px;
+}
+
+.sidebar-brand-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .sidebar-brand-info {

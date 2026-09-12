@@ -51,6 +51,24 @@
   color: var(--color-text-primary);
 }
 
+.input-wrapper input.form-input,
+.input-wrapper select.form-input,
+.input-wrapper .form-input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  border-radius: 0 !important;
+}
+
+.input-wrapper input.form-input:focus,
+.input-wrapper select.form-input:focus,
+.input-wrapper .form-input:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .form-input::placeholder {
   color: var(--color-text-muted);
 }

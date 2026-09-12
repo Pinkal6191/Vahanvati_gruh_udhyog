@@ -32,6 +32,8 @@ import {
   SalesQueryFilter,
 } from './billing.api';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import '../products/master-data.css';
+import './billing.css';
 
 export const BillHistoryPage: React.FC = () => {
   const { user } = useAuth();
@@ -98,9 +100,17 @@ export const BillHistoryPage: React.FC = () => {
   }, [loadSales]);
 
   // Open Details
-  const handleOpenDetails = (sale: SaleRecord) => {
+  const handleOpenDetails = async (sale: SaleRecord) => {
     setViewingSale(sale);
     setIsDetailsOpen(true);
+    try {
+      const fullSale = await BillingApi.getSaleById(sale.id);
+      if (fullSale) {
+        setViewingSale(fullSale);
+      }
+    } catch (e) {
+      // keep existing sale record
+    }
   };
 
   // Open Print
@@ -150,7 +160,7 @@ export const BillHistoryPage: React.FC = () => {
           onClick={() => handleOpenDetails(row)}
           title="Click to view details"
         >
-          <Receipt size={14} />
+          <Receipt size={17} />
           <strong>{row.billNumber}</strong>
         </button>
       ),
@@ -186,7 +196,7 @@ export const BillHistoryPage: React.FC = () => {
       header: 'Items',
       width: '80px',
       align: 'center',
-      cell: (row) => <span>{row.items?.length || 0}</span>,
+      cell: (row) => <span>{row.items?.length ?? (row as any).totalItemsCount ?? 0}</span>,
     },
     {
       key: 'finalTotalAmount',
@@ -227,32 +237,32 @@ export const BillHistoryPage: React.FC = () => {
     {
       key: 'actions',
       header: 'Actions',
-      width: '140px',
-      align: 'right',
+      width: '150px',
+      align: 'center',
       cell: (row) => (
         <div className="table-action-buttons">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
+            className="pos-table-action-btn pos-action-btn-view"
             onClick={() => handleOpenDetails(row)}
             title="View Bill Details"
           >
-            <Eye size={15} />
-          </Button>
+            <Eye size={18} />
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
+            className="pos-table-action-btn pos-action-btn-print"
             onClick={() => handleOpenPrint(row)}
             title="Print / Reprint Receipt"
           >
-            <Printer size={15} />
-          </Button>
+            <Printer size={18} />
+          </button>
 
           {isAdmin && row.saleStatus === 'COMPLETED' && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
+              type="button"
+              className="pos-table-action-btn pos-action-btn-cancel"
               onClick={() => {
                 setCancellingSale(row);
                 setCancelReason('');
@@ -260,8 +270,8 @@ export const BillHistoryPage: React.FC = () => {
               }}
               title="Cancel bill (Admin only)"
             >
-              <XCircle size={15} className="text-danger" />
-            </Button>
+              <XCircle size={18} />
+            </button>
           )}
         </div>
       ),
