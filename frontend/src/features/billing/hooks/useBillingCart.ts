@@ -117,14 +117,17 @@ export function useBillingCart(): UseBillingCartReturn {
             const match = res.items.find(
               (r) =>
                 r.productId === it.productId &&
-                (r.packConfigId || null) === (it.packConfigId || null)
+                (r.packConfigId || null) === (it.packConfigId || null) &&
+                (it.looseWeightInGrams
+                  ? (r.baseWeightDeducted ? Math.round(r.baseWeightDeducted / (r.quantity || 1)) === it.looseWeightInGrams : true)
+                  : true)
             );
             if (match) {
               return {
                 ...it,
                 unitRate: match.unitRate,
                 totalAmount: match.totalAmount,
-                packName: match.weightOrPackSnapshot || it.packName,
+                packName: it.packName || match.weightOrPackName,
               };
             }
             return it;
@@ -181,7 +184,8 @@ export function useBillingCart(): UseBillingCartReturn {
     ) => {
       const qtyToAdd = options?.quantity && options.quantity > 0 ? options.quantity : 1;
       const packId = options?.packConfigId || null;
-      const itemId = `${product.id}_${packId || 'loose'}`;
+      const weightGrams = options?.looseWeightInGrams || null;
+      const itemId = `${product.id}_${packId || (weightGrams ? `w_${weightGrams}` : 'loose')}`;
 
       let nextItems: CartItem[];
 
@@ -191,20 +195,41 @@ export function useBillingCart(): UseBillingCartReturn {
         nextItems = items.map((it, idx) => {
           if (idx === existingIndex) {
             const nextQty = it.quantity + qtyToAdd;
+            const singleItemPrice = it.looseWeightInGrams && !it.packConfigId
+              ? Math.round(((it.looseWeightInGrams / 1000) * it.unitRate) * 100) / 100
+              : it.unitRate;
             return {
               ...it,
               quantity: nextQty,
-              totalAmount: Math.round(it.unitRate * nextQty * 100) / 100,
+              totalAmount: Math.round(singleItemPrice * nextQty * 100) / 100,
             };
           }
           return it;
         });
       } else {
-        // Resolve initial rate from product's pricing
-        const defaultRate =
-          customerType === 'NRI'
-            ? product.nriPrice ?? 0
-            : product.indianPrice ?? 0;
+        // Resolve initial rate from product's pricing (pack rate or base rate)
+        let defaultRate = 0;
+        if (packId) {
+          const packPriceObj = ((product as any).prices || []).find(
+            (pr: any) =>
+              pr.packConfigId === packId &&
+              pr.customerType === customerType &&
+              pr.isActive
+          );
+          if (packPriceObj) {
+            defaultRate = Number(packPriceObj.rate);
+          }
+        }
+        if (defaultRate <= 0) {
+          defaultRate =
+            (customerType === 'NRI'
+              ? product.nriPrice ?? 0
+              : product.indianPrice ?? 0);
+        }
+
+        const singleItemPrice = weightGrams && !packId
+          ? Math.round(((weightGrams / 1000) * defaultRate) * 100) / 100
+          : defaultRate;
 
         const newItem: CartItem = {
           id: itemId,
@@ -213,12 +238,12 @@ export function useBillingCart(): UseBillingCartReturn {
           gujaratiName: product.gujaratiName,
           productCode: product.code,
           packConfigId: packId,
-          packName: options?.packName || (packId ? 'Pack' : 'Loose/Standard'),
-          unitName: product.primaryUnit?.symbol || 'pkt',
+          packName: options?.packName || (packId ? 'Pack' : weightGrams ? (weightGrams >= 1000 ? `${weightGrams / 1000} kg` : `${weightGrams}g`) : 'Standard'),
+          unitName: product.primaryUnit?.symbol || 'kg',
           quantity: qtyToAdd,
-          looseWeightInGrams: options?.looseWeightInGrams || null,
+          looseWeightInGrams: weightGrams,
           unitRate: defaultRate,
-          totalAmount: Math.round(defaultRate * qtyToAdd * 100) / 100,
+          totalAmount: Math.round(singleItemPrice * qtyToAdd * 100) / 100,
           stockBalance: product.stock?.currentBalance,
         };
         nextItems = [...items, newItem];
@@ -240,10 +265,13 @@ export function useBillingCart(): UseBillingCartReturn {
         if (it.id === id) {
           const updatedQty = it.quantity + delta;
           if (updatedQty > 0) {
+            const singleItemPrice = it.looseWeightInGrams && !it.packConfigId
+              ? Math.round(((it.looseWeightInGrams / 1000) * it.unitRate) * 100) / 100
+              : it.unitRate;
             nextItems.push({
               ...it,
               quantity: updatedQty,
-              totalAmount: Math.round(it.unitRate * updatedQty * 100) / 100,
+              totalAmount: Math.round(singleItemPrice * updatedQty * 100) / 100,
             });
           }
           // If updatedQty <= 0, item is removed
@@ -266,10 +294,13 @@ export function useBillingCart(): UseBillingCartReturn {
       }
       const nextItems = items.map((it) => {
         if (it.id === id) {
+          const singleItemPrice = it.looseWeightInGrams && !it.packConfigId
+            ? Math.round(((it.looseWeightInGrams / 1000) * it.unitRate) * 100) / 100
+            : it.unitRate;
           return {
             ...it,
             quantity: qty,
-            totalAmount: Math.round(it.unitRate * qty * 100) / 100,
+            totalAmount: Math.round(singleItemPrice * qty * 100) / 100,
           };
         }
         return it;

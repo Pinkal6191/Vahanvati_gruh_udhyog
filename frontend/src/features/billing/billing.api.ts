@@ -44,9 +44,11 @@ export interface ResolvedCartItem {
   packConfigId?: string | null;
   quantity: number;
   looseWeightInGrams?: number | null;
+  baseWeightDeducted?: number;
   unitRate: number;
   totalAmount: number;
   weightOrPackSnapshot?: string;
+  weightOrPackName?: string;
   productName?: string;
 }
 

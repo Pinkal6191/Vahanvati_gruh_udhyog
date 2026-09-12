@@ -178,6 +178,7 @@ export const ProductCatalogPane = forwardRef<ProductCatalogPaneRef, ProductCatal
               key={cat.id}
               type="button"
               className={`pos-category-chip ${selectedCategoryId === cat.id ? 'active' : ''}`}
+              title={cat.name}
               onClick={() => {
                 setSelectedCategoryId(cat.id);
                 setSelectedSubcategoryId('ALL');

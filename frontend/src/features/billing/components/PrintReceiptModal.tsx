@@ -19,6 +19,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
   const [payload, setPayload] = useState<ThermalPrintPayload | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen || !saleId) {
@@ -42,6 +43,12 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
     loadPayload();
   }, [isOpen, saleId]);
 
+  useEffect(() => {
+    if (isOpen && payload && containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+  }, [isOpen, payload]);
+
   const handleTriggerPrint = () => {
     window.print();
   };
@@ -62,14 +69,13 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
             leftIcon={<Printer size={16} />}
             onClick={handleTriggerPrint}
             disabled={!payload || isLoading}
-            autoFocus
           >
             Print Receipt (Ctrl+P)
           </Button>
         </div>
       }
     >
-      <div className="pos-print-preview-container">
+      <div ref={containerRef} className="pos-print-preview-container">
         {isLoading ? (
           <div className="pos-print-loading">
             <Loader2 size={32} className="animate-spin" />
@@ -84,6 +90,9 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
           <div className="pos-thermal-receipt" id="pos-printable-receipt">
             {/* 1. Header */}
             <div className="receipt-header">
+              <div className="receipt-logo-wrap">
+                <img src="/logo.png" alt="વહાણવટી ગૃહ ઉદ્યોગ" className="receipt-logo" />
+              </div>
               <h2 className="receipt-company-name">{payload.company.name}</h2>
               {payload.company.tagline && (
                 <p className="receipt-tagline">{payload.company.tagline}</p>
@@ -138,10 +147,10 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
             <table className="receipt-items-table">
               <thead>
                 <tr>
-                  <th className="th-name">Item</th>
-                  <th className="th-qty">Qty</th>
-                  <th className="th-rate">Rate</th>
-                  <th className="th-amt">Amount</th>
+                  <th className="th-name">વિગત (Item)</th>
+                  <th className="th-qty">જથ્થો (Qty)</th>
+                  <th className="th-rate">ભાવ (Rate)</th>
+                  <th className="th-amt">રકમ (Amt)</th>
                 </tr>
               </thead>
               <tbody>
@@ -163,7 +172,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
 
             <div className="receipt-divider-dashed"></div>
 
-            {/* 4. Totals */}
+            {/* 4. Totals & Payments */}
             <div className="receipt-totals-block">
               <div className="receipt-row">
                 <span>Subtotal:</span>
@@ -176,7 +185,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
                 </div>
               )}
               <div className="receipt-row grand-total">
-                <span>NET TOTAL:</span>
+                <span>કુલ રકમ (NET TOTAL):</span>
                 <strong>₹{payload.totals.total.toFixed(2)}</strong>
               </div>
               <div className="receipt-row">
@@ -189,14 +198,8 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
                   <span>₹{payload.totals.change.toFixed(2)}</span>
                 </div>
               )}
-            </div>
-
-            <div className="receipt-divider-dashed"></div>
-
-            {/* 5. Payments breakdown */}
-            <div className="receipt-payments-block">
               {payload.payments.map((pm, pidx) => (
-                <div key={pidx} className="receipt-row">
+                <div key={pidx} className="receipt-row receipt-payment-row">
                   <span>Paid via {pm.mode}:</span>
                   <span>₹{pm.amount.toFixed(2)}</span>
                 </div>
@@ -205,12 +208,13 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
 
             <div className="receipt-divider-dashed"></div>
 
-            {/* 6. Footer Notes */}
+            {/* 5. Footer Notes */}
             <div className="receipt-footer">
-              <p className="receipt-thank-you">Thank you for your visit!</p>
+              <p className="receipt-thank-you">મુલાકાત બદલ આભાર! / Thank you!</p>
               {payload.company.footerNotes && (
                 <p className="receipt-notes">{payload.company.footerNotes}</p>
               )}
+              <p className="receipt-sign">ફોર, વહાણવટી ગૃહ ઉદ્યોગ</p>
               <p className="receipt-system-tag">Vahanvati Gruh Udhyog Management System</p>
             </div>
           </div>

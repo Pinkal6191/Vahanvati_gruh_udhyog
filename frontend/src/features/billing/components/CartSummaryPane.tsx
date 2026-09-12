@@ -12,6 +12,7 @@ import {
   ShoppingBag,
   Loader2,
   RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import { CartItem } from '../hooks/useBillingCart';
 import { Customer } from '../../customers/customers.api';
@@ -158,75 +159,80 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
           </div>
         ) : (
           <div className="pos-cart-cards-list">
+            <div className="pos-cart-columns-header">
+              <span className="pos-col-item">Item</span>
+              <span className="pos-col-qty">Qty</span>
+              <span className="pos-col-total">Total</span>
+              <span className="pos-col-action"></span>
+            </div>
             {items.map((item) => (
-              <div key={item.id} className="pos-cart-item-card">
-                {/* Top Row: Name, Gujarati, Pack, Delete */}
-                <div className="pos-item-card-top">
-                  <div className="pos-item-title-group">
-                    <div className="pos-item-names-line">
-                      <span className="pos-item-name">{item.productName}</span>
-                      {item.gujaratiName && (
-                        <span className="pos-item-gujarati-pill">{item.gujaratiName}</span>
-                      )}
-                    </div>
-                    {item.packName && (
-                      <span className="pos-item-pack-tag">{item.packName}</span>
+              <div key={item.id} className="pos-cart-item-row">
+                {/* Left Column: Product name, Gujarati tag, Pack / Rate subtext */}
+                <div className="pos-cart-item-info">
+                  <div className="pos-cart-item-title-row">
+                    <span className="pos-cart-item-name" title={item.productName}>
+                      {item.productName}
+                    </span>
+                    {item.gujaratiName && (
+                      <span className="pos-cart-item-gujarati" title={item.gujaratiName}>
+                        {item.gujaratiName}
+                      </span>
                     )}
                   </div>
+                  <div className="pos-cart-item-subtext">
+                    {item.packName && (
+                      <span className="pos-cart-item-pack">{item.packName}</span>
+                    )}
+                    <span className="pos-cart-item-rate">@ ₹{item.unitRate.toFixed(2)}</span>
+                  </div>
+                </div>
 
+                {/* Center Column: Compact Quantity Stepper */}
+                <div className="pos-qty-stepper compact">
                   <button
                     type="button"
-                    className="pos-item-delete-btn"
-                    onClick={() => onRemoveItem(item.id)}
-                    title="Remove item"
-                    aria-label={`Remove ${item.productName}`}
+                    className="pos-stepper-btn minus"
+                    onClick={() => onUpdateQuantity(item.id, -1)}
+                    aria-label="Decrease quantity"
                   >
-                    <Trash2 size={15} />
+                    <Minus size={12} />
+                  </button>
+                  <input
+                    type="number"
+                    className="pos-qty-input"
+                    value={item.quantity}
+                    min="1"
+                    max="9999"
+                    onChange={(e) =>
+                      onSetQuantity(item.id, parseInt(e.target.value, 10) || 1)
+                    }
+                    aria-label={`Quantity for ${item.productName}`}
+                  />
+                  <button
+                    type="button"
+                    className="pos-stepper-btn plus"
+                    onClick={() => onUpdateQuantity(item.id, 1)}
+                    aria-label="Increase quantity"
+                  >
+                    <Plus size={12} />
                   </button>
                 </div>
 
-                {/* Bottom Row: Unit Rate, Stepper, Line Total */}
-                <div className="pos-item-card-bottom">
-                  <div className="pos-item-rate-display">
-                    <span className="pos-item-rate-label">@ ₹{item.unitRate.toFixed(2)}</span>
-                  </div>
-
-                  <div className="pos-qty-stepper">
-                    <button
-                      type="button"
-                      className="pos-stepper-btn minus"
-                      onClick={() => onUpdateQuantity(item.id, -1)}
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus size={13} />
-                    </button>
-                    <input
-                      type="number"
-                      className="pos-qty-input"
-                      value={item.quantity}
-                      min="1"
-                      max="9999"
-                      onChange={(e) =>
-                        onSetQuantity(item.id, parseInt(e.target.value, 10) || 1)
-                      }
-                      aria-label={`Quantity for ${item.productName}`}
-                    />
-                    <button
-                      type="button"
-                      className="pos-stepper-btn plus"
-                      onClick={() => onUpdateQuantity(item.id, 1)}
-                      aria-label="Increase quantity"
-                    >
-                      <Plus size={13} />
-                    </button>
-                  </div>
-
-                  <div className="pos-item-total-display">
-                    <span className="pos-item-line-total">
-                      ₹{item.totalAmount.toFixed(2)}
-                    </span>
-                  </div>
+                {/* Right Column: Line Total */}
+                <div className="pos-cart-item-total">
+                  ₹{item.totalAmount.toFixed(2)}
                 </div>
+
+                {/* Far Right Column: Delete Action */}
+                <button
+                  type="button"
+                  className="pos-item-delete-btn"
+                  onClick={() => onRemoveItem(item.id)}
+                  title="Remove item"
+                  aria-label={`Remove ${item.productName}`}
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             ))}
           </div>
@@ -395,10 +401,16 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
         </div>
 
         {/* 5. COMPLETE BILL ACTION BUTTON */}
+        {items.some((it) => it.unitRate <= 0) && (
+          <div className="pos-unpriced-warning">
+            <AlertTriangle size={14} />
+            <span>Please remove unpriced items (₹0.00) to proceed</span>
+          </div>
+        )}
         <button
           type="button"
           className="pos-complete-bill-btn"
-          disabled={items.length === 0 || isSubmitting}
+          disabled={items.length === 0 || isSubmitting || items.some((it) => it.unitRate <= 0)}
           onClick={onSubmitSale}
         >
           {isSubmitting ? (
