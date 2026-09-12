@@ -125,14 +125,16 @@ export const SalesReturnsHistoryPage: React.FC = () => {
       header: 'Actions',
       key: 'id',
       cell: (row) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(`/sales-returns/${row.id}`)}
-          title="View Details"
-        >
-          <Eye size={16} />
-        </Button>
+        <div className="actions-cell">
+          <button
+            type="button"
+            className="pos-table-action-btn pos-action-btn-view"
+            onClick={() => navigate(`/sales-returns/${row.id}`)}
+            title="View Details"
+          >
+            <Eye size={18} />
+          </button>
+        </div>
       ),
     },
   ];

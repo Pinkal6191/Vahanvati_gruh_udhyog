@@ -37,7 +37,7 @@ import {
   StockMovement,
 } from './inventory.api';
 import { CategoriesApi, Category } from '../categories/categories.api';
-import { formatDate, formatDateTime } from '../../utils/formatters';
+import { formatDate, formatDateTime, formatGramsToKg, formatDeltaWeight } from '../../utils/formatters';
 import './StockPage.css';
 
 export const StockPage: React.FC = () => {
@@ -274,9 +274,8 @@ export const StockPage: React.FC = () => {
         return (
           <div className="stock-balance-cell">
             <span className={`stock-balance-value ${statusClass}`}>
-              {row.currentBalance.toLocaleString()}
+              {formatGramsToKg(row.currentBalance)}
             </span>
-            <span className="stock-unit-symbol">{row.unitSymbol}</span>
           </div>
         );
       },
@@ -286,7 +285,7 @@ export const StockPage: React.FC = () => {
       key: 'minimumThreshold',
       cell: (row) => (
         <span className="threshold-indicator">
-          {row.minimumThreshold.toLocaleString()} {row.unitSymbol}
+          {formatGramsToKg(row.minimumThreshold)}
         </span>
       ),
     },
@@ -317,33 +316,33 @@ export const StockPage: React.FC = () => {
       key: 'id',
       cell: (row) => (
         <div className="actions-cell">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
+            className="pos-table-action-btn pos-action-btn-view"
             onClick={() => handleOpenDrawer(row.productId)}
             title="View Stock Breakdown & Ledger"
           >
-            <Eye size={16} />
-          </Button>
+            <Eye size={18} />
+          </button>
 
           {isAdmin && (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                type="button"
+                className="pos-table-action-btn pos-action-btn-edit"
                 onClick={() => handleOpenAdjustModal(row)}
                 title="Manual Stock Adjustment (Admin)"
               >
-                <SlidersHorizontal size={15} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
+                <SlidersHorizontal size={18} />
+              </button>
+              <button
+                type="button"
+                className="pos-table-action-btn pos-action-btn-print"
                 onClick={() => handleOpenReconcileModal(row.productId)}
                 title="Reconcile Ledger Balance (Admin)"
               >
-                <ShieldCheck size={15} />
-              </Button>
+                <ShieldCheck size={18} />
+              </button>
             </>
           )}
         </div>
@@ -586,20 +585,14 @@ export const StockPage: React.FC = () => {
                       : 'var(--color-success)',
                   }}
                 >
-                  {selectedProductStock.currentBalance.toLocaleString()}{' '}
-                  <span style={{ fontSize: 'var(--font-size-sm)' }}>
-                    {selectedProductStock.unitSymbol}
-                  </span>
+                  {formatGramsToKg(selectedProductStock.currentBalance)}
                 </span>
               </div>
 
               <div className="stock-metric-tile">
                 <span className="metric-tile-title">Minimum Threshold</span>
                 <span className="metric-tile-number" style={{ color: 'var(--color-text-secondary)' }}>
-                  {selectedProductStock.minimumThreshold.toLocaleString()}{' '}
-                  <span style={{ fontSize: 'var(--font-size-sm)' }}>
-                    {selectedProductStock.unitSymbol}
-                  </span>
+                  {formatGramsToKg(selectedProductStock.minimumThreshold)}
                 </span>
               </div>
             </div>
@@ -618,7 +611,7 @@ export const StockPage: React.FC = () => {
                 <AlertTriangle size={18} />
                 <div>
                   <strong>Low Stock Warning</strong>: Balance is at or below the safety threshold of{' '}
-                  {selectedProductStock.minimumThreshold} {selectedProductStock.unitSymbol}.
+                  {formatGramsToKg(selectedProductStock.minimumThreshold)}.
                 </div>
               </div>
             ) : (
@@ -723,11 +716,10 @@ export const StockPage: React.FC = () => {
                             fontSize: 'var(--font-size-sm)',
                           }}
                         >
-                          {m.quantityDelta > 0 ? `+${m.quantityDelta}` : m.quantityDelta}{' '}
-                          {m.unitSymbol}
+                          {formatDeltaWeight(m.quantityDelta)}
                         </span>
                         <div style={{ color: 'var(--color-text-secondary)' }}>
-                          Bal: {m.balanceAfter}
+                          Bal: {formatGramsToKg(m.balanceAfter)}
                         </div>
                       </div>
                     </div>
@@ -758,20 +750,18 @@ export const StockPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Product Picker */}
           <div className="form-group">
-            <label className="form-label" htmlFor={adjustProductSelectId}>
-              Product to Adjust <span style={{ color: 'var(--color-error)' }}>*</span>
-            </label>
+            <label className="form-label">Product to Adjust</label>
             <select
-              id={adjustProductSelectId}
-              className="form-select"
+              className="form-input"
               value={adjustProductId}
               onChange={(e) => setAdjustProductId(e.target.value)}
               disabled={isAdjusting}
             >
               {stocks.map((s) => (
                 <option key={s.productId} value={s.productId}>
-                  {s.productName} [{s.productCode}] — Current: {s.currentBalance} {s.unitSymbol}
+                  {s.productName} [{s.productCode}] — Current: {formatGramsToKg(s.currentBalance)}
                 </option>
               ))}
             </select>
@@ -780,10 +770,10 @@ export const StockPage: React.FC = () => {
           {selectedProductForAdjust && (
             <div className="product-picker-preview">
               <span>
-                Current Balance: <strong>{selectedProductForAdjust.currentBalance} {selectedProductForAdjust.unitSymbol}</strong>
+                Current Balance: <strong>{formatGramsToKg(selectedProductForAdjust.currentBalance)}</strong>
               </span>
               <span>
-                Min Threshold: <strong>{selectedProductForAdjust.minimumThreshold} {selectedProductForAdjust.unitSymbol}</strong>
+                Min Threshold: <strong>{formatGramsToKg(selectedProductForAdjust.minimumThreshold)}</strong>
               </span>
             </div>
           )}

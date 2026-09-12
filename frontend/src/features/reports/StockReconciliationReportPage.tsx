@@ -20,6 +20,7 @@ import {
   StockReconciliationResponse,
   StockReconciliationRecord,
 } from './reports.api';
+import { formatGramsToKg, formatDeltaWeight } from '../../utils/formatters';
 import './Reports.css';
 
 export const StockReconciliationReportPage: React.FC = () => {
@@ -65,7 +66,7 @@ export const StockReconciliationReportPage: React.FC = () => {
       align: 'right' as const,
       cell: (row: StockReconciliationRecord) => (
         <span style={{ textAlign: 'right', display: 'block', fontWeight: 600 }}>
-          {row.cachedBalance}
+          {formatGramsToKg(row.cachedBalance)}
         </span>
       ),
     },
@@ -75,7 +76,7 @@ export const StockReconciliationReportPage: React.FC = () => {
       align: 'right' as const,
       cell: (row: StockReconciliationRecord) => (
         <span style={{ textAlign: 'right', display: 'block', fontWeight: 600 }}>
-          {row.ledgerTotal}
+          {formatGramsToKg(row.ledgerTotal)}
         </span>
       ),
     },
@@ -92,7 +93,7 @@ export const StockReconciliationReportPage: React.FC = () => {
             color: row.difference === 0 ? '#059669' : '#dc2626',
           }}
         >
-          {row.difference === 0 ? '0' : row.difference}
+          {row.difference === 0 ? '0 g' : formatDeltaWeight(row.difference)}
         </span>
       ),
     },

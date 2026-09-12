@@ -37,6 +37,22 @@ export function formatGramsToKg(grams: number | string | null | undefined): stri
 }
 
 /**
+ * Format quantity delta with positive/negative sign and unit (e.g. +1 kg, -500 g, -2 kg)
+ */
+export function formatDeltaWeight(grams: number | string | null | undefined): string {
+  const num = typeof grams === 'string' ? parseFloat(grams) : Number(grams ?? 0);
+  if (isNaN(num) || num === 0) return '0 g';
+  const sign = num > 0 ? '+' : '-';
+  const absGrams = Math.abs(num);
+  if (absGrams >= 1000) {
+    const kg = absGrams / 1000;
+    const str = Number(kg.toFixed(2)).toString();
+    return `${sign}${str} kg`;
+  }
+  return `${sign}${absGrams} g`;
+}
+
+/**
  * Format Indian mobile number with country code and spacing
  */
 export function formatIndianMobile(mobile: string | null | undefined): string {

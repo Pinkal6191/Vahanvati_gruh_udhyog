@@ -46,3 +46,102 @@
   align-items: center;
   justify-content: center;
 }
+
+/* Table Action Buttons (Consistent 36px interactive touch targets across all modules) */
+.table-action-buttons,
+.actions-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pos-table-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.pos-table-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+.pos-table-action-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.2;
+}
+
+/* Specific button color variants */
+.pos-action-btn-view {
+  color: #2563eb;
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+}
+.pos-action-btn-view:hover {
+  background-color: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.pos-action-btn-print {
+  color: #059669;
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.pos-action-btn-print:hover {
+  background-color: #dcfce7;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.pos-action-btn-edit {
+  color: #0284c7;
+  background-color: #f0f9ff;
+  border-color: #bae6fd;
+}
+.pos-action-btn-edit:hover {
+  background-color: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.pos-action-btn-complete {
+  color: #059669;
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+  padding: 0 10px;
+  width: auto;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pos-action-btn-complete:hover {
+  background-color: #dcfce7;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.pos-action-btn-cancel {
+  color: #dc2626;
+  background-color: #fef2f2;
+  border-color: #fecaca;
+}
+.pos-action-btn-cancel:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+

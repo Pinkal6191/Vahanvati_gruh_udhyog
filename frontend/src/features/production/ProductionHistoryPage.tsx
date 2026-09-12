@@ -113,14 +113,16 @@ export const ProductionHistoryPage: React.FC = () => {
       header: 'Actions',
       key: 'id',
       cell: (row) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(`/production/${row.id}`)}
-          title="View Details"
-        >
-          <Eye size={16} />
-        </Button>
+        <div className="actions-cell">
+          <button
+            type="button"
+            className="pos-table-action-btn pos-action-btn-view"
+            onClick={() => navigate(`/production/${row.id}`)}
+            title="View Details"
+          >
+            <Eye size={18} />
+          </button>
+        </div>
       ),
     },
   ];

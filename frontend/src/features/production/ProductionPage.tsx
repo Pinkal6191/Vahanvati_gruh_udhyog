@@ -183,7 +183,12 @@ export const ProductionPage: React.FC = () => {
         ProductsApi.fetchUnits(),
       ]);
       setProducts(prodRes.items || []);
-      setUnits(unitList || []);
+      const sortedUnits = (unitList || []).sort((a, b) => {
+        if (a.symbol === 'kg') return -1;
+        if (b.symbol === 'kg') return 1;
+        return 0;
+      });
+      setUnits(sortedUnits);
     } catch (err: any) {
       console.warn('Failed to load products/units for production form:', err);
     }
@@ -405,25 +410,31 @@ export const ProductionPage: React.FC = () => {
     {
       header: 'Product',
       key: 'product',
-      cell: (row) => (
-        <div className="product-cell">
-          <span className="product-name-en">{row.product?.name || 'Unknown Product'}</span>
-          {row.product?.gujaratiName && (
-            <span className="product-name-gu">{row.product.gujaratiName}</span>
-          )}
-          <span className="product-code-sub">Code: {row.product?.code || '-'}</span>
-        </div>
-      ),
+      cell: (row) => {
+        const name = row.product?.name || (row as any).productName || 'Unknown Product';
+        const gujarati = row.product?.gujaratiName || (row as any).productGujaratiName;
+        const code = row.product?.code || (row as any).productCode || '-';
+        return (
+          <div className="product-cell">
+            <span className="product-name-en">{name}</span>
+            {gujarati && <span className="product-name-gu">{gujarati}</span>}
+            <span className="product-code-sub">Code: {code}</span>
+          </div>
+        );
+      },
     },
     {
       header: 'Quantity Output',
       key: 'quantityProduced',
-      cell: (row) => (
-        <div className="quantity-cell">
-          <span className="quantity-value">{row.quantityProduced}</span>
-          <span className="quantity-unit">{row.unit?.symbol || 'units'}</span>
-        </div>
-      ),
+      cell: (row) => {
+        const symbol = row.unit?.symbol || (row as any).unitSymbol || 'kg';
+        return (
+          <div className="quantity-cell">
+            <span className="quantity-value">{row.quantityProduced}</span>
+            <span className="quantity-unit">{symbol}</span>
+          </div>
+        );
+      },
     },
     {
       header: 'Status',
@@ -433,55 +444,62 @@ export const ProductionPage: React.FC = () => {
     {
       header: 'Logged By',
       key: 'user',
-      cell: (row) => (
-        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)' }}>
-          {row.user?.fullName || row.user?.username || 'System'}
-        </span>
-      ),
+      cell: (row) => {
+        const loggedBy =
+          row.user?.fullName ||
+          row.user?.username ||
+          (row as any).createdBy?.fullName ||
+          (row as any).createdByName ||
+          'System';
+        return (
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)' }}>
+            {loggedBy}
+          </span>
+        );
+      },
     },
     {
       header: 'Actions',
       key: 'id',
       cell: (row) => (
         <div className="actions-cell">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
+            className="pos-table-action-btn pos-action-btn-view"
             onClick={() => navigate(`/production/${row.id}`)}
             title="View Details"
           >
-            <Eye size={15} />
-          </Button>
+            <Eye size={18} />
+          </button>
 
           {row.status === 'DRAFT' && (
             <>
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                type="button"
+                className="pos-table-action-btn pos-action-btn-edit"
                 onClick={() => handleOpenEditModal(row)}
                 title="Edit Draft"
               >
-                <Edit2 size={14} />
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
+                <Edit2 size={18} />
+              </button>
+              <button
+                type="button"
+                className="pos-table-action-btn pos-action-btn-complete"
                 onClick={() => {
                   setCompletingEntry(row);
                   setIsCompleteDialogOpen(true);
                 }}
                 title="Complete and add to stock"
               >
-                <CheckCircle2 size={14} /> Complete
-              </Button>
+                <CheckCircle2 size={18} /> Complete
+              </button>
             </>
           )}
 
           {row.status !== 'CANCELLED' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              style={{ color: 'var(--color-error)' }}
+            <button
+              type="button"
+              className="pos-table-action-btn pos-action-btn-cancel"
               onClick={() => {
                 setCancellingEntry(row);
                 setCancelReason('');
@@ -489,8 +507,8 @@ export const ProductionPage: React.FC = () => {
               }}
               title="Cancel Batch Entry"
             >
-              <XCircle size={15} />
-            </Button>
+              <XCircle size={18} />
+            </button>
           )}
         </div>
       ),

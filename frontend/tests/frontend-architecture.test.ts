@@ -10,6 +10,7 @@ import {
   formatDate,
   formatDateTime,
   formatGramsToKg,
+  formatDeltaWeight,
   formatIndianMobile,
   formatInvoiceNumber,
 } from '../src/utils/formatters';
@@ -190,6 +191,16 @@ describe('Step 10 — Frontend Architecture & Foundation Test Suite', () => {
       assert.equal(formatGramsToKg(1000), '1 kg');
       assert.equal(formatGramsToKg(1500), '1.5 kg');
       assert.equal(formatGramsToKg(2000), '2 kg');
+    });
+
+    it('should format delta weights with sign and unit', () => {
+      assert.equal(formatDeltaWeight(-1000), '-1 kg');
+      assert.equal(formatDeltaWeight(-2000), '-2 kg');
+      assert.equal(formatDeltaWeight(-500), '-500 g');
+      assert.equal(formatDeltaWeight(1000), '+1 kg');
+      assert.equal(formatDeltaWeight(50000), '+50 kg');
+      assert.equal(formatDeltaWeight(100000), '+100 kg');
+      assert.equal(formatDeltaWeight(0), '0 g');
     });
 
     it('should format Indian mobile numbers with spacing', () => {

@@ -21,7 +21,7 @@ import {
   StockMovementRecord,
   MovementType,
 } from './reports.api';
-import { formatDateTime, formatWeight } from '../../utils/formatters';
+import { formatDateTime, formatGramsToKg, formatDeltaWeight } from '../../utils/formatters';
 import './Reports.css';
 
 export const StockMovementsReportPage: React.FC = () => {
@@ -126,7 +126,8 @@ export const StockMovementsReportPage: React.FC = () => {
       header: 'Change',
       align: 'right' as const,
       cell: (row: StockMovementRecord) => {
-        const isPositive = Number(row.quantityDelta) > 0;
+        const num = Number(row.quantityDelta);
+        const isPositive = num > 0;
         return (
           <span
             style={{
@@ -136,7 +137,7 @@ export const StockMovementsReportPage: React.FC = () => {
               color: isPositive ? '#059669' : '#dc2626',
             }}
           >
-            {isPositive ? `+${row.quantityDelta}` : row.quantityDelta}
+            {formatDeltaWeight(num)}
           </span>
         );
       },
@@ -147,7 +148,7 @@ export const StockMovementsReportPage: React.FC = () => {
       align: 'right' as const,
       cell: (row: StockMovementRecord) => (
         <span style={{ textAlign: 'right', display: 'block', fontWeight: 600 }}>
-          {row.balanceAfter}
+          {formatGramsToKg(row.balanceAfter)}
         </span>
       ),
     },

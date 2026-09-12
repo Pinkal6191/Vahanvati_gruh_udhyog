@@ -24,7 +24,7 @@ import {
   MovementType,
   MovementQueryParams,
 } from './inventory.api';
-import { formatDateTime } from '../../utils/formatters';
+import { formatDateTime, formatGramsToKg, formatDeltaWeight } from '../../utils/formatters';
 import './StockPage.css';
 
 export const StockMovementsPage: React.FC = () => {
@@ -142,7 +142,7 @@ export const StockMovementsPage: React.FC = () => {
         const isPositive = row.quantityDelta > 0;
         return (
           <span className={isPositive ? 'movement-quantity-in' : 'movement-quantity-out'}>
-            {isPositive ? `+${row.quantityDelta}` : row.quantityDelta} {row.unitSymbol}
+            {formatDeltaWeight(row.quantityDelta)}
           </span>
         );
       },
@@ -152,7 +152,7 @@ export const StockMovementsPage: React.FC = () => {
       key: 'balanceAfter',
       cell: (row) => (
         <span style={{ fontWeight: 600 }}>
-          {row.balanceAfter.toLocaleString()} {row.unitSymbol}
+          {formatGramsToKg(row.balanceAfter)}
         </span>
       ),
     },
