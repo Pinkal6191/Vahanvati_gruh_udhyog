@@ -7,7 +7,9 @@ export const AuthLayout: React.FC = () => {
     <div className="auth-layout">
       <div className="auth-card-wrapper">
         <div className="auth-header">
-          <div className="auth-brand-logo">VG</div>
+          <div className="auth-brand-logo-container">
+            <img src="/logo.png" alt="Vahanvati Gruh Udhyog" className="auth-brand-img" />
+          </div>
           <h1 className="auth-brand-title">Vahanvati Gruh Udhyog</h1>
           <p className="auth-brand-subtitle">
             Billing, Production & Business Management System

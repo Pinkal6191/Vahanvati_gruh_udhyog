@@ -24,19 +24,24 @@
   margin-bottom: var(--space-6);
 }
 
-.auth-brand-logo {
-  display: inline-flex;
+.auth-brand-logo-container {
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
-  background-color: var(--color-primary);
-  color: var(--color-text-inverse);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-xl);
-  border-radius: var(--radius-md);
   margin-bottom: var(--space-3);
-  box-shadow: 0 4px 10px rgba(63, 67, 143, 0.25);
+}
+
+.auth-brand-img {
+  height: 68px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.08));
+  transition: transform 0.2s ease-in-out;
+}
+
+.auth-brand-img:hover {
+  transform: scale(1.02);
 }
 
 .auth-brand-title {
