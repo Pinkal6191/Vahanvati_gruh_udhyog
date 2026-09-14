@@ -218,6 +218,8 @@ model Product {
   description          String?  @db.Text
   imageUrl             String?  @map("image_url") @db.VarChar(255)
   isLooseWeightAllowed Boolean  @default(true) @map("is_loose_weight_allowed")
+  isWebsiteVisible     Boolean  @default(true) @map("is_website_visible")
+  isFeatured           Boolean  @default(false) @map("is_featured")
   isActive             Boolean  @default(true) @map("is_active")
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -523,8 +525,49 @@ model CompanySettings {
   invoiceFooterNotes String?  @map("invoice_footer_notes") @db.Text
   printFormat        String   @default("THERMAL_3INCH") @map("print_format") @db.VarChar(20)
   allowNegativeStock Boolean  @default(false) @map("allow_negative_stock")
+  email              String?  @db.VarChar(100)
+  businessHours      String?  @default("Monday - Sunday: 9:00 AM - 8:00 PM") @map("business_hours") @db.VarChar(150)
+  googleMapsUrl      String?  @map("google_maps_url") @db.Text
+  instagramUrl       String?  @default("https://www.instagram.com/vahanvatigruhudhyog/") @map("instagram_url") @db.VarChar(255)
+  youtubeUrl         String?  @default("https://www.youtube.com/watch?v=FrB9KyMpOxQ") @map("youtube_url") @db.VarChar(255)
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("company_settings")
 }
+
+// ==========================================
+// 9. WEBSITE & BASIC CMS
+// ==========================================
+
+enum GalleryMediaType {
+  IMAGE
+  VIDEO
+}
+
+model GalleryItem {
+  id           String           @id @default(uuid()) @db.Uuid
+  title        String?          @db.VarChar(150)
+  caption      String?          @db.Text
+  mediaType    GalleryMediaType @default(IMAGE) @map("media_type")
+  mediaUrl     String           @map("media_url") @db.Text
+  thumbnailUrl String?          @map("thumbnail_url") @db.Text
+  displayOrder Int              @default(0) @map("display_order")
+  isVisible    Boolean          @default(true) @map("is_visible")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([isVisible, displayOrder])
+  @@map("gallery_items")
+}
+
+model WebsiteContent {
+  id        String   @id @default(uuid()) @db.Uuid
+  section   String   @unique @db.VarChar(50) // 'home', 'about', 'contact'
+  content   Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  @@map("website_contents")
+}
+

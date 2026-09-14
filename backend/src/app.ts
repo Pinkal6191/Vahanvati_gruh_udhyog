@@ -22,6 +22,7 @@ import inventoryRoutes from './modules/inventory/inventory.routes.js';
 import settingsRoutes from './modules/settings/settings.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import reportsRoutes from './modules/reports/reports.routes.js';
+import { publicRoutes, cmsRoutes } from './modules/website/website.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -92,6 +93,8 @@ export function createApp(): Express {
   });
 
   // Mount Domain Modules
+  app.use(`${env.API_PREFIX}/public`, publicRoutes);
+  app.use(`${env.API_PREFIX}/cms`, cmsRoutes);
   app.use(`${env.API_PREFIX}/auth`, authRoutes);
   app.use(`${env.API_PREFIX}/users`, usersRoutes);
   app.use(`${env.API_PREFIX}/customers`, customersRoutes);

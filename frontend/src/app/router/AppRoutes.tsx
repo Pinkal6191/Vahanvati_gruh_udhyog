@@ -38,9 +38,62 @@ import { UsersPage } from '../../features/users/UsersPage';
 import { WebsitePage } from '../../features/website/WebsitePage';
 import { SettingsPage } from '../../features/settings/SettingsPage';
 
+// Public Website Pages
+import { PublicLayout } from '../../layouts/PublicLayout/PublicLayout';
+import { PublicHomePage } from '../../features/public-website/PublicHomePage';
+import { PublicAboutPage } from '../../features/public-website/PublicAboutPage';
+import { PublicProductsPage } from '../../features/public-website/PublicProductsPage';
+import { PublicProductDetailPage } from '../../features/public-website/PublicProductDetailPage';
+import { PublicGalleryPage } from '../../features/public-website/PublicGalleryPage';
+import { PublicContactPage } from '../../features/public-website/PublicContactPage';
+import { useAuth } from '../../hooks/useAuth';
+import { useLocation } from 'react-router-dom';
+
+/**
+ * Smart Switcher for /products route:
+ * - Public visitors see the consumer-facing public catalog.
+ * - Authenticated ADMIN users see the internal master data catalog table.
+ * - Admins can preview public catalog via ?view=public
+ */
+const ProductsRouteHandler: React.FC = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+  const isPublicView = new URLSearchParams(location.search).get('view') === 'public';
+
+  if (user?.role === 'ADMIN' && !isPublicView) {
+    return (
+      <ProtectedRoute allowedRoles={['ADMIN']}>
+        <AppLayout>
+          <ProductsPage />
+        </AppLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  return (
+    <PublicLayout>
+      <PublicProductsPage />
+    </PublicLayout>
+  );
+};
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
+      {/* Public Website Routes */}
+      <Route element={<PublicLayout />}>
+        <Route path="/" element={<PublicHomePage />} />
+        <Route path="/home" element={<PublicHomePage />} />
+        <Route path="/about" element={<PublicAboutPage />} />
+        <Route path="/catalog" element={<PublicProductsPage />} />
+        <Route path="/products/:id" element={<PublicProductDetailPage />} />
+        <Route path="/gallery" element={<PublicGalleryPage />} />
+        <Route path="/contact" element={<PublicContactPage />} />
+      </Route>
+
+      {/* Dual Context Products Route (Public Catalog vs Admin Master Data) */}
+      <Route path="/products" element={<ProductsRouteHandler />} />
+
       {/* Public Auth Routes */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
@@ -54,7 +107,6 @@ export const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         
         {/* Accessible to all authenticated roles */}
         <Route path="/dashboard" element={<DashboardPage />} />
@@ -165,14 +217,6 @@ export const AppRoutes: React.FC = () => {
         />
 
         {/* Master Data & Admin Settings - Admin Only */}
-        <Route
-          path="/products"
-          element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
-              <ProductsPage />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="/categories"
           element={

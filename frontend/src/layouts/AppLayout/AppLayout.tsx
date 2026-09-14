@@ -6,7 +6,11 @@ import { Drawer } from '../../components/ui/Drawer/Drawer';
 import { useIsDesktop } from '../../hooks/useMediaQuery';
 import './AppLayout.css';
 
-export const AppLayout: React.FC = () => {
+export interface AppLayoutProps {
+  children?: React.ReactNode;
+}
+
+export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isDesktop = useIsDesktop();
 
@@ -42,7 +46,7 @@ export const AppLayout: React.FC = () => {
       <div className="app-layout-container">
         <Header onToggleMobileMenu={() => setIsMobileMenuOpen(true)} />
         <main className="app-main-content" id="main-content">
-          <Outlet />
+          {children || <Outlet />}
         </main>
       </div>
     </div>

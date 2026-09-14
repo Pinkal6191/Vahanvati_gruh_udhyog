@@ -504,7 +504,7 @@ async function runStep9ReportingTests() {
     // SECTION 5: STOCK REPORTS (Tests 23–27)
     // ========================================================
     console.log('▶ [23/47] Stock Report: Current stock report matches authoritative Stock balance...');
-    const res23 = await fetch(`${baseUrl}/reports/stock`, {
+    const res23 = await fetch(`${baseUrl}/reports/stock?limit=100`, {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
     const data23 = await res23.json();
