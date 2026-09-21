@@ -13,6 +13,7 @@ import {
   Package,
 } from 'lucide-react';
 import { publicWebsiteApi, PublicHomeData } from './public-website.api';
+import { resolveMediaUrl } from '../../services/api/api-client';
 import './PublicWebsite.css';
 
 // Approved YouTube Videos
@@ -168,7 +169,7 @@ export const PublicHomePage: React.FC = () => {
                 <article key={product.id} className="public-product-card">
                   <div className="public-product-img-box">
                     <img
-                      src={product.imageUrl || '/logo.png'}
+                      src={resolveMediaUrl(product.imageUrl) || '/logo.png'}
                       alt={product.name}
                       className="public-product-img"
                       loading="lazy"

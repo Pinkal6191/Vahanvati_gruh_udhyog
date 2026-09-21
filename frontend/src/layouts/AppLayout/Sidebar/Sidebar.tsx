@@ -43,6 +43,7 @@ const getNavIcon = (path: string) => {
     case '/production':
       return <ChefHat size={18} />;
     case '/products':
+    case '/admin/products':
       return <Tags size={18} />;
     case '/categories':
       return <FolderTree size={18} />;

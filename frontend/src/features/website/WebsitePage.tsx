@@ -17,12 +17,20 @@ import {
   Star,
   RefreshCw,
   Search,
+  Info,
+  Edit3,
+  X,
+  Filter,
+  Upload,
+  Film,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { PageHeader } from '../../components/common/PageHeader/PageHeader';
 import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
 import { Button } from '../../components/ui/Button/Button';
 import { LoadingState } from '../../components/common/LoadingState/LoadingState';
 import { websiteCmsApi, CmsProduct, CmsGalleryItem } from './website-cms.api';
+import { resolveMediaUrl } from '../../services/api/api-client';
 import './WebsitePage.css';
 
 type CmsTab = 'HOME' | 'ABOUT' | 'PRODUCTS' | 'GALLERY' | 'CONTACT';
@@ -61,9 +69,15 @@ export const WebsitePage: React.FC = () => {
 
   const [products, setProducts] = useState<CmsProduct[]>([]);
   const [productSearch, setProductSearch] = useState('');
+  const [selectedCmsCategory, setSelectedCmsCategory] = useState('');
+  const [editingProduct, setEditingProduct] = useState<CmsProduct | null>(null);
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editIsWebsiteVisible, setEditIsWebsiteVisible] = useState(true);
+  const [editIsFeatured, setEditIsFeatured] = useState(false);
   const [galleryItems, setGalleryItems] = useState<CmsGalleryItem[]>([]);
 
-  // New Media Item Form
+  // New Media Item Form (Gallery)
   const [newMedia, setNewMedia] = useState({
     title: '',
     caption: '',
@@ -73,6 +87,16 @@ export const WebsitePage: React.FC = () => {
     isVisible: true,
   });
   const [showAddMedia, setShowAddMedia] = useState(false);
+  const [galleryUploadMode, setGalleryUploadMode] = useState<'FILE' | 'URL'>('FILE');
+  const [selectedGalleryFile, setSelectedGalleryFile] = useState<File | null>(null);
+  const [galleryFilePreview, setGalleryFilePreview] = useState<string | null>(null);
+  const [uploadingGalleryFile, setUploadingGalleryFile] = useState(false);
+
+  // Product Photo Edit Form
+  const [productPhotoUploadMode, setProductPhotoUploadMode] = useState<'FILE' | 'URL'>('FILE');
+  const [selectedProductFile, setSelectedProductFile] = useState<File | null>(null);
+  const [productFilePreview, setProductFilePreview] = useState<string | null>(null);
+  const [uploadingProductFile, setUploadingProductFile] = useState(false);
 
   // Contact Settings
   const [contactSettings, setContactSettings] = useState({
@@ -177,15 +201,55 @@ export const WebsitePage: React.FC = () => {
   };
 
   // 4. Gallery Add & Delete
-  const handleAddMedia = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMedia.mediaUrl.trim()) {
-      showToast('error', 'Media URL is required');
+  const handleGalleryFileSelect = (file: File | null) => {
+    if (!file) {
+      setSelectedGalleryFile(null);
+      setGalleryFilePreview(null);
       return;
     }
+    setSelectedGalleryFile(file);
+    const isVideo = file.type.startsWith('video/');
+    setNewMedia((prev) => ({
+      ...prev,
+      mediaType: isVideo ? 'VIDEO' : 'IMAGE',
+      title: prev.title || file.name.replace(/\.[^/.]+$/, ''),
+    }));
+    const previewUrl = URL.createObjectURL(file);
+    setGalleryFilePreview(previewUrl);
+  };
+
+  const handleAddMedia = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       setSaving(true);
-      const created = await websiteCmsApi.createGalleryItem(newMedia);
+      let finalMediaUrl = newMedia.mediaUrl.trim();
+      let finalMediaType = newMedia.mediaType;
+
+      if (galleryUploadMode === 'FILE') {
+        if (!selectedGalleryFile) {
+          showToast('error', 'Please select a photo or video file to upload');
+          setSaving(false);
+          return;
+        }
+        setUploadingGalleryFile(true);
+        const uploadRes = await websiteCmsApi.uploadMedia(selectedGalleryFile);
+        finalMediaUrl = uploadRes.url;
+        finalMediaType = uploadRes.mediaType;
+        setUploadingGalleryFile(false);
+      } else {
+        if (!finalMediaUrl) {
+          showToast('error', 'Media URL is required');
+          setSaving(false);
+          return;
+        }
+      }
+
+      const created = await websiteCmsApi.createGalleryItem({
+        ...newMedia,
+        mediaUrl: finalMediaUrl,
+        mediaType: finalMediaType,
+      });
+
       setGalleryItems((prev) => [...prev, created]);
       setNewMedia({
         title: '',
@@ -195,12 +259,15 @@ export const WebsitePage: React.FC = () => {
         displayOrder: 0,
         isVisible: true,
       });
+      setSelectedGalleryFile(null);
+      setGalleryFilePreview(null);
       setShowAddMedia(false);
       showToast('success', 'Gallery item added successfully!');
     } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to add gallery item');
+      showToast('error', err.response?.data?.message || err.message || 'Failed to add gallery item');
     } finally {
       setSaving(false);
+      setUploadingGalleryFile(false);
     }
   };
 
@@ -240,12 +307,92 @@ export const WebsitePage: React.FC = () => {
     }
   };
 
-  const filteredProducts = products.filter(
-    (p) =>
+  // Edit Product Details (Photos & Descriptions for Public Website)
+  const handleStartEditProduct = (product: CmsProduct) => {
+    setEditingProduct(product);
+    setEditImageUrl(product.imageUrl || '');
+    setEditDescription(product.description || '');
+    setEditIsWebsiteVisible(product.isWebsiteVisible);
+    setEditIsFeatured(product.isFeatured);
+    setProductPhotoUploadMode('FILE');
+    setSelectedProductFile(null);
+    setProductFilePreview(null);
+  };
+
+  const handleProductFileSelect = (file: File | null) => {
+    if (!file) {
+      setSelectedProductFile(null);
+      setProductFilePreview(null);
+      return;
+    }
+    setSelectedProductFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setProductFilePreview(previewUrl);
+  };
+
+  const handleSaveProductDetails = async () => {
+    if (!editingProduct) return;
+    try {
+      setSaving(true);
+      let targetImageUrl = editImageUrl.trim();
+
+      if (productPhotoUploadMode === 'FILE' && selectedProductFile) {
+        setUploadingProductFile(true);
+        const uploadRes = await websiteCmsApi.uploadMedia(selectedProductFile);
+        targetImageUrl = uploadRes.url;
+        setUploadingProductFile(false);
+      }
+
+      await websiteCmsApi.updateProductVisibility(editingProduct.id, {
+        imageUrl: targetImageUrl || undefined,
+        description: editDescription.trim() || undefined,
+        isWebsiteVisible: editIsWebsiteVisible,
+        isFeatured: editIsFeatured,
+      });
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === editingProduct.id
+            ? {
+                ...p,
+                imageUrl: targetImageUrl || undefined,
+                description: editDescription.trim() || undefined,
+                isWebsiteVisible: editIsWebsiteVisible,
+                isFeatured: editIsFeatured,
+              }
+            : p
+        )
+      );
+
+      showToast('success', `${editingProduct.name} website presentation updated!`);
+      setEditingProduct(null);
+    } catch (err: any) {
+      showToast('error', 'Failed to update product details');
+    } finally {
+      setSaving(false);
+      setUploadingProductFile(false);
+    }
+  };
+
+  const distinctCategories = Array.from(
+    new Set(
+      products
+        .map((p) => p.subcategory?.category?.name)
+        .filter((c): c is string => Boolean(c))
+    )
+  );
+
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch =
       p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
       (p.gujaratiName && p.gujaratiName.includes(productSearch)) ||
-      p.code.toLowerCase().includes(productSearch.toLowerCase())
-  );
+      p.code.toLowerCase().includes(productSearch.toLowerCase());
+
+    const matchesCategory =
+      !selectedCmsCategory || p.subcategory?.category?.name === selectedCmsCategory;
+
+    return matchesSearch && matchesCategory;
+  });
 
   if (loading) {
     return <LoadingState message="Loading Website CMS..." />;
@@ -534,50 +681,102 @@ export const WebsitePage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: PRODUCTS CATALOG VISIBILITY */}
+      {/* TAB 3: PRODUCTS CATALOG VISIBILITY & PHOTOS */}
       {activeTab === 'PRODUCTS' && (
         <div className="cms-card">
           <div className="cms-card-header">
             <div>
               <div className="cms-card-title">
                 <Package size={20} color="#3f438f" />
-                <span>Product Website Visibility & Features</span>
+                <span>Product Website Visibility & Photos</span>
               </div>
               <div className="cms-card-subtitle">
-                Choose which products appear on the public website and select featured items for the Home page.
+                Choose which products appear on the public website, set photos, descriptions, and feature items for the Home page.
               </div>
             </div>
 
-            <div style={{ position: 'relative', width: '280px' }}>
-              <Search
-                size={16}
-                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}
-              />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Category Filter */}
+              <select
+                value={selectedCmsCategory}
+                onChange={(e) => setSelectedCmsCategory(e.target.value)}
                 style={{
-                  width: '100%',
-                  padding: '0.5rem 0.75rem 0.5rem 2rem',
+                  padding: '0.5rem 0.75rem',
                   borderRadius: '6px',
                   border: '1px solid #d1d5db',
                   fontSize: '0.88rem',
+                  background: '#ffffff',
+                  color: '#334155',
                 }}
-              />
+              >
+                <option value="">All Categories</option>
+                {distinctCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+
+              {/* Search */}
+              <div style={{ position: 'relative', width: '240px' }}>
+                <Search
+                  size={16}
+                  style={{
+                    position: 'absolute',
+                    left: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50)',
+                    color: '#9ca3af',
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem 0.5rem 2rem',
+                    borderRadius: '6px',
+                    border: '1px solid #d1d5db',
+                    fontSize: '0.88rem',
+                  }}
+                />
+              </div>
             </div>
+          </div>
+
+          {/* POS Non-Interference Notice */}
+          <div
+            style={{
+              padding: '0.85rem 1.25rem',
+              background: '#eff6ff',
+              borderRadius: '8px',
+              border: '1px solid #bfdbfe',
+              color: '#1e40af',
+              marginBottom: '1.25rem',
+              fontSize: '0.88rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+            }}
+          >
+            <Info size={18} style={{ flexShrink: 0 }} />
+            <span>
+              <strong>Independent Website Catalog:</strong> Changes made here manage how products appear on the public website (photos, descriptions, visibility). They <strong>do not affect</strong> POS billing, cashier operations, active sale prices, barcodes, or inventory stock balances.
+            </span>
           </div>
 
           <div className="cms-table-container">
             <table className="cms-table">
               <thead>
                 <tr>
-                  <th>Product</th>
+                  <th>Product & Photo</th>
                   <th>Category</th>
                   <th>Unit</th>
                   <th>Show on Website</th>
                   <th>Featured on Home</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -588,13 +787,35 @@ export const WebsitePage: React.FC = () => {
                         <img
                           src={p.imageUrl || '/logo.png'}
                           alt={p.name}
-                          style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover' }}
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '8px',
+                            objectFit: 'cover',
+                            border: '1px solid #e2e8f0',
+                            background: '#f8fafc',
+                          }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/logo.png';
+                          }}
                         />
                         <div>
                           <div style={{ fontWeight: 700, color: '#1e293b' }}>{p.name}</div>
                           {p.gujaratiName && (
-                            <div style={{ fontSize: '0.8rem', color: '#8a3038', fontFamily: 'Noto Sans Gujarati, sans-serif' }}>
+                            <div
+                              style={{
+                                fontSize: '0.82rem',
+                                color: '#8a3038',
+                                fontFamily: 'Noto Sans Gujarati, sans-serif',
+                                fontWeight: 600,
+                              }}
+                            >
                               {p.gujaratiName}
+                            </div>
+                          )}
+                          {p.description && (
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>
+                              {p.description.length > 50 ? `${p.description.slice(0, 50)}...` : p.description}
                             </div>
                           )}
                         </div>
@@ -646,11 +867,262 @@ export const WebsitePage: React.FC = () => {
                         <span>{p.isFeatured ? 'Featured' : 'Standard'}</span>
                       </button>
                     </td>
+                    <td>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leftIcon={<Edit3 size={14} />}
+                        onClick={() => handleStartEditProduct(p)}
+                      >
+                        Edit Photo & Info
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {/* Modal: Edit Website Presentation for Product */}
+          {editingProduct && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                padding: '1rem',
+              }}
+            >
+              <div
+                style={{
+                  background: '#ffffff',
+                  borderRadius: '12px',
+                  width: '100%',
+                  maxWidth: '560px',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    padding: '1.25rem 1.5rem',
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                      Edit Website Details: {editingProduct.name}
+                    </h3>
+                    <div
+                      style={{
+                        fontSize: '0.85rem',
+                        color: '#8a3038',
+                        fontFamily: 'Noto Sans Gujarati, sans-serif',
+                        marginTop: '0.2rem',
+                      }}
+                    >
+                      {editingProduct.gujaratiName}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingProduct(null)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Photo Mode Switcher */}
+                  <div>
+                    <label className="cms-label">Product Image Source (પ્રોડક્ટ ફોટો)</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setProductPhotoUploadMode('FILE')}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.45rem 0.9rem',
+                          borderRadius: '6px',
+                          border: '1px solid #d1d5db',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          background: productPhotoUploadMode === 'FILE' ? '#3f438f' : '#f8fafc',
+                          color: productPhotoUploadMode === 'FILE' ? '#ffffff' : '#475569',
+                        }}
+                      >
+                        <Upload size={14} />
+                        <span>Upload File (કમ્પ્યુટર/મોબાઈલમાંથી ફાઈલ)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProductPhotoUploadMode('URL')}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.45rem 0.9rem',
+                          borderRadius: '6px',
+                          border: '1px solid #d1d5db',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          background: productPhotoUploadMode === 'URL' ? '#3f438f' : '#f8fafc',
+                          color: productPhotoUploadMode === 'URL' ? '#ffffff' : '#475569',
+                        }}
+                      >
+                        <LinkIcon size={14} />
+                        <span>Direct Image URL (લિંક)</span>
+                      </button>
+                    </div>
+
+                    {/* Preview + Input Container */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '1rem',
+                        alignItems: 'center',
+                        padding: '1rem',
+                        background: '#f8fafc',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                      }}
+                    >
+                      <img
+                        src={productFilePreview || resolveMediaUrl(editImageUrl)}
+                        alt="Preview"
+                        style={{
+                          width: '72px',
+                          height: '72px',
+                          borderRadius: '8px',
+                          objectFit: 'cover',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          flexShrink: 0,
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/logo.png';
+                        }}
+                      />
+
+                      <div style={{ flex: 1 }}>
+                        {productPhotoUploadMode === 'FILE' ? (
+                          <div>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                              onChange={(e) => handleProductFileSelect(e.target.files?.[0] || null)}
+                              style={{
+                                width: '100%',
+                                fontSize: '0.88rem',
+                                color: '#334155',
+                              }}
+                            />
+                            {selectedProductFile && (
+                              <div style={{ fontSize: '0.78rem', color: '#16a34a', marginTop: '0.35rem', fontWeight: 600 }}>
+                                Selected: {selectedProductFile.name} ({(selectedProductFile.size / 1024).toFixed(1)} KB)
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            <input
+                              type="text"
+                              className="cms-input"
+                              placeholder="https://... or /uploads/..."
+                              value={editImageUrl}
+                              onChange={(e) => {
+                                setEditImageUrl(e.target.value);
+                                setProductFilePreview(null);
+                              }}
+                              style={{ width: '100%' }}
+                            />
+                          </div>
+                        )}
+                        <span style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.35rem', display: 'block' }}>
+                          Supported formats: JPG, PNG, WEBP, GIF. Saved only for website presentation.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description Input */}
+                  <div>
+                    <label className="cms-label">Website Description (વેબસાઇટ વિગત)</label>
+                    <textarea
+                      className="cms-textarea"
+                      rows={3}
+                      placeholder="Enter consumer description, ingredients, or taste highlights for this product..."
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Toggles */}
+                  <div style={{ display: 'flex', gap: '1.5rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={editIsWebsiteVisible}
+                        onChange={(e) => setEditIsWebsiteVisible(e.target.checked)}
+                      />
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#334155' }}>
+                        Show on Public Website
+                      </span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={editIsFeatured}
+                        onChange={(e) => setEditIsFeatured(e.target.checked)}
+                      />
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#334155' }}>
+                        Feature on Home Page
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: '1rem 1.5rem',
+                    background: '#f8fafc',
+                    borderTop: '1px solid #e2e8f0',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <Button variant="outline" onClick={() => setEditingProduct(null)} disabled={saving}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    leftIcon={<Save size={16} />}
+                    onClick={handleSaveProductDetails}
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving...' : 'Save Product Details'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -689,86 +1161,268 @@ export const WebsitePage: React.FC = () => {
                 marginBottom: '1.5rem',
               }}
             >
-              <h4 style={{ fontWeight: 700, marginBottom: '1rem', color: '#1e293b' }}>
-                Add New Gallery Item
-              </h4>
-              <div className="cms-form-grid" style={{ marginBottom: '1rem' }}>
-                <div className="cms-form-grid cms-form-grid-2">
-                  <div>
-                    <label className="cms-label">Media Type</label>
-                    <select
-                      className="cms-input"
-                      value={newMedia.mediaType}
-                      onChange={(e) =>
-                        setNewMedia({
-                          ...newMedia,
-                          mediaType: e.target.value as 'IMAGE' | 'VIDEO',
-                        })
-                      }
-                    >
-                      <option value="IMAGE">Photo / Image</option>
-                      <option value="VIDEO">YouTube Video</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="cms-label">Display Order</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h4 style={{ fontWeight: 700, margin: 0, color: '#1e293b' }}>
+                  Add Photo / Video to Website Gallery
+                </h4>
+
+                {/* Mode Switcher */}
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setGalleryUploadMode('FILE')}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      padding: '0.4rem 0.85rem',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      background: galleryUploadMode === 'FILE' ? '#3f438f' : '#ffffff',
+                      color: galleryUploadMode === 'FILE' ? '#ffffff' : '#475569',
+                    }}
+                  >
+                    <Upload size={14} />
+                    <span>Upload Local File (કમ્પ્યુટર/મોબાઈલમાંથી)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGalleryUploadMode('URL')}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      padding: '0.4rem 0.85rem',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      background: galleryUploadMode === 'URL' ? '#3f438f' : '#ffffff',
+                      color: galleryUploadMode === 'URL' ? '#ffffff' : '#475569',
+                    }}
+                  >
+                    <LinkIcon size={14} />
+                    <span>Direct Web URL / YouTube</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="cms-form-grid" style={{ marginBottom: '1.25rem' }}>
+                {galleryUploadMode === 'FILE' ? (
+                  /* File Upload Input Box */
+                  <div
+                    style={{
+                      padding: '1.25rem',
+                      background: '#ffffff',
+                      borderRadius: '8px',
+                      border: '2px dashed #cbd5e1',
+                      textAlign: 'center',
+                    }}
+                  >
                     <input
-                      type="number"
-                      className="cms-input"
-                      value={newMedia.displayOrder}
-                      onChange={(e) =>
-                        setNewMedia({ ...newMedia, displayOrder: parseInt(e.target.value) || 0 })
-                      }
+                      type="file"
+                      accept="image/*,video/*"
+                      id="gallery-file-input"
+                      onChange={(e) => handleGalleryFileSelect(e.target.files?.[0] || null)}
+                      style={{ display: 'none' }}
                     />
+                    <label
+                      htmlFor="gallery-file-input"
+                      style={{
+                        display: 'inline-flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        cursor: 'pointer',
+                        padding: '1rem',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          background: '#eef0f9',
+                          color: '#3f438f',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Upload size={22} />
+                      </div>
+                      <span style={{ fontWeight: 700, color: '#1e293b' }}>
+                        Click to Choose Photo or Video file
+                      </span>
+                      <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                        Supports JPEG, PNG, WEBP, GIF, MP4, WebM (Up to 50MB)
+                      </span>
+                    </label>
+
+                    {selectedGalleryFile && (
+                      <div
+                        style={{
+                          marginTop: '1rem',
+                          padding: '0.75rem 1rem',
+                          background: '#f8fafc',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '1rem',
+                        }}
+                      >
+                        {newMedia.mediaType === 'VIDEO' ? (
+                          <video
+                            src={galleryFilePreview || ''}
+                            controls
+                            style={{ height: '100px', borderRadius: '6px', maxWidth: '160px' }}
+                          />
+                        ) : (
+                          <img
+                            src={galleryFilePreview || ''}
+                            alt="Preview"
+                            style={{ height: '80px', borderRadius: '6px', objectFit: 'contain' }}
+                          />
+                        )}
+                        <div style={{ textAlign: 'left' }}>
+                          <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.9rem' }}>
+                            {selectedGalleryFile.name}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            Type: <strong>{newMedia.mediaType}</strong> • Size:{' '}
+                            {(selectedGalleryFile.size / (1024 * 1024)).toFixed(2)} MB
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                <div>
-                  <label className="cms-label">
-                    {newMedia.mediaType === 'VIDEO' ? 'YouTube Watch URL' : 'Image URL'}
-                  </label>
-                  <input
-                    type="text"
-                    className="cms-input"
-                    placeholder={
-                      newMedia.mediaType === 'VIDEO'
-                        ? 'https://www.youtube.com/watch?v=...'
-                        : 'https://... or /logo.png'
-                    }
-                    value={newMedia.mediaUrl}
-                    onChange={(e) => setNewMedia({ ...newMedia, mediaUrl: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="cms-form-grid cms-form-grid-2">
+                ) : (
+                  /* Direct URL Input */
                   <div>
-                    <label className="cms-label">Title</label>
+                    <div className="cms-form-grid cms-form-grid-2" style={{ marginBottom: '1rem' }}>
+                      <div>
+                        <label className="cms-label">Media Type</label>
+                        <select
+                          className="cms-input"
+                          value={newMedia.mediaType}
+                          onChange={(e) =>
+                            setNewMedia({
+                              ...newMedia,
+                              mediaType: e.target.value as 'IMAGE' | 'VIDEO',
+                            })
+                          }
+                        >
+                          <option value="IMAGE">Photo / Image URL</option>
+                          <option value="VIDEO">YouTube Video URL</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="cms-label">Display Order</label>
+                        <input
+                          type="number"
+                          className="cms-input"
+                          value={newMedia.displayOrder}
+                          onChange={(e) =>
+                            setNewMedia({ ...newMedia, displayOrder: parseInt(e.target.value) || 0 })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="cms-label">
+                        {newMedia.mediaType === 'VIDEO' ? 'YouTube Watch URL' : 'Image Web URL'}
+                      </label>
+                      <input
+                        type="text"
+                        className="cms-input"
+                        placeholder={
+                          newMedia.mediaType === 'VIDEO'
+                            ? 'https://www.youtube.com/watch?v=...'
+                            : 'https://images.unsplash.com/... or /logo.png'
+                        }
+                        value={newMedia.mediaUrl}
+                        onChange={(e) => setNewMedia({ ...newMedia, mediaUrl: e.target.value })}
+                        required={galleryUploadMode === 'URL'}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="cms-form-grid cms-form-grid-2" style={{ marginTop: '1rem' }}>
+                  <div>
+                    <label className="cms-label">Title (શીર્ષક)</label>
                     <input
                       type="text"
                       className="cms-input"
+                      placeholder="e.g. Traditional Handweaving / કિચન બનાવટ"
                       value={newMedia.title}
                       onChange={(e) => setNewMedia({ ...newMedia, title: e.target.value })}
                     />
                   </div>
                   <div>
-                    <label className="cms-label">Caption / Description</label>
+                    <label className="cms-label">Caption / Description (વર્ણન)</label>
                     <input
                       type="text"
                       className="cms-input"
+                      placeholder="e.g. Crafted with pure ingredients in Padgol facility..."
                       value={newMedia.caption}
                       onChange={(e) => setNewMedia({ ...newMedia, caption: e.target.value })}
                     />
                   </div>
                 </div>
+
+                {galleryUploadMode === 'FILE' && (
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="cms-label">Display Order</label>
+                      <input
+                        type="number"
+                        className="cms-input"
+                        value={newMedia.displayOrder}
+                        onChange={(e) =>
+                          setNewMedia({ ...newMedia, displayOrder: parseInt(e.target.value) || 0 })
+                        }
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label className="cms-label">Media Type (Auto-detected)</label>
+                      <select
+                        className="cms-input"
+                        value={newMedia.mediaType}
+                        onChange={(e) =>
+                          setNewMedia({
+                            ...newMedia,
+                            mediaType: e.target.value as 'IMAGE' | 'VIDEO',
+                          })
+                        }
+                      >
+                        <option value="IMAGE">Photo / Image</option>
+                        <option value="VIDEO">Video</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <Button variant="outline" type="button" onClick={() => setShowAddMedia(false)}>
                   Cancel
                 </Button>
-                <Button variant="primary" type="submit" disabled={saving}>
-                  {saving ? 'Adding...' : 'Save Media Item'}
+                <Button
+                  variant="primary"
+                  type="submit"
+                  leftIcon={<Save size={16} />}
+                  disabled={saving || uploadingGalleryFile}
+                >
+                  {uploadingGalleryFile ? 'Uploading File...' : saving ? 'Saving...' : 'Save Media Item'}
                 </Button>
               </div>
             </form>
@@ -780,26 +1434,62 @@ export const WebsitePage: React.FC = () => {
               <div key={item.id} className="cms-gallery-card">
                 <div className="cms-gallery-thumb">
                   {item.mediaType === 'VIDEO' ? (
-                    <div
-                      style={{
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: '#1e293b',
-                        color: '#f87171',
-                      }}
-                    >
-                      <span style={{ fontWeight: 700 }}>YouTube: {item.title || 'Video'}</span>
-                    </div>
+                    item.mediaUrl.includes('youtube.com') || item.mediaUrl.includes('youtu.be') ? (
+                      <div
+                        style={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#1e293b',
+                          color: '#f87171',
+                          padding: '1rem',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <Film size={28} style={{ marginBottom: '0.5rem' }} />
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                          YouTube Video: {item.title || 'Clip'}
+                        </span>
+                      </div>
+                    ) : (
+                      <video
+                        src={resolveMediaUrl(item.mediaUrl)}
+                        controls
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    )
                   ) : (
-                    <img src={item.mediaUrl} alt={item.title || 'Gallery item'} />
+                    <img
+                      src={resolveMediaUrl(item.mediaUrl)}
+                      alt={item.title || 'Gallery item'}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/logo.png';
+                      }}
+                    />
                   )}
                 </div>
 
                 <div className="cms-gallery-body">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3f438f' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '0.4rem',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: item.mediaType === 'VIDEO' ? '#dc2626' : '#3f438f',
+                        background: item.mediaType === 'VIDEO' ? '#fee2e2' : '#eef0f9',
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '4px',
+                      }}
+                    >
                       {item.mediaType}
                     </span>
                     <button
@@ -821,7 +1511,16 @@ export const WebsitePage: React.FC = () => {
                     </p>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginTop: 'auto',
+                      paddingTop: '0.5rem',
+                      borderTop: '1px solid #f1f5f9',
+                    }}
+                  >
                     <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
                       Order: {item.displayOrder}
                     </span>

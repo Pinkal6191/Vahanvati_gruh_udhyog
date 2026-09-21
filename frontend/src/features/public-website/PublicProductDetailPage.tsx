@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Phone, Package, ShieldCheck, MapPin, ExternalLink } from 'lucide-react';
 import { publicWebsiteApi, PublicProduct } from './public-website.api';
+import { resolveMediaUrl } from '../../services/api/api-client';
 import './PublicWebsite.css';
 
 export const PublicProductDetailPage: React.FC = () => {
@@ -101,7 +102,7 @@ export const PublicProductDetailPage: React.FC = () => {
             }}
           >
             <img
-              src={product.imageUrl || '/logo.png'}
+              src={resolveMediaUrl(product.imageUrl) || '/logo.png'}
               alt={product.name}
               style={{ width: '100%', maxHeight: '420px', objectFit: 'contain' }}
             />
@@ -191,7 +192,7 @@ export const PublicProductDetailPage: React.FC = () => {
               {related.map((item) => (
                 <article key={item.id} className="public-product-card">
                   <div className="public-product-img-box" style={{ height: '150px' }}>
-                    <img src={item.imageUrl || '/logo.png'} alt={item.name} className="public-product-img" />
+                    <img src={resolveMediaUrl(item.imageUrl) || '/logo.png'} alt={item.name} className="public-product-img" />
                   </div>
                   <div className="public-product-body">
                     <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.2rem' }}>

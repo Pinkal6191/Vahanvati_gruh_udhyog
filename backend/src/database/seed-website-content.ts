@@ -15,7 +15,8 @@ export async function seedWebsiteContent() {
         phone: '+91 97149 17851 / +91 97121 15118',
         email: 'info@vahanvati.com',
         businessHours: 'Monday - Sunday: 8:00 AM - 8:30 PM',
-        googleMapsUrl: 'https://maps.google.com/?q=Padgol+Gujarat',
+        googleMapsUrl:
+          'https://www.google.com/maps/place/Vahanvati+Gruh+Udhyog+-+Handmade+Papad+in+Padgol/@22.5913772,72.8318268,17z',
         instagramUrl: 'https://www.instagram.com/vahanvatigruhudhyog/',
         youtubeUrl: 'https://www.youtube.com/watch?v=FrB9KyMpOxQ',
       },

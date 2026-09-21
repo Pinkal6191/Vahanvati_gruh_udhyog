@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { WebsiteService } from './website.service.js';
+import { BadRequestError } from '../../common/errors/app-error.js';
 
 export class WebsiteController {
   // ========================================================
@@ -218,6 +219,34 @@ export class WebsiteController {
         success: true,
         message: 'Contact settings updated',
         data: updated,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async uploadMedia(req: Request, res: Response, next: NextFunction) {
+    try {
+      const file = req.file;
+      if (!file) {
+        throw new BadRequestError('No file provided for upload');
+      }
+
+      const isVideo = file.mimetype.startsWith('video/');
+      const mediaType: 'IMAGE' | 'VIDEO' = isVideo ? 'VIDEO' : 'IMAGE';
+      const relativeUrl = `/uploads/${file.filename}`;
+
+      res.status(200).json({
+        success: true,
+        message: 'File uploaded successfully',
+        data: {
+          url: relativeUrl,
+          filename: file.filename,
+          originalName: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype,
+          mediaType,
+        },
       });
     } catch (error) {
       next(error);

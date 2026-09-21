@@ -1,7 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Youtube, Image as ImageIcon, ExternalLink, X, Play } from 'lucide-react';
 import { publicWebsiteApi, PublicGalleryItem } from './public-website.api';
+import { resolveMediaUrl } from '../../services/api/api-client';
 import './PublicWebsite.css';
+
+function getYouTubeEmbedUrl(url: string): string | null {
+  try {
+    if (url.includes('youtube.com/embed/')) {
+      return url;
+    }
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      return `https://www.youtube.com/embed/${match[2]}`;
+    }
+  } catch {
+    // fallback
+  }
+  return null;
+}
 
 // Approved YouTube Videos with direct watch links and 16:9 embed links
 const APPROVED_YOUTUBE_VIDEOS = [
@@ -59,6 +76,21 @@ export const PublicGalleryPage: React.FC = () => {
   }, [activePhoto]);
 
   const photos = galleryItems.filter((item) => item.mediaType === 'IMAGE');
+  const dynamicVideos = galleryItems.filter((item) => item.mediaType === 'VIDEO');
+
+  // If no custom videos added yet in CMS, use approved YouTube videos
+  const allVideos = dynamicVideos.length > 0
+    ? dynamicVideos
+    : APPROVED_YOUTUBE_VIDEOS.map((v) => ({
+        id: v.id,
+        mediaType: 'VIDEO' as const,
+        mediaUrl: v.embedUrl,
+        title: v.title,
+        caption: v.caption,
+        displayOrder: 0,
+        isVisible: true,
+        createdAt: '',
+      }));
 
   return (
     <div>
@@ -112,7 +144,7 @@ export const PublicGalleryPage: React.FC = () => {
               }}
             >
               <Youtube size={16} />
-              <span>YouTube Videos</span>
+              <span>Videos</span>
             </button>
             <button
               type="button"
@@ -147,7 +179,7 @@ export const PublicGalleryPage: React.FC = () => {
             <div style={{ marginBottom: activeTab === 'ALL' ? '4rem' : '0' }}>
               <div style={{ marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#292d68', marginBottom: '0.5rem' }}>
-                  Featured YouTube Videos
+                  Kitchen & Production Videos
                 </h2>
                 <p style={{ color: '#64748b' }}>
                   Authentic kitchen footage and production walkthrough from our Padgol facility.
@@ -155,34 +187,48 @@ export const PublicGalleryPage: React.FC = () => {
               </div>
 
               <div className="public-videos-grid">
-                {APPROVED_YOUTUBE_VIDEOS.map((video) => (
-                  <div key={video.id} className="public-video-card">
-                    <div className="public-video-embed-box">
-                      <iframe
-                        src={video.embedUrl}
-                        title={video.title}
-                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        loading="lazy"
-                      />
+                {allVideos.map((video) => {
+                  const ytEmbed = getYouTubeEmbedUrl(video.mediaUrl);
+                  return (
+                    <div key={video.id} className="public-video-card">
+                      <div className="public-video-embed-box">
+                        {ytEmbed ? (
+                          <iframe
+                            src={ytEmbed}
+                            title={video.title || 'Vahanvati Video'}
+                            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            loading="lazy"
+                          />
+                        ) : (
+                          <video
+                            src={resolveMediaUrl(video.mediaUrl)}
+                            controls
+                            preload="metadata"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        )}
+                      </div>
+                      <div className="public-video-card-body">
+                        <h3 className="public-video-card-title">{video.title || 'Vahanvati Video'}</h3>
+                        {video.caption && <p className="public-video-card-caption">{video.caption}</p>}
+                        {ytEmbed && (
+                          <a
+                            href={video.mediaUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="public-video-fallback-link"
+                            aria-label={`Watch ${video.title} on YouTube`}
+                          >
+                            <Youtube size={16} />
+                            <span>Watch on YouTube</span>
+                            <ExternalLink size={14} />
+                          </a>
+                        )}
+                      </div>
                     </div>
-                    <div className="public-video-card-body">
-                      <h3 className="public-video-card-title">{video.title}</h3>
-                      <p className="public-video-card-caption">{video.caption}</p>
-                      <a
-                        href={video.watchUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="public-video-fallback-link"
-                        aria-label={`Watch ${video.title} on YouTube`}
-                      >
-                        <Youtube size={16} />
-                        <span>Watch on YouTube</span>
-                        <ExternalLink size={14} />
-                      </a>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -223,7 +269,7 @@ export const PublicGalleryPage: React.FC = () => {
                     >
                       <div style={{ height: '220px', background: '#f8fafc', overflow: 'hidden' }}>
                         <img
-                          src={item.mediaUrl}
+                          src={resolveMediaUrl(item.mediaUrl)}
                           alt={item.title || 'Vahanvati Gallery Item'}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           loading="lazy"
@@ -271,7 +317,7 @@ export const PublicGalleryPage: React.FC = () => {
             >
               <X size={28} />
             </button>
-            <img src={activePhoto.mediaUrl} alt={activePhoto.title || 'Vahanvati'} className="public-lightbox-img" />
+            <img src={resolveMediaUrl(activePhoto.mediaUrl)} alt={activePhoto.title || 'Vahanvati'} className="public-lightbox-img" />
             {activePhoto.title && (
               <div className="public-lightbox-caption">
                 <strong>{activePhoto.title}</strong>

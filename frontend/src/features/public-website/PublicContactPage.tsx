@@ -38,7 +38,10 @@ export const PublicContactPage: React.FC = () => {
   const businessHours = info?.businessHours || 'Monday - Sunday: 8:00 AM - 8:30 PM';
   const mapsUrl =
     info?.googleMapsUrl ||
-    'https://www.google.com/maps/search/?api=1&query=Padgol+Nadiad+Petlad+Road+Gujarat';
+    'https://www.google.com/maps/place/Vahanvati+Gruh+Udhyog+-+Handmade+Papad+in+Padgol/@22.5913772,72.8318268,17z';
+
+  const mapEmbedSrc =
+    'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3683.6717472145788!2d72.8318268!3d22.5913772!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x395e5189455f6d4f%3A0x497aa9c788664c0b!2sVahanvati%20Gruh%20Udhyog%20-%20Handmade%20Papad%20in%20Padgol!5e0!3m2!1sen!2sin!4v1789381688625!5m2!1sen!2sin';
 
   return (
     <div>
@@ -188,6 +191,102 @@ export const PublicContactPage: React.FC = () => {
                   </a>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Embedded Google Maps Section */}
+      <section style={{ padding: '0 0 4rem 0' }}>
+        <div className="public-container">
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.08)',
+              overflow: 'hidden',
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <div
+              style={{
+                padding: '1.5rem 2rem',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                background: '#fafafa',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    background: '#eef0f9',
+                    color: '#3f438f',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <MapPin size={22} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+                    Vahanvati Gruh Udhyog - Handmade Papad in Padgol
+                  </h3>
+                  <div
+                    style={{
+                      fontSize: '0.9rem',
+                      color: '#64748b',
+                      marginTop: '0.2rem',
+                      fontFamily: 'Noto Sans Gujarati, sans-serif',
+                    }}
+                  >
+                    નડિયાદ - પેટલાદ રોડ, હાઈસ્કૂલની પાસે, પાડગોલ, જિ. આણંદ, ગુજરાત
+                  </div>
+                </div>
+              </div>
+
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="public-btn-primary"
+                style={{
+                  background: '#3f438f',
+                  color: '#ffffff',
+                  padding: '0.55rem 1.25rem',
+                  fontSize: '0.9rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                <Navigation size={16} />
+                <span>Open in Google Maps</span>
+                <ExternalLink size={14} />
+              </a>
+            </div>
+
+            <div style={{ width: '100%', height: '480px', position: 'relative' }}>
+              <iframe
+                src={mapEmbedSrc}
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen={true}
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                title="Vahanvati Gruh Udhyog Padgol Location Map"
+              />
             </div>
           </div>
         </div>

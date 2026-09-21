@@ -39,3 +39,7 @@ Thumbs.db
 # Prisma generated or sqlite
 dev.db
 dev.db-journal
+
+# Uploaded Media Files
+backend/uploads/*
+!backend/uploads/.gitkeep

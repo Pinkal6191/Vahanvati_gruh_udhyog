@@ -273,7 +273,7 @@ export const DashboardPage: React.FC = () => {
             <Button
               variant="outline"
               leftIcon={<PlusCircle size={16} />}
-              onClick={() => navigate('/products')}
+              onClick={() => navigate('/admin/products')}
             >
               Add Product
             </Button>

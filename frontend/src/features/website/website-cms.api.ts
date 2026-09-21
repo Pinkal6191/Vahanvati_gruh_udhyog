@@ -113,4 +113,27 @@ export const websiteCmsApi = {
     const res = await apiClient.patch<any>('/cms/contact', data);
     return res.data;
   },
+
+  uploadMedia: async (
+    file: File
+  ): Promise<{
+    url: string;
+    filename: string;
+    originalName: string;
+    size: number;
+    mimetype: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.upload<{
+      url: string;
+      filename: string;
+      originalName: string;
+      size: number;
+      mimetype: string;
+      mediaType: 'IMAGE' | 'VIDEO';
+    }>('/cms/upload', formData);
+    return res.data;
+  },
 };

@@ -310,7 +310,7 @@ export const SubcategoriesPage: React.FC = () => {
       <Breadcrumb
         items={[
           { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Products', path: '/products' },
+          { label: 'Products', path: '/admin/products' },
           { label: 'Categories', path: '/categories' },
           { label: 'Subcategories' },
         ]}

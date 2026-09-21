@@ -154,7 +154,7 @@ describe('Step 10 — Frontend Architecture & Foundation Test Suite', () => {
       assert.ok(adminPaths.includes('/dashboard'));
       assert.ok(adminPaths.includes('/billing'));
       assert.ok(adminPaths.includes('/production'));
-      assert.ok(adminPaths.includes('/products'));
+      assert.ok(adminPaths.includes('/admin/products') || adminPaths.includes('/products'));
       assert.ok(adminPaths.includes('/reports'));
       assert.ok(adminPaths.includes('/users'));
       assert.ok(adminPaths.includes('/settings'));

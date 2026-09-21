@@ -66,7 +66,11 @@ class ApiClient {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+    const isFormData = customConfig.body instanceof FormData;
     const requestHeaders = this.getHeaders(headers as Record<string, string>);
+    if (isFormData) {
+      delete requestHeaders['Content-Type'];
+    }
     if (skipAuth) {
       delete requestHeaders['Authorization'];
     }
@@ -162,6 +166,31 @@ class ApiClient {
   delete<T = any>(endpoint: string, options?: RequestOptions): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
+
+  upload<T = any>(endpoint: string, formData: FormData, options?: RequestOptions): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: formData,
+    });
+  }
 }
 
 export const apiClient = new ApiClient();
+
+/**
+ * Resolves full media URL for both absolute links and relative /uploads paths
+ */
+export function resolveMediaUrl(url?: string | null): string {
+  if (!url) return '/logo.png';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  // If starts with /uploads or relative, resolve against backend server
+  const backendBase =
+    typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.hostname}:4000`
+      : 'http://localhost:4000';
+
+  return url.startsWith('/') ? `${backendBase}${url}` : `${backendBase}/${url}`;
+}

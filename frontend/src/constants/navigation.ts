@@ -61,7 +61,7 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
     items: [
       {
         title: 'Products',
-        path: '/products',
+        path: '/admin/products',
         roles: ['ADMIN'],
       },
       {

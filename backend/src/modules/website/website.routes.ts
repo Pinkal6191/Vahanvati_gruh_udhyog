@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { WebsiteController } from './website.controller.js';
 import { authenticate } from '../../middlewares/auth.middleware.js';
 import { authorize } from '../../middlewares/role.middleware.js';
+import { uploadSingleMedia } from '../../middlewares/upload.middleware.js';
 
 // ========================================================
 // PUBLIC ROUTES (No Authentication Required)
@@ -39,5 +40,8 @@ cmsRoutes.delete('/gallery/:id', WebsiteController.deleteGalleryItem);
 
 // Contact and store settings
 cmsRoutes.patch('/contact', WebsiteController.updateContactSettings);
+
+// Media upload endpoint (local photo and video files)
+cmsRoutes.post('/upload', uploadSingleMedia, WebsiteController.uploadMedia);
 
 export default { publicRoutes, cmsRoutes };

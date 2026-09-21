@@ -269,7 +269,7 @@ export const CategoriesPage: React.FC = () => {
       <Breadcrumb
         items={[
           { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Products', path: '/products' },
+          { label: 'Products', path: '/admin/products' },
           { label: 'Categories' },
         ]}
       />
