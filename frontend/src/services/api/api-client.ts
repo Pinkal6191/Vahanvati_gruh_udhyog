@@ -24,7 +24,9 @@ class ApiClient {
       typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL
         ? import.meta.env.VITE_API_BASE_URL
         : typeof window !== 'undefined'
-        ? '/api/v1'
+        ? (window.location.hostname.includes('vahanvatigruhudhyog.com')
+            ? 'https://api.vahanvatigruhudhyog.com/api/v1'
+            : '/api/v1')
         : 'http://localhost:4000/api/v1';
   }
 
@@ -188,9 +190,12 @@ export function resolveMediaUrl(url?: string | null): string {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
-  // In browser, /uploads is proxied by Vite or Nginx to backend
-  if (typeof window !== 'undefined') {
-    return url.startsWith('/') ? url : `/${url}`;
-  }
-  return url.startsWith('/') ? `http://localhost:4000${url}` : `http://localhost:4000/${url}`;
+  const apiBase =
+    typeof window !== 'undefined' && window.location.hostname.includes('vahanvatigruhudhyog.com')
+      ? 'https://api.vahanvatigruhudhyog.com'
+      : typeof window !== 'undefined'
+      ? ''
+      : 'http://localhost:4000';
+
+  return url.startsWith('/') ? `${apiBase}${url}` : `${apiBase}/${url}`;
 }

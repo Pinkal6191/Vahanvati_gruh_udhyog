@@ -41,6 +41,10 @@ export function createApp(): Express {
         if (env.CORS_ORIGIN === '*') return callback(null, true);
         const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
         if (allowedOrigins.includes(origin)) return callback(null, true);
+        // Allow official domain and any subdomains
+        if (/^https?:\/\/([a-z0-9-]+\.)*vahanvatigruhudhyog\.com(:[0-9]+)?$/i.test(origin)) {
+          return callback(null, true);
+        }
         // Allow any localhost or 127.0.0.1 port in non-production environments
         if (env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
           return callback(null, true);
