@@ -27,19 +27,77 @@ fi
 
 echo "📁 Using master data SQL file: $SQL_FILE"
 
-# 2. Extract database connection from .env if present
-if [ -f ".env" ]; then
-  export $(grep -v '^#' .env | xargs)
-elif [ -f "/var/www/vahanvati/backend/.env" ]; then
-  export $(grep -v '^#' /var/www/vahanvati/backend/.env | xargs)
-elif [ -f "/root/Vahanvati_gruh_udhyog/backend/.env" ]; then
-  export $(grep -v '^#' /root/Vahanvati_gruh_udhyog/backend/.env | xargs)
+# 2. Extract database connection parameters safely from .env
+ENV_FILE=""
+for candidate in \
+  "/var/www/html/vahanvati-gruh-udhyog/backend/.env" \
+  "backend/.env" \
+  ".env" \
+  "/var/www/vahanvati/backend/.env" \
+  "/root/Vahanvati_gruh_udhyog/backend/.env"; do
+  if [ -f "$candidate" ]; then
+    ENV_FILE="$candidate"
+    break
+  fi
+done
+
+export PGHOST="${PGHOST:-localhost}"
+export PGPORT="${PGPORT:-5432}"
+export PGUSER="${PGUSER:-vahanvati_user}"
+export PGDATABASE="${PGDATABASE:-vahanvati_db}"
+
+if [ -n "$ENV_FILE" ]; then
+  echo "📁 Detected backend environment file: $ENV_FILE"
+  RAW_URL=$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -n 1 | cut -d '=' -f2- | sed -e 's/^["'\'' ]*//' -e 's/["'\'' ]*$//')
+  
+  # Extract password using node if available, with bash fallback
+  if [ -n "${RAW_URL:-}" ]; then
+    if command -v node >/dev/null 2>&1; then
+      PGPASSWORD=$(node -e '
+        const url = process.argv[1];
+        const prefixMatch = url.match(/^(?:postgresql|postgres):\/\/[^:]+:/);
+        if (!prefixMatch) process.exit(1);
+        const rest = url.slice(prefixMatch[0].length);
+        let idx = rest.lastIndexOf("@localhost");
+        if (idx === -1) idx = rest.lastIndexOf("@127.0.0.1");
+        if (idx === -1) idx = rest.lastIndexOf("@");
+        if (idx === -1) process.exit(1);
+        process.stdout.write(rest.slice(0, idx));
+      ' "$RAW_URL" 2>/dev/null || true)
+    fi
+    
+    # Pure bash fallback if node was not used or failed
+    if [ -z "${PGPASSWORD:-}" ]; then
+      no_proto="${RAW_URL#*://}"
+      pass_and_rest="${no_proto#*:}"
+      PGPASSWORD="${pass_and_rest%@localhost*}"
+      if [[ "$PGPASSWORD" == *"@127.0.0.1"* ]]; then
+        PGPASSWORD="${PGPASSWORD%@127.0.0.1*}"
+      fi
+    fi
+    export PGPASSWORD
+  fi
 fi
 
-if [ -z "${DATABASE_URL:-}" ]; then
-  echo "⚠️ DATABASE_URL not automatically detected in environment."
-  read -sp "Enter production DATABASE_URL: " DATABASE_URL
+if [ -z "${PGPASSWORD:-}" ]; then
+  echo "⚠️ Password could not be automatically extracted from environment."
+  read -sp "Enter PostgreSQL password for user $PGUSER: " PGPASSWORD
   echo ""
+  export PGPASSWORD
+fi
+
+echo "🔌 Target Database: $PGUSER@$PGHOST:$PGPORT/$PGDATABASE"
+
+# Optional READ-ONLY test connection mode
+if [ "${1:-}" = "--test-connection" ]; then
+  echo ""
+  echo "--------------------------------------------------"
+  echo "READ-ONLY CONNECTION TEST"
+  echo "--------------------------------------------------"
+  psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c "SELECT current_database(), current_user, inet_server_addr(), version();"
+  echo ""
+  echo "✅ READ-ONLY connection test SUCCESSFUL! No data modified."
+  exit 0
 fi
 
 # 3. Create Backup Directory
@@ -49,7 +107,7 @@ echo ""
 echo "--------------------------------------------------"
 echo "STEP 1: Checking Pre-Import Record Counts"
 echo "--------------------------------------------------"
-psql "$DATABASE_URL" -c "
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c "
 SELECT 'categories' AS table_name, COUNT(*) FROM categories
 UNION ALL SELECT 'subcategories', COUNT(*) FROM subcategories
 UNION ALL SELECT 'units', COUNT(*) FROM units
@@ -65,7 +123,7 @@ echo ""
 echo "--------------------------------------------------"
 echo "STEP 2: Creating Pre-Import PostgreSQL Backup"
 echo "--------------------------------------------------"
-pg_dump "$DATABASE_URL" > "$BACKUP_FILE"
+pg_dump -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" > "$BACKUP_FILE"
 
 if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
   BACKUP_SIZE=$(ls -lh "$BACKUP_FILE" | awk '{print $5}')
@@ -81,14 +139,14 @@ echo ""
 echo "--------------------------------------------------"
 echo "STEP 3: Executing Master Data Import"
 echo "--------------------------------------------------"
-psql "$DATABASE_URL" --single-transaction --set ON_ERROR_STOP=1 -f "$SQL_FILE"
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" --single-transaction --set ON_ERROR_STOP=1 -f "$SQL_FILE"
 echo "✅ Master data SQL successfully imported into production!"
 
 echo ""
 echo "--------------------------------------------------"
 echo "STEP 4: Post-Import Production Counts Verification"
 echo "--------------------------------------------------"
-psql "$DATABASE_URL" -c "
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c "
 SELECT 'categories' AS table_name, COUNT(*) FROM categories
 UNION ALL SELECT 'subcategories', COUNT(*) FROM subcategories
 UNION ALL SELECT 'units', COUNT(*) FROM units
@@ -104,7 +162,7 @@ echo ""
 echo "--------------------------------------------------"
 echo "STEP 5: Foreign-Key Orphan Verification"
 echo "--------------------------------------------------"
-psql "$DATABASE_URL" -c "
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c "
 SELECT 'subcat -> cat orphans' AS check, COUNT(*) FROM subcategories s WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE c.id = s.category_id)
 UNION ALL
 SELECT 'prod -> subcat orphans', COUNT(*) FROM products p WHERE NOT EXISTS (SELECT 1 FROM subcategories s WHERE s.id = p.subcategory_id)
@@ -120,7 +178,7 @@ echo ""
 echo "--------------------------------------------------"
 echo "STEP 6: Product Visibility Verification"
 echo "--------------------------------------------------"
-psql "$DATABASE_URL" -c "
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c "
 SELECT
   COUNT(*) AS total_products,
   COUNT(*) FILTER (WHERE is_website_visible = true) AS website_visible,
