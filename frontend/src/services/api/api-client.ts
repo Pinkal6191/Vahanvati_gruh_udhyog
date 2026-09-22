@@ -23,6 +23,8 @@ class ApiClient {
     this.baseUrl =
       typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL
         ? import.meta.env.VITE_API_BASE_URL
+        : typeof window !== 'undefined'
+        ? '/api/v1'
         : 'http://localhost:4000/api/v1';
   }
 
@@ -186,11 +188,9 @@ export function resolveMediaUrl(url?: string | null): string {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
-  // If starts with /uploads or relative, resolve against backend server
-  const backendBase =
-    typeof window !== 'undefined'
-      ? `${window.location.protocol}//${window.location.hostname}:4000`
-      : 'http://localhost:4000';
-
-  return url.startsWith('/') ? `${backendBase}${url}` : `${backendBase}/${url}`;
+  // In browser, /uploads is proxied by Vite or Nginx to backend
+  if (typeof window !== 'undefined') {
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+  return url.startsWith('/') ? `http://localhost:4000${url}` : `http://localhost:4000/${url}`;
 }
