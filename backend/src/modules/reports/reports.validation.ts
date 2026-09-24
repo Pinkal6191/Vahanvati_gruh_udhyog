@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaymentMode, ProductionStatus, ReturnStatus, RefundPaymentMode, MovementType } from '@prisma/client';
+import { PaymentMode, ProductionStatus, ReturnStatus, RefundPaymentMode, MovementType, SaleType } from '@prisma/client';
 
 export const salesReportQuerySchema = z.object({
   period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
@@ -8,6 +8,7 @@ export const salesReportQuerySchema = z.object({
   groupBy: z.enum(['DAY', 'WEEK', 'MONTH']).default('DAY'),
   paymentMode: z.nativeEnum(PaymentMode).optional(),
   customerId: z.string().uuid('Valid customer ID required').optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
 });
 
 export const productReportQuerySchema = z.object({

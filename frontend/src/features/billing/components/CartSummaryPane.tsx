@@ -11,13 +11,13 @@ import {
   Layers,
   ShoppingBag,
   Loader2,
-  RefreshCw,
   AlertTriangle,
+  Tag,
 } from 'lucide-react';
 import { CartItem } from '../hooks/useBillingCart';
 import { Customer } from '../../customers/customers.api';
 import { CustomerType } from '../../../types/common.types';
-import { PaymentMode } from '../billing.api';
+import { PaymentMode, SaleType } from '../billing.api';
 import { Badge } from '../../../components/ui/Badge/Badge';
 import { formatCurrency } from '../../../utils/formatters';
 
@@ -25,6 +25,7 @@ export interface CartSummaryPaneProps {
   items: CartItem[];
   customer: Customer | null;
   customerType: CustomerType;
+  saleType: SaleType;
   subtotal: number;
   discountAmount: number;
   grandTotal: number;
@@ -51,6 +52,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
   items,
   customer,
   customerType,
+  saleType,
   subtotal,
   discountAmount,
   grandTotal,
@@ -83,9 +85,11 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
     }
   };
 
+  const hasUnpricedItems = items.some((it) => it.unitRate <= 0 || it.hasPriceError);
+
   return (
     <div className="pos-cart-content">
-      {/* 1. CUSTOMER SELECTION BAR */}
+      {/* 1. CUSTOMER & PRICING SELECTION BAR */}
       <div className="pos-customer-banner">
         <div className="pos-customer-profile">
           <div className="pos-customer-icon-wrap">
@@ -96,16 +100,19 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
               <strong className="pos-active-customer-name">
                 {customer?.name || 'Counter Walk-in Customer'}
               </strong>
-              <Badge
-                variant={customerType === 'NRI' ? 'warning' : 'brand'}
-                size="sm"
-              >
-                {customerType}
-              </Badge>
+              <span className="pos-demographic-badge" title="Customer Demographic">
+                Demographic: {customerType}
+              </span>
             </div>
-            <span className="pos-active-customer-sub">
-              {customer?.mobile ? `+91 ${customer.mobile}` : 'Standard Domestic Pricing'}
-            </span>
+            <div className="pos-customer-sub-line">
+              <span className="pos-saletype-badge-display">
+                <Tag size={11} />
+                <span>Tier: <strong>{saleType}</strong></span>
+              </span>
+              {customer?.mobile && (
+                <span className="pos-customer-mobile-tag">+91 {customer.mobile}</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -165,76 +172,92 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
               <span className="pos-col-total">Total</span>
               <span className="pos-col-action"></span>
             </div>
-            {items.map((item) => (
-              <div key={item.id} className="pos-cart-item-row">
-                {/* Left Column: Product name, Gujarati tag, Pack / Rate subtext */}
-                <div className="pos-cart-item-info">
-                  <div className="pos-cart-item-title-row">
-                    <span className="pos-cart-item-name" title={item.productName}>
-                      {item.productName}
-                    </span>
-                    {item.gujaratiName && (
-                      <span className="pos-cart-item-gujarati" title={item.gujaratiName}>
-                        {item.gujaratiName}
-                      </span>
-                    )}
-                  </div>
-                  <div className="pos-cart-item-subtext">
-                    {item.packName && (
-                      <span className="pos-cart-item-pack">{item.packName}</span>
-                    )}
-                    <span className="pos-cart-item-rate">@ ₹{item.unitRate.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                {/* Center Column: Compact Quantity Stepper */}
-                <div className="pos-qty-stepper compact">
-                  <button
-                    type="button"
-                    className="pos-stepper-btn minus"
-                    onClick={() => onUpdateQuantity(item.id, -1)}
-                    aria-label="Decrease quantity"
-                  >
-                    <Minus size={12} />
-                  </button>
-                  <input
-                    type="number"
-                    className="pos-qty-input"
-                    value={item.quantity}
-                    min="1"
-                    max="9999"
-                    onChange={(e) =>
-                      onSetQuantity(item.id, parseInt(e.target.value, 10) || 1)
-                    }
-                    aria-label={`Quantity for ${item.productName}`}
-                  />
-                  <button
-                    type="button"
-                    className="pos-stepper-btn plus"
-                    onClick={() => onUpdateQuantity(item.id, 1)}
-                    aria-label="Increase quantity"
-                  >
-                    <Plus size={12} />
-                  </button>
-                </div>
-
-                {/* Right Column: Line Total */}
-                <div className="pos-cart-item-total">
-                  ₹{item.totalAmount.toFixed(2)}
-                </div>
-
-                {/* Far Right Column: Delete Action */}
-                <button
-                  type="button"
-                  className="pos-item-delete-btn"
-                  onClick={() => onRemoveItem(item.id)}
-                  title="Remove item"
-                  aria-label={`Remove ${item.productName}`}
+            {items.map((item) => {
+              const isMissingPrice = item.unitRate <= 0 || item.hasPriceError;
+              return (
+                <div
+                  key={item.id}
+                  className={`pos-cart-item-row ${isMissingPrice ? 'has-price-error' : ''}`}
                 >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
+                  {/* Left Column: Product name, Gujarati tag, Pack / Rate subtext */}
+                  <div className="pos-cart-item-info">
+                    <div className="pos-cart-item-title-row">
+                      <span className="pos-cart-item-name" title={item.productName}>
+                        {item.productName}
+                      </span>
+                      {item.gujaratiName && (
+                        <span className="pos-cart-item-gujarati" title={item.gujaratiName}>
+                          {item.gujaratiName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="pos-cart-item-subtext">
+                      {item.packName && (
+                        <span className="pos-cart-item-pack">{item.packName}</span>
+                      )}
+                      {isMissingPrice ? (
+                        <span className="pos-item-unpriced-pill" title="No active price for this SaleType">
+                          <AlertTriangle size={11} /> No {saleType} Rate
+                        </span>
+                      ) : (
+                        <span className="pos-cart-item-rate">@ ₹{item.unitRate.toFixed(2)}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Center Column: Compact Quantity Stepper */}
+                  <div className="pos-qty-stepper compact">
+                    <button
+                      type="button"
+                      className="pos-stepper-btn minus"
+                      onClick={() => onUpdateQuantity(item.id, -1)}
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <input
+                      type="number"
+                      className="pos-qty-input"
+                      value={item.quantity}
+                      min="1"
+                      max="9999"
+                      onChange={(e) =>
+                        onSetQuantity(item.id, parseInt(e.target.value, 10) || 1)
+                      }
+                      aria-label={`Quantity for ${item.productName}`}
+                    />
+                    <button
+                      type="button"
+                      className="pos-stepper-btn plus"
+                      onClick={() => onUpdateQuantity(item.id, 1)}
+                      aria-label="Increase quantity"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+
+                  {/* Right Column: Line Total */}
+                  <div className="pos-cart-item-total">
+                    {isMissingPrice ? (
+                      <span className="text-danger font-semibold text-xs">N/A</span>
+                    ) : (
+                      `₹${item.totalAmount.toFixed(2)}`
+                    )}
+                  </div>
+
+                  {/* Far Right Column: Delete Action */}
+                  <button
+                    type="button"
+                    className="pos-item-delete-btn"
+                    onClick={() => onRemoveItem(item.id)}
+                    title="Remove item"
+                    aria-label={`Remove ${item.productName}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -245,7 +268,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
           <div className="pos-clear-cart-row">
             <span className="pos-pricing-syncing">
               <Loader2 size={12} className="animate-spin" />
-              <span>Syncing rates with server...</span>
+              <span>Resolving authoritative {saleType} rates with server...</span>
             </span>
           </div>
         )}
@@ -258,95 +281,95 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
 
           {showDiscountInput ? (
             <div className="pos-total-row discount-row">
-              <span className="pos-discount-label">
-                Bill Discount (₹)
-                <button
-                  type="button"
-                  className="pos-hide-discount-btn"
-                  onClick={() => {
-                    setShowDiscountInput(false);
-                    onSetDiscountAmount(0);
-                  }}
-                >
-                  Remove
-                </button>
+              <div className="pos-discount-input-wrap">
+                <span>Discount (₹)</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={subtotal}
+                  step="1"
+                  className="pos-discount-field"
+                  placeholder="0"
+                  value={discountAmount || ''}
+                  onChange={(e) => onSetDiscountAmount(Number(e.target.value))}
+                />
+              </div>
+              <span className="pos-num-val text-success">
+                -{formatCurrency(discountAmount)}
               </span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                className="pos-discount-input"
-                value={discountAmount || ''}
-                placeholder="0"
-                onChange={(e) => onSetDiscountAmount(parseFloat(e.target.value) || 0)}
-              />
             </div>
           ) : (
-            <button
-              type="button"
-              className="pos-add-discount-btn"
-              onClick={() => setShowDiscountInput(true)}
-            >
-              + Add Discount
-            </button>
+            <div className="pos-add-discount-link-row">
+              <button
+                type="button"
+                className="pos-add-discount-btn"
+                onClick={() => setShowDiscountInput(true)}
+              >
+                + Add Special Bill Discount
+              </button>
+            </div>
           )}
 
-          <div className="pos-grand-total-row">
-            <span className="pos-grand-total-label">Grand Total</span>
-            <span className="pos-grand-total-val">{formatCurrency(grandTotal)}</span>
+          <div className="pos-total-row grand-total-row">
+            <span>Bill Total Amount</span>
+            <span className="pos-grand-amount">{formatCurrency(grandTotal)}</span>
           </div>
         </div>
 
-        {/* 4. PAYMENT MODE SELECTOR */}
-        <div className="pos-payment-section">
-          <span className="pos-section-label">Select Payment Mode:</span>
-          <div className="pos-payment-mode-buttons">
+        {/* 4. PAYMENT METHOD TOGGLE & TENDER */}
+        <div className="pos-payment-block">
+          <label className="pos-payment-label">Payment Mode</label>
+          <div className="pos-payment-methods-grid">
             <button
               type="button"
-              className={`pos-mode-btn ${paymentMode === 'CASH' ? 'active' : ''}`}
+              className={`pos-pay-mode-btn ${paymentMode === 'CASH' ? 'active' : ''}`}
               onClick={() => onSetPaymentMode('CASH')}
             >
-              <Banknote size={16} />
-              <span>CASH</span>
+              <Banknote size={15} />
+              <span>Cash</span>
             </button>
             <button
               type="button"
-              className={`pos-mode-btn ${paymentMode === 'UPI' ? 'active' : ''}`}
+              className={`pos-pay-mode-btn ${paymentMode === 'UPI' ? 'active' : ''}`}
               onClick={() => onSetPaymentMode('UPI')}
             >
-              <QrCode size={16} />
-              <span>UPI</span>
+              <QrCode size={15} />
+              <span>UPI / QR</span>
             </button>
             <button
               type="button"
-              className={`pos-mode-btn ${paymentMode === 'CARD' ? 'active' : ''}`}
+              className={`pos-pay-mode-btn ${paymentMode === 'CARD' ? 'active' : ''}`}
               onClick={() => onSetPaymentMode('CARD')}
             >
-              <CreditCard size={16} />
-              <span>CARD</span>
+              <CreditCard size={15} />
+              <span>Card</span>
             </button>
             <button
               type="button"
-              className={`pos-mode-btn ${paymentMode === 'OTHER' ? 'active' : ''}`}
+              className={`pos-pay-mode-btn ${paymentMode === 'OTHER' ? 'active' : ''}`}
               onClick={() => onSetPaymentMode('OTHER')}
             >
-              <Layers size={16} />
-              <span>OTHER</span>
+              <Layers size={15} />
+              <span>Credit/Other</span>
             </button>
           </div>
 
-          {/* CASH TENDER & CHANGE CALCULATION */}
+          {/* Cash Tender & Quick Change Preset */}
           {paymentMode === 'CASH' ? (
-            <div className="pos-cash-tender-card">
+            <div className="pos-cash-tender-box">
               <div className="pos-tender-input-row">
-                <label className="pos-tender-label">Cash Tendered (₹):</label>
-                <input
-                  type="number"
-                  className="pos-tender-input"
-                  value={paidAmount || ''}
-                  placeholder={grandTotal.toString()}
-                  onChange={(e) => onSetPaidAmount(parseFloat(e.target.value) || 0)}
-                />
+                <span className="pos-tender-label">Amount Tendered:</span>
+                <div className="pos-tender-input-wrap">
+                  <span className="pos-currency-prefix">₹</span>
+                  <input
+                    type="number"
+                    className="pos-tender-input"
+                    placeholder={String(grandTotal)}
+                    value={paidAmount || ''}
+                    onChange={(e) => onSetPaidAmount(Number(e.target.value))}
+                    min={grandTotal}
+                  />
+                </div>
               </div>
 
               <div className="pos-quick-tender-presets">
@@ -401,16 +424,18 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
         </div>
 
         {/* 5. COMPLETE BILL ACTION BUTTON */}
-        {items.some((it) => it.unitRate <= 0) && (
+        {hasUnpricedItems && (
           <div className="pos-unpriced-warning">
-            <AlertTriangle size={14} />
-            <span>Please remove unpriced items (₹0.00) to proceed</span>
+            <AlertTriangle size={15} />
+            <span>
+              One or more items do not have an active <strong>{saleType}</strong> price. Remove them or configure prices to proceed.
+            </span>
           </div>
         )}
         <button
           type="button"
           className="pos-complete-bill-btn"
-          disabled={items.length === 0 || isSubmitting || items.some((it) => it.unitRate <= 0)}
+          disabled={items.length === 0 || isSubmitting || hasUnpricedItems}
           onClick={onSubmitSale}
         >
           {isSubmitting ? (

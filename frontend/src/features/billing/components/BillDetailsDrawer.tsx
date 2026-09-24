@@ -119,13 +119,30 @@ export const BillDetailsDrawer: React.FC<BillDetailsDrawerProps> = ({
               <p className="pos-meta-value">{current.customerMobileSnapshot || '—'}</p>
             </div>
             <div>
-              <span className="pos-meta-label">Customer Type</span>
+              <span className="pos-meta-label">Customer Demographic</span>
               <p className="pos-meta-value">
                 <Badge
                   variant={current.customerTypeSnapshot === 'NRI' ? 'warning' : 'brand'}
                   size="sm"
                 >
                   {current.customerTypeSnapshot}
+                </Badge>
+              </p>
+            </div>
+            <div>
+              <span className="pos-meta-label">Sale Type</span>
+              <p className="pos-meta-value">
+                <Badge
+                  variant={
+                    (current.saleTypeSnapshot || current.saleType) === 'WHOLESALE'
+                      ? 'warning'
+                      : (current.saleTypeSnapshot || current.saleType) === 'NRI'
+                      ? 'neutral'
+                      : 'brand'
+                  }
+                  size="sm"
+                >
+                  {current.saleTypeSnapshot || current.saleType || (current.customerTypeSnapshot === 'NRI' ? 'NRI' : 'RETAIL')}
                 </Badge>
               </p>
             </div>

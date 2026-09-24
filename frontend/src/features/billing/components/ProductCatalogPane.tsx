@@ -4,6 +4,7 @@ import { Product, ProductsApi } from '../../products/products.api';
 import { Category, CategoriesApi } from '../../categories/categories.api';
 import { Subcategory, SubcategoriesApi } from '../../subcategories/subcategories.api';
 import { CustomerType } from '../../../types/common.types';
+import { SaleType } from '../../../types/auth.types';
 import { ProductCard } from './ProductCard';
 import { LoadingState } from '../../../components/common/LoadingState/LoadingState';
 import { EmptyState } from '../../../components/common/EmptyState/EmptyState';
@@ -14,7 +15,8 @@ export interface ProductCatalogPaneRef {
 }
 
 export interface ProductCatalogPaneProps {
-  customerType: CustomerType;
+  customerType?: CustomerType;
+  saleType: SaleType;
   onAddToCart: (
     product: Product,
     options?: {
@@ -27,7 +29,7 @@ export interface ProductCatalogPaneProps {
 }
 
 export const ProductCatalogPane = forwardRef<ProductCatalogPaneRef, ProductCatalogPaneProps>(
-  ({ customerType, onAddToCart }, ref) => {
+  ({ customerType, saleType, onAddToCart }, ref) => {
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -252,6 +254,7 @@ export const ProductCatalogPane = forwardRef<ProductCatalogPaneRef, ProductCatal
                   key={product.id}
                   product={product}
                   customerType={customerType}
+                  saleType={saleType}
                   onAddToCart={onAddToCart}
                 />
               ))}

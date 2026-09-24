@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CustomerType } from '@prisma/client';
+import { CustomerType, SaleType } from '@prisma/client';
 
 export const rateSchema = z
   .number({ required_error: 'Price rate is required' })
@@ -18,14 +18,27 @@ export const createPriceSchema = z
   .object({
     productId: z.string().uuid('Valid Product ID is required'),
     packConfigId: z.string().uuid('Valid Pack Config ID is required').optional().nullable(),
-    customerType: z.nativeEnum(CustomerType, {
-      errorMap: () => ({ message: 'customerType must be either INDIAN or NRI' }),
-    }),
+    pricingTier: z.nativeEnum(SaleType, {
+      errorMap: () => ({ message: 'pricingTier must be RETAIL, NRI, or WHOLESALE' }),
+    }).optional(),
+    customerType: z.nativeEnum(CustomerType).optional(), // Legacy backward compatibility
     rate: rateSchema,
     effectiveFrom: z.coerce.date().optional(),
     effectiveTo: z.coerce.date().optional().nullable(),
     isActive: z.boolean().optional().default(true),
   })
+  .refine(
+    (data) => {
+      if (!data.pricingTier && !data.customerType) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'pricingTier (RETAIL, NRI, WHOLESALE) is required',
+      path: ['pricingTier'],
+    }
+  )
   .refine(
     (data) => {
       if (data.effectiveFrom && data.effectiveTo) {
@@ -61,9 +74,9 @@ export const updatePriceSchema = z
 
 export const resolvePriceSchema = z.object({
   productId: z.string().uuid('Valid Product ID is required'),
-  customerType: z.nativeEnum(CustomerType, {
-    errorMap: () => ({ message: 'customerType must be either INDIAN or NRI' }),
-  }),
+  saleType: z.nativeEnum(SaleType).optional(),
+  pricingTier: z.nativeEnum(SaleType).optional(),
+  customerType: z.nativeEnum(CustomerType).optional(), // Legacy fallback
   packConfigId: z.string().uuid().optional().nullable(),
   looseWeightInGrams: z.number().positive('Loose weight must be positive').optional().nullable(),
   quantity: z.number().positive('Quantity must be positive').optional().default(1),
@@ -72,7 +85,8 @@ export const resolvePriceSchema = z.object({
 
 export const resolvePricesSchema = z.object({
   customerId: z.string().uuid().optional().nullable(),
-  customerType: z.nativeEnum(CustomerType).optional(),
+  customerType: z.nativeEnum(CustomerType).optional().nullable(),
+  saleType: z.nativeEnum(SaleType).optional(),
   targetDate: z.coerce.date().optional(),
   items: z
     .array(
@@ -92,7 +106,8 @@ export const batchUpsertPriceSchema = z.object({
 
 export const priceQuerySchema = z.object({
   productId: z.string().uuid().optional(),
-  customerType: z.nativeEnum(CustomerType).optional(),
+  pricingTier: z.nativeEnum(SaleType).optional(),
+  customerType: z.nativeEnum(CustomerType).optional(), // Legacy query support
   packConfigId: z.string().uuid().optional().nullable(),
   isActive: z
     .preprocess((val) => (val === 'true' ? true : val === 'false' ? false : val), z.boolean().optional())

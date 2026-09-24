@@ -5,7 +5,7 @@ import { SalesService } from '../src/modules/sales/sales.service.js';
 import { ReturnsService } from '../src/modules/returns/returns.service.js';
 import { ProductionService } from '../src/modules/production/production.service.js';
 import { InventoryService } from '../src/modules/inventory/inventory.service.js';
-import { CustomerType, PaymentMode } from '@prisma/client';
+import { CustomerType, PaymentMode, SaleType } from '@prisma/client';
 
 async function runTests() {
   console.log('🧪 ========================================================');
@@ -164,7 +164,7 @@ async function runTests() {
     where: {
       productId: papdi.id,
       packConfigId: pack500gm.id,
-      customerType: CustomerType.INDIAN,
+      pricingTier: SaleType.RETAIL,
     },
     data: { rate: 190 },
   });
@@ -182,7 +182,7 @@ async function runTests() {
     where: {
       productId: papdi.id,
       packConfigId: pack500gm.id,
-      customerType: CustomerType.INDIAN,
+      pricingTier: SaleType.RETAIL,
     },
     data: { rate: 140 },
   });

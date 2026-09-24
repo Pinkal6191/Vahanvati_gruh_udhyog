@@ -1,0 +1,41 @@
+{
+  "databaseEnvironment": "local_development",
+  "postgreSqlVersion": "PostgreSQL 18.4 (Homebrew)",
+  "migrationName": "20260924060728_add_sale_type_and_rbac",
+  "gitCommit": "27cecd27e3fad29f32028668fd986adc9f98dc6f",
+  "timestamp": "2026-09-24T06:18:47.983Z",
+  "globalMetrics": {
+    "salesCount": 48,
+    "saleItemsCount": 50,
+    "subtotalSum": "43270.00",
+    "taxSum": "0.00",
+    "finalTotalSum": "43270.00",
+    "saleStockMovementsCount": 50
+  },
+  "groupedCustomerTypes": {
+    "indian": {
+      "salesCount": 47,
+      "subtotalSum": "42580.00",
+      "taxSum": "0.00",
+      "finalTotalSum": "42580.00"
+    },
+    "nri": {
+      "salesCount": 1,
+      "subtotalSum": "690.00",
+      "taxSum": "0.00",
+      "finalTotalSum": "690.00"
+    },
+    "wholesale": {
+      "salesCount": 0
+    }
+  },
+  "productPrices": {
+    "count": 122,
+    "sha256Fingerprint": "dd073a35efa8d148e9ca171412e878ae364fac0804b4a0e18732098cc22776e8"
+  },
+  "masterAdminCandidate": {
+    "count": 1,
+    "id": "7dd3911f-0d81-4809-8e30-f4572df32add",
+    "username": "admin"
+  }
+}

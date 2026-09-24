@@ -257,7 +257,7 @@ async function runStep17Tests() {
     await prisma.productPrice.updateMany({
       where: {
         productId: testProductId,
-        customerType: 'INDIAN',
+        pricingTier: 'RETAIL',
         packConfigId: null,
       },
       data: { rate: newAlteredRate },

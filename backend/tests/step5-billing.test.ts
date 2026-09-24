@@ -3,7 +3,7 @@ import { createApp } from '../src/app.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
 import { SalesService } from '../src/modules/sales/sales.service.js';
 import { PricingService } from '../src/modules/pricing/pricing.service.js';
-import { CustomerType, PaymentMode, SaleStatus } from '@prisma/client';
+import { CustomerType, PaymentMode, SaleStatus, SaleType } from '@prisma/client';
 import http from 'http';
 
 async function runStep5BillingTests() {
@@ -13,7 +13,7 @@ async function runStep5BillingTests() {
 
   const ts = Date.now();
   let passedTests = 0;
-  const totalTests = 39;
+  const totalTests = 47;
 
   // 1. Setup Express app on ephemeral port for HTTP tests
   const app = createApp();
@@ -116,6 +116,11 @@ async function runStep5BillingTests() {
   );
   await PricingService.createPrice(
     { productId: productA.id, packConfigId: null, customerType: CustomerType.NRI, rate: 500.0 },
+    admin.id,
+    'ADMIN'
+  );
+  await PricingService.createPrice(
+    { productId: productA.id, packConfigId: packA500.id, pricingTier: SaleType.WHOLESALE, rate: 120.0 },
     admin.id,
     'ADMIN'
   );
@@ -543,7 +548,7 @@ async function runStep5BillingTests() {
     console.log('▶ [25/39] Historical Bill Unchanged When Current Price Changes...');
     // Change price of Product A pack 500g to ₹200
     const activePrice = await prisma.productPrice.findFirst({
-      where: { productId: productA.id, packConfigId: packA500.id, customerType: CustomerType.INDIAN, isActive: true },
+      where: { productId: productA.id, packConfigId: packA500.id, pricingTier: SaleType.RETAIL, isActive: true },
     });
     await PricingService.updatePrice(activePrice!.id, { rate: 200.0 }, admin.id, 'ADMIN');
 
@@ -847,6 +852,208 @@ async function runStep5BillingTests() {
     console.assert(salesList.items.length > 0, 'Should find sales for indian customer');
     console.assert(salesList.pagination.total >= 1, 'Pagination count should be >= 1');
     console.log(`  ✅ Filtered listing returned ${salesList.items.length} sales with pagination.`);
+    passedTests++;
+
+    // ============================================================
+    // SECTION 10: PHASE 2B PRICING ENGINE TESTS (Tests 40 - 46)
+    // ============================================================
+
+    // Test 40: Strict Rejection of Client-Supplied unitRate on Item
+    console.log('▶ [40/46] Phase 2B: Strict Rejection of Client-Supplied unitRate on Item...');
+    const fakeRateRes = await fetch(`${baseUrl}/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${outletToken}` },
+      body: JSON.stringify({
+        customerId: indianCustomer.id,
+        items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 1, unitRate: 1.0 }],
+        payments: [{ paymentMode: 'CASH', amount: 150 }],
+        paidAmount: 150,
+      }),
+    });
+    console.assert(fakeRateRes.status === 400, `Fake rate should be rejected with 400, got ${fakeRateRes.status}`);
+    const fakeRateData = await fakeRateRes.json();
+    console.assert(
+      JSON.stringify(fakeRateData).includes('Client-supplied financial fields are strictly forbidden'),
+      'Must explain forbidden client fields'
+    );
+    console.log('  ✅ Fake unitRate injection rejected deterministically by validation schema.');
+    passedTests++;
+
+    // Test 41: Strict Rejection of Client-Supplied finalTotalAmount on Header
+    console.log('▶ [41/46] Phase 2B: Strict Rejection of Client-Supplied finalTotalAmount on Header...');
+    const fakeHeaderRes = await fetch(`${baseUrl}/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${outletToken}` },
+      body: JSON.stringify({
+        customerId: indianCustomer.id,
+        items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 1 }],
+        finalTotalAmount: 1.0,
+        payments: [{ paymentMode: 'CASH', amount: 150 }],
+        paidAmount: 150,
+      }),
+    });
+    console.assert(fakeHeaderRes.status === 400, `Fake finalTotalAmount should be rejected with 400, got ${fakeHeaderRes.status}`);
+    const fakeHeaderData = await fakeHeaderRes.json();
+    console.assert(
+      JSON.stringify(fakeHeaderData).includes('Client-supplied financial fields are strictly forbidden'),
+      'Must explain forbidden client fields'
+    );
+    console.log('  ✅ Fake finalTotalAmount injection rejected deterministically by validation schema.');
+    passedTests++;
+
+    // Test 42: Cross-Combination A: CustomerType=INDIAN + SaleType=WHOLESALE
+    console.log('▶ [42/47] Phase 2B Cross-Combination A: CustomerType=INDIAN + SaleType=WHOLESALE...');
+    const wholesaleRes = await fetch(`${baseUrl}/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({
+        customerId: indianCustomer.id,
+        saleType: 'WHOLESALE',
+        items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 1 }],
+        payments: [{ paymentMode: 'CASH', amount: 120 }],
+        paidAmount: 120,
+      }),
+    });
+    console.assert(wholesaleRes.status === 201, `Wholesale sale should succeed for Master Admin, got ${wholesaleRes.status}`);
+    const wholesaleData = await wholesaleRes.json();
+    console.assert(wholesaleData.data.saleType === 'WHOLESALE', 'Sale header saleType must be WHOLESALE');
+    console.assert(wholesaleData.data.customerTypeSnapshot === 'INDIAN', 'Customer demographic snapshot must be INDIAN');
+    console.assert(wholesaleData.data.items[0].saleTypeSnapshot === 'WHOLESALE', 'SaleItem saleTypeSnapshot must be WHOLESALE');
+    console.assert(Number(wholesaleData.data.items[0].unitRate) === 120, `Unit rate must be Wholesale rate ₹120, got ${wholesaleData.data.items[0].unitRate}`);
+    console.assert(Number(wholesaleData.data.finalTotalAmount) === 120, 'Final total must be ₹120');
+    console.log('  ✅ Combination A confirmed: CustomerType=INDIAN + SaleType=WHOLESALE -> Wholesale pricing (₹120), customerTypeSnapshot=INDIAN, saleTypeSnapshot=WHOLESALE.');
+    passedTests++;
+
+    // Test 43: Unauthorized Outlet User Attempting WHOLESALE Sale (403 Forbidden)
+    console.log('▶ [43/47] Phase 2B: Unauthorized Outlet User Attempting WHOLESALE Sale (403)...');
+    const outletWholesaleRes = await fetch(`${baseUrl}/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${outletToken}` },
+      body: JSON.stringify({
+        customerId: indianCustomer.id,
+        saleType: 'WHOLESALE',
+        items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 1 }],
+        payments: [{ paymentMode: 'CASH', amount: 120 }],
+        paidAmount: 120,
+      }),
+    });
+    console.assert(outletWholesaleRes.status === 403, `Outlet billing wholesale should return 403, got ${outletWholesaleRes.status}`);
+    const outletWholesaleData = await outletWholesaleRes.json();
+    console.assert(
+      JSON.stringify(outletWholesaleData).includes('OUTLET_NOT_AUTHORIZED_FOR_SALE_TYPE'),
+      'Must return OUTLET_NOT_AUTHORIZED_FOR_SALE_TYPE'
+    );
+    console.log('  ✅ Outlet role strictly prohibited from WHOLESALE billing with 403 Forbidden.');
+    passedTests++;
+
+    // Test 44: Strict Zero-Fallback When Wholesale Price Is Missing (400)
+    console.log('▶ [44/47] Phase 2B: Strict Zero-Fallback When Wholesale Price Is Missing (400)...');
+    // Product B has no wholesale price configured
+    const missingWholesaleRes = await fetch(`${baseUrl}/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({
+        customerId: indianCustomer.id,
+        saleType: 'WHOLESALE',
+        items: [{ productId: productB.id, packConfigId: packBBox.id, quantity: 1 }],
+        payments: [{ paymentMode: 'CASH', amount: 90 }],
+        paidAmount: 90,
+      }),
+    });
+    console.assert(missingWholesaleRes.status === 400, `Missing wholesale price should return 400, got ${missingWholesaleRes.status}`);
+    const missingWholesaleData = await missingWholesaleRes.json();
+    console.assert(
+      JSON.stringify(missingWholesaleData).includes('WHOLESALE_PRICE_NOT_CONFIGURED'),
+      'Must return WHOLESALE_PRICE_NOT_CONFIGURED error'
+    );
+    console.log('  ✅ Strict zero fallback verified: No silent fallback to Retail/NRI price.');
+    passedTests++;
+
+    // Test 45: Cross-Combination B: CustomerType=NRI + SaleType=RETAIL
+    console.log('▶ [45/47] Phase 2B Cross-Combination B: CustomerType=NRI + SaleType=RETAIL...');
+    const nriRetailRes = await fetch(`${baseUrl}/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({
+        customerId: nriCustomer.id,
+        saleType: 'RETAIL',
+        items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 1 }],
+        payments: [{ paymentMode: 'CASH', amount: 200 }], // Product A pack 500g is currently ₹200 Retail
+        paidAmount: 200,
+      }),
+    });
+    console.assert(nriRetailRes.status === 201, `NRI customer at RETAIL should succeed, got ${nriRetailRes.status}`);
+    const nriRetailData = await nriRetailRes.json();
+    console.assert(nriRetailData.data.saleType === 'RETAIL', 'Sale header saleType must be RETAIL');
+    console.assert(nriRetailData.data.customerTypeSnapshot === 'NRI', 'Customer demographic must remain NRI');
+    console.assert(nriRetailData.data.items[0].saleTypeSnapshot === 'RETAIL', 'SaleItem saleTypeSnapshot must be RETAIL');
+    console.assert(Number(nriRetailData.data.items[0].unitRate) === 200, 'Unit rate must be RETAIL rate ₹200');
+    console.assert(Number(nriRetailData.data.finalTotalAmount) === 200, 'Final total must be ₹200');
+    console.log('  ✅ Combination B confirmed: CustomerType=NRI + SaleType=RETAIL -> Retail pricing (₹200), customerTypeSnapshot=NRI, saleTypeSnapshot=RETAIL.');
+    passedTests++;
+
+    // Test 46: Legacy Backward-Compatibility Fallback Without saleType
+    console.log('▶ [46/47] Phase 2B: Legacy Backward-Compatibility Fallback Without saleType...');
+    const legacyIndianRes = await fetch(`${baseUrl}/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${outletToken}` },
+      body: JSON.stringify({
+        customerId: indianCustomer.id,
+        items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 1 }],
+        payments: [{ paymentMode: 'CASH', amount: 200 }],
+        paidAmount: 200,
+      }),
+    });
+    console.assert(legacyIndianRes.status === 201, `Legacy bill without saleType should succeed, got ${legacyIndianRes.status}`);
+    const legacyIndianData = await legacyIndianRes.json();
+    console.assert(legacyIndianData.data.saleType === 'RETAIL', 'Legacy Indian sale should resolve to RETAIL');
+    console.assert(legacyIndianData.data.items[0].saleTypeSnapshot === 'RETAIL', 'SaleItem snapshot should be RETAIL');
+    console.log('  ✅ Legacy fallback works correctly without client providing saleType.');
+    passedTests++;
+
+    // Test 47: Validated Discount Amount & BD-4 Monetary Rounding Verification
+    console.log('▶ [47/47] Phase 2B: Validated Discount Amount & BD-4 Monetary Rounding Verification...');
+    // Case 1: Subtotal ₹120 (1 Wholesale item), discount ₹15.60 -> Net ₹104.40 -> rounds to ₹104
+    const disc1Res = await fetch(`${baseUrl}/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({
+        customerId: indianCustomer.id,
+        saleType: 'WHOLESALE',
+        items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 1 }],
+        discountAmount: 15.60,
+        payments: [{ paymentMode: 'CASH', amount: 104 }],
+        paidAmount: 110,
+      }),
+    });
+    console.assert(disc1Res.status === 201, `Discounted sale 1 should return 201, got ${disc1Res.status}`);
+    const disc1Data = await disc1Res.json();
+    console.assert(Number(disc1Data.data.subtotalAmount) === 120, 'Subtotal must be ₹120');
+    console.assert(Number(disc1Data.data.discountAmount) === 15.60, 'Discount must be ₹15.60');
+    console.assert(Number(disc1Data.data.finalTotalAmount) === 104, `120 - 15.60 = 104.40 rounded must be 104, got ${disc1Data.data.finalTotalAmount}`);
+    console.assert(Number(disc1Data.data.changeReturned) === 6, `110 - 104 change must be 6, got ${disc1Data.data.changeReturned}`);
+
+    // Case 2: Subtotal ₹120, discount ₹15.40 -> Net ₹104.60 -> rounds to ₹105
+    const disc2Res = await fetch(`${baseUrl}/sales`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({
+        customerId: indianCustomer.id,
+        saleType: 'WHOLESALE',
+        items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 1 }],
+        discountAmount: 15.40,
+        payments: [{ paymentMode: 'CASH', amount: 105 }],
+        paidAmount: 110,
+      }),
+    });
+    console.assert(disc2Res.status === 201, `Discounted sale 2 should return 201, got ${disc2Res.status}`);
+    const disc2Data = await disc2Res.json();
+    console.assert(Number(disc2Data.data.subtotalAmount) === 120, 'Subtotal must be ₹120');
+    console.assert(Number(disc2Data.data.discountAmount) === 15.40, 'Discount must be ₹15.40');
+    console.assert(Number(disc2Data.data.finalTotalAmount) === 105, `120 - 15.40 = 104.60 rounded must be 105, got ${disc2Data.data.finalTotalAmount}`);
+    console.assert(Number(disc2Data.data.changeReturned) === 5, `110 - 105 change must be 5, got ${disc2Data.data.changeReturned}`);
+
+    console.log('  ✅ Validated discount & BD-4 monetary rounding (Math.max(0, Math.round(cartTotal - discount))) fully verified.');
     passedTests++;
 
     // Clean up test data

@@ -60,7 +60,7 @@ export class PricingController {
     try {
       const history = await PricingService.getPriceHistory(
         req.params.productId,
-        req.query.customerType as any
+        (req.query.pricingTier || req.query.customerType) as any
       );
       res.status(200).json({ success: true, data: history });
     } catch (err) {

@@ -1,10 +1,24 @@
 import { prisma } from '../../config/database.js';
-import { NotFoundError, BadRequestError, InsufficientStockError } from '../../common/errors/app-error.js';
+import {
+  NotFoundError,
+  BadRequestError,
+  InsufficientStockError,
+  ForbiddenError,
+  UnauthorizedError,
+} from '../../common/errors/app-error.js';
 import { PricingService } from '../pricing/pricing.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CreateSaleInput, CreateSaleItemInput, SalesQueryInput, CancelSaleInput } from './sales.validation.js';
 import { StockService } from '../inventory/stock.service.js';
-import { MovementType, ReferenceType, PaymentStatus, SaleStatus, Prisma } from '@prisma/client';
+import {
+  MovementType,
+  ReferenceType,
+  PaymentStatus,
+  SaleStatus,
+  SaleType,
+  CustomerType,
+  Prisma,
+} from '@prisma/client';
 
 export class SalesService {
   /**
@@ -30,13 +44,14 @@ export class SalesService {
   /**
    * ATOMIC POS CHECKOUT TRANSACTION
    * 1. Merges duplicate items
-   * 2. Resolves authoritative server pricing via Step 4 Pricing Engine (Indian vs NRI)
-   * 3. Locks CompanySettings row for concurrent serialized bill numbering
-   * 4. Locks Stock rows with row-level locks (FOR UPDATE) to prevent race conditions & double-selling
-   * 5. Creates Sale header + line items with immutable price snapshot
-   * 6. Records multi-mode payments
-   * 7. Appends to immutable stock movement ledger and updates cached balance
-   * 8. Records comprehensive audit log
+   * 2. Enforces Server-Side RBAC for requested SaleType (Master Admin vs Outlet permissions)
+   * 3. Resolves authoritative server pricing via Step 4/Phase 2B Pricing Engine
+   * 4. Locks CompanySettings row for concurrent serialized bill numbering
+   * 5. Locks Stock rows with row-level locks (FOR UPDATE) to prevent race conditions & double-selling
+   * 6. Creates Sale header + line items with immutable price snapshot and saleType snapshots
+   * 7. Records multi-mode payments
+   * 8. Appends to immutable stock movement ledger and updates cached balance
+   * 9. Records comprehensive audit log
    */
   static async createSale(
     userId: string,
@@ -57,20 +72,49 @@ export class SalesService {
       ip = (inputOrIp as string) || null;
     }
 
+    // 0. Verify User and Enforce Server-Side RBAC for SaleType
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        role: true,
+        isMasterAdmin: true,
+        allowedBillingSaleTypes: true,
+        isActive: true,
+      },
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedError('User account is inactive or not found');
+    }
+
+    // Resolve authoritative SaleType (with legacy fallback for existing callers)
+    const resolvedSaleType: SaleType =
+      input.saleType ??
+      (input.customerType === CustomerType.NRI ? SaleType.NRI : SaleType.RETAIL);
+
+    // Enforce server-side authorization: User must have permission for this sale type
+    if (!user.allowedBillingSaleTypes.includes(resolvedSaleType)) {
+      throw new ForbiddenError(
+        `Access denied: You are not authorized for ${resolvedSaleType} billing`
+      );
+    }
+
     // 1. Merge duplicate line items
     const mergedItems = this.mergeDuplicateItems(input.items);
 
-    // 2. Authoritative Price Resolution via Step 4 Pricing Engine
+    // 2. Authoritative Price Resolution via Phase 2B Pricing Engine
     const resolvedCart = await PricingService.resolveCart({
       customerId: input.customerId || undefined,
       customerType: input.customerType || undefined,
+      saleType: resolvedSaleType,
       items: mergedItems,
     });
 
     const discountAmount = Math.round(Number(input.discountAmount || 0) * 100) / 100;
     const finalTotalAmount = Math.max(0, Math.round(resolvedCart.finalTotalAmount - discountAmount));
 
-    // 3. Validate Payments Sum
+    // 3. Validate Payments Sum against authoritative server-calculated total
     const totalPaymentsReceived = Math.round(input.payments.reduce((acc, p) => acc + p.amount, 0) * 100) / 100;
     if (totalPaymentsReceived < finalTotalAmount) {
       throw new BadRequestError(
@@ -121,14 +165,16 @@ export class SalesService {
       const sequenceNumber = String(nextSeq).padStart(4, '0');
       const billNumber = `${prefix}-${datePart}-${sequenceNumber}`;
 
-      // 4.3 Create Sale Header
+      // 4.3 Create Sale Header with canonical SaleType and snapshots
       const sale = await tx.sale.create({
         data: {
           billNumber,
+          saleType: resolvedCart.saleType,
           customerId: resolvedCart.customerId,
           customerNameSnapshot: resolvedCart.customerName,
           customerMobileSnapshot: resolvedCart.customerMobile,
           customerTypeSnapshot: resolvedCart.customerType,
+          customerGstinSnapshot: resolvedCart.customerGstin || null,
           totalItemsCount: resolvedCart.items.length,
           subtotalAmount: new Prisma.Decimal(resolvedCart.subtotalAmount),
           discountAmount: new Prisma.Decimal(discountAmount),
@@ -142,7 +188,7 @@ export class SalesService {
         },
       });
 
-      // 4.4 Create Sale Line Items
+      // 4.4 Create Sale Line Items with immutable saleTypeSnapshot
       for (const item of resolvedCart.items) {
         await tx.saleItem.create({
           data: {
@@ -152,6 +198,7 @@ export class SalesService {
             productNameSnapshot: item.productName,
             unitSymbolSnapshot: item.unitSymbol,
             weightOrPackSnapshot: item.weightOrPackName,
+            saleTypeSnapshot: sale.saleType,
             quantity: new Prisma.Decimal(item.quantity),
             baseWeightDeducted: new Prisma.Decimal(item.baseWeightDeducted),
             unitRate: new Prisma.Decimal(item.unitRate),
@@ -336,6 +383,7 @@ export class SalesService {
       billNumber,
       customerId,
       customerType,
+      saleType,
       paymentMode,
       saleStatus,
       date,
@@ -351,6 +399,7 @@ export class SalesService {
     if (billNumber) where.billNumber = { contains: billNumber, mode: 'insensitive' };
     if (customerId) where.customerId = customerId;
     if (customerType) where.customerTypeSnapshot = customerType;
+    if (saleType) where.saleType = saleType;
     if (saleStatus) where.saleStatus = saleStatus;
     if (createdBy) where.createdBy = createdBy;
 

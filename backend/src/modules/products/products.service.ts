@@ -401,7 +401,7 @@ export class ProductsService {
             select: {
               id: true,
               packConfigId: true,
-              customerType: true,
+              pricingTier: true,
               rate: true,
               isActive: true,
             },
@@ -412,12 +412,16 @@ export class ProductsService {
     ]);
 
     const mappedItems = items.map((p: any) => {
-      const baseIndian = p.prices?.find((pr: any) => pr.customerType === 'INDIAN' && !pr.packConfigId);
-      const baseNri = p.prices?.find((pr: any) => pr.customerType === 'NRI' && !pr.packConfigId);
+      const baseRetail = p.prices?.find((pr: any) => (pr.pricingTier === 'RETAIL' || pr.pricingTier === 'INDIAN') && !pr.packConfigId);
+      const baseNri = p.prices?.find((pr: any) => pr.pricingTier === 'NRI' && !pr.packConfigId);
+      const baseWholesale = p.prices?.find((pr: any) => pr.pricingTier === 'WHOLESALE' && !pr.packConfigId);
       return {
         ...p,
-        indianPrice: baseIndian ? Number(baseIndian.rate) : null,
+        // Legacy backward compatibility for existing frontend
+        indianPrice: baseRetail ? Number(baseRetail.rate) : null,
+        retailPrice: baseRetail ? Number(baseRetail.rate) : null,
         nriPrice: baseNri ? Number(baseNri.rate) : null,
+        wholesalePrice: baseWholesale ? Number(baseWholesale.rate) : null,
       };
     });
 

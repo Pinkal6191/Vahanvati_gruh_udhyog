@@ -4,7 +4,7 @@ import { AuthService } from '../src/modules/auth/auth.service.js';
 import { StockService } from '../src/modules/inventory/stock.service.js';
 import { InventoryService } from '../src/modules/inventory/inventory.service.js';
 import { SalesService } from '../src/modules/sales/sales.service.js';
-import { MovementType, ReferenceType, PaymentMode, CustomerType } from '@prisma/client';
+import { MovementType, ReferenceType, PaymentMode, CustomerType, SaleType } from '@prisma/client';
 import http from 'http';
 
 async function runStep6StockTests() {
@@ -150,13 +150,13 @@ async function runStep6StockTests() {
       {
         productId: productA.id,
         packConfigId: pack500g.id,
-        customerType: CustomerType.INDIAN,
+        pricingTier: SaleType.RETAIL,
         rate: 150,
       },
       {
         productId: productA.id,
         packConfigId: null,
-        customerType: CustomerType.INDIAN,
+        pricingTier: SaleType.RETAIL,
         rate: 300, // loose per kg
       },
     ],

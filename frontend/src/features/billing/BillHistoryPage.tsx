@@ -51,6 +51,7 @@ export const BillHistoryPage: React.FC = () => {
 
   // Filters
   const [searchBill, setSearchBill] = useState<string>('');
+  const [saleTypeFilter, setSaleTypeFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [paymentFilter, setPaymentFilter] = useState<string>('');
   const [dateFilter, setDateFilter] = useState<string>('');
@@ -79,6 +80,7 @@ export const BillHistoryPage: React.FC = () => {
         page,
         limit,
         billNumber: searchBill.trim() || undefined,
+        saleType: (saleTypeFilter || undefined) as any,
         saleStatus: (statusFilter || undefined) as any,
         paymentMode: (paymentFilter || undefined) as any,
         date: dateFilter || undefined,
@@ -93,7 +95,7 @@ export const BillHistoryPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, searchBill, statusFilter, paymentFilter, dateFilter]);
+  }, [page, limit, searchBill, saleTypeFilter, statusFilter, paymentFilter, dateFilter]);
 
   useEffect(() => {
     loadSales();
@@ -190,6 +192,23 @@ export const BillHistoryPage: React.FC = () => {
           </Badge>
         </div>
       ),
+    },
+    {
+      key: 'saleType',
+      header: 'Sale Type',
+      width: '110px',
+      align: 'center',
+      cell: (row) => {
+        const st = row.saleTypeSnapshot || row.saleType || (row.customerTypeSnapshot === 'NRI' ? 'NRI' : 'RETAIL');
+        return (
+          <Badge
+            variant={st === 'WHOLESALE' ? 'warning' : st === 'NRI' ? 'neutral' : 'brand'}
+            size="sm"
+          >
+            {st}
+          </Badge>
+        );
+      },
     },
     {
       key: 'itemsCount',
@@ -317,6 +336,22 @@ export const BillHistoryPage: React.FC = () => {
               setPage(1);
             }}
             className="filter-search-input"
+          />
+
+          <Select
+            label=""
+            value={saleTypeFilter}
+            onChange={(e) => {
+              setSaleTypeFilter(e.target.value);
+              setPage(1);
+            }}
+            options={[
+              { value: '', label: 'All Sale Types' },
+              { value: 'RETAIL', label: 'Retail Only' },
+              { value: 'NRI', label: 'NRI Only' },
+              { value: 'WHOLESALE', label: 'Wholesale Only' },
+            ]}
+            className="filter-select-input"
           />
 
           <Select

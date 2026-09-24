@@ -4,7 +4,7 @@ import { AuthService } from '../src/modules/auth/auth.service.js';
 import { StockService } from '../src/modules/inventory/stock.service.js';
 import { SalesService } from '../src/modules/sales/sales.service.js';
 import { ReturnsService } from '../src/modules/returns/returns.service.js';
-import { MovementType, ReferenceType, ReturnStatus, PaymentMode, CustomerType, SaleStatus } from '@prisma/client';
+import { MovementType, ReferenceType, ReturnStatus, PaymentMode, CustomerType, SaleStatus, SaleType } from '@prisma/client';
 import http from 'http';
 
 async function runStep8SalesReturnsTests() {
@@ -14,7 +14,7 @@ async function runStep8SalesReturnsTests() {
 
   const ts = Date.now();
   let passedTests = 0;
-  const totalTests = 44;
+  const totalTests = 45;
 
   const createdReturnIds: string[] = [];
   const createdSaleIds: string[] = [];
@@ -94,7 +94,7 @@ async function runStep8SalesReturnsTests() {
   await prisma.productPrice.create({
     data: {
       productId: productA.id,
-      customerType: CustomerType.INDIAN,
+      pricingTier: SaleType.RETAIL,
       rate: 200,
       createdById: adminAuth.user.id,
     },
@@ -122,7 +122,7 @@ async function runStep8SalesReturnsTests() {
   await prisma.productPrice.create({
     data: {
       productId: productB.id,
-      customerType: CustomerType.INDIAN,
+      pricingTier: SaleType.RETAIL,
       rate: 150,
       createdById: adminAuth.user.id,
     },
@@ -435,7 +435,7 @@ async function runStep8SalesReturnsTests() {
     console.log('Test 12 & 13: Change current product price and verify return still uses historical rate');
     // Change Product A price from ₹200 to ₹350 in catalog
     await prisma.productPrice.updateMany({
-      where: { productId: productA.id, customerType: CustomerType.INDIAN },
+      where: { productId: productA.id, pricingTier: SaleType.RETAIL },
       data: { rate: 350 },
     });
 
@@ -939,6 +939,60 @@ async function runStep8SalesReturnsTests() {
     );
     passedTests++;
     console.log('  Passed: Duplicate cancellation blocked');
+
+    // Test 45: Phase 2B Wholesale return lineage protection
+    console.log('Test 45: Wholesale return lineage protection (uses original wholesale rate & captures saleTypeSnapshot)');
+    const wholesalePriceB = await prisma.productPrice.create({
+      data: {
+        productId: productB.id,
+        pricingTier: SaleType.WHOLESALE,
+        rate: 110,
+        createdById: adminAuth.user.id,
+      },
+    });
+
+    const wholesaleSale = await SalesService.createSale(
+      adminAuth.user.id,
+      'ADMIN',
+      {
+        customerId: testCustomer.id,
+        saleType: 'WHOLESALE',
+        items: [{ productId: productB.id, quantity: 2 }],
+        payments: [{ paymentMode: PaymentMode.CASH, amount: 220 }],
+        paidAmount: 220,
+      }
+    );
+    createdSaleIds.push(wholesaleSale.id);
+    console.assert(wholesaleSale.saleType === 'WHOLESALE', 'Original sale saleType must be WHOLESALE');
+    const wholesaleSaleItem = wholesaleSale.items[0];
+    console.assert(Number(wholesaleSaleItem.unitRate) === 110, 'Wholesale item unit rate must be ₹110');
+
+    await prisma.productPrice.update({
+      where: { id: wholesalePriceB.id },
+      data: { rate: 170 },
+    });
+
+    const wholesaleReturnRes = await api('/sales-returns', {
+      method: 'POST',
+      token: outletToken,
+      body: {
+        originalSaleId: wholesaleSale.id,
+        reason: 'Wholesale return lineage test',
+        items: [{ saleItemId: wholesaleSaleItem.id, returnedQuantity: 1 }],
+      },
+    });
+    console.assert(wholesaleReturnRes.status === 201, `Expected 201, got ${wholesaleReturnRes.status}`);
+    createdReturnIds.push(wholesaleReturnRes.data.data.id);
+    console.assert(
+      wholesaleReturnRes.data.data.saleTypeSnapshot === 'WHOLESALE',
+      `SalesReturn header must inherit saleTypeSnapshot WHOLESALE, got ${wholesaleReturnRes.data.data.saleTypeSnapshot}`
+    );
+    console.assert(
+      Number(wholesaleReturnRes.data.data.totalReturnAmount) === 110,
+      `Return refund must use historical wholesale rate ₹110 (NOT current ₹170), got ${wholesaleReturnRes.data.data.totalReturnAmount}`
+    );
+    passedTests++;
+    console.log('  Passed: Wholesale return lineage correctly captured saleTypeSnapshot and used original unit rate ₹110.');
 
     console.log('\n🎉 ========================================================');
     console.log(`🎉 ALL ${passedTests}/${totalTests} STEP 8 SALES RETURN ENGINE TESTS PASSED!`);

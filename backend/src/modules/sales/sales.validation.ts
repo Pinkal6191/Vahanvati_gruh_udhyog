@@ -1,20 +1,34 @@
 import { z } from 'zod';
-import { CustomerType, PaymentMode, SaleStatus } from '@prisma/client';
+import { CustomerType, PaymentMode, SaleStatus, SaleType } from '@prisma/client';
 
-export const createSaleItemSchema = z.object({
-  productId: z.string().uuid('Valid Product ID is required'),
-  packConfigId: z.string().uuid('Valid Pack Config ID is required').optional().nullable(),
-  quantity: z
-    .number({ required_error: 'Quantity is required' })
-    .positive('Quantity must be positive')
-    .max(10000, 'Quantity cannot exceed 10,000'),
-  looseWeightInGrams: z
-    .number()
-    .positive('Loose weight must be positive')
-    .max(1000000, 'Loose weight cannot exceed 1,000,000 grams')
-    .optional()
-    .nullable(),
-});
+export const createSaleItemSchema = z
+  .object({
+    productId: z.string().uuid('Valid Product ID is required'),
+    packConfigId: z.string().uuid('Valid Pack Config ID is required').optional().nullable(),
+    quantity: z
+      .number({ required_error: 'Quantity is required' })
+      .positive('Quantity must be positive')
+      .max(10000, 'Quantity cannot exceed 10,000'),
+    looseWeightInGrams: z
+      .number()
+      .positive('Loose weight must be positive')
+      .max(1000000, 'Loose weight cannot exceed 1,000,000 grams')
+      .optional()
+      .nullable(),
+  })
+  .superRefine((data: any, ctx) => {
+    // Explicitly reject untrusted client-supplied financial fields
+    const disallowedFinancialFields = ['unitRate', 'lineAmount', 'subtotal', 'discount', 'total'];
+    for (const field of disallowedFinancialFields) {
+      if (field in data && data[field] !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Client financial field "${field}" is disallowed on sale items. Pricing is resolved authoritatively by the backend.`,
+          path: [field],
+        });
+      }
+    }
+  });
 
 export const salePaymentSchema = z.object({
   paymentMode: z.nativeEnum(PaymentMode, {
@@ -35,27 +49,44 @@ export const salePaymentSchema = z.object({
   notes: z.string().max(255).optional().nullable(),
 });
 
-export const createSaleSchema = z.object({
-  customerId: z.string().uuid('Valid Customer ID is required').optional().nullable(),
-  customerType: z.nativeEnum(CustomerType).optional().nullable(),
-  items: z.array(createSaleItemSchema).min(1, 'Cart cannot be empty'),
-  discountAmount: z
-    .number()
-    .min(0, 'Discount cannot be negative')
-    .default(0)
-    .refine(
-      (val) => {
-        const str = val.toString();
-        const decimalPart = str.split('.')[1];
-        return !decimalPart || decimalPart.length <= 2;
-      },
-      { message: 'Discount cannot have more than 2 decimal places' }
-    ),
-  payments: z.array(salePaymentSchema).min(1, 'At least one payment entry is required'),
-  paidAmount: z
-    .number({ required_error: 'Paid amount is required' })
-    .min(0, 'Paid amount cannot be negative'),
-});
+export const createSaleSchema = z
+  .object({
+    customerId: z.string().uuid('Valid Customer ID is required').optional().nullable(),
+    customerType: z.nativeEnum(CustomerType).optional().nullable(), // Demographic
+    saleType: z.nativeEnum(SaleType, {
+      errorMap: () => ({ message: 'Sale type must be RETAIL, NRI, or WHOLESALE' }),
+    }).optional(), // Authoritative pricing & transaction selector
+    items: z.array(createSaleItemSchema).min(1, 'Cart cannot be empty'),
+    discountAmount: z
+      .number()
+      .min(0, 'Discount cannot be negative')
+      .default(0)
+      .refine(
+        (val) => {
+          const str = val.toString();
+          const decimalPart = str.split('.')[1];
+          return !decimalPart || decimalPart.length <= 2;
+        },
+        { message: 'Discount cannot have more than 2 decimal places' }
+      ),
+    payments: z.array(salePaymentSchema).min(1, 'At least one payment entry is required'),
+    paidAmount: z
+      .number({ required_error: 'Paid amount is required' })
+      .min(0, 'Paid amount cannot be negative'),
+  })
+  .superRefine((data: any, ctx) => {
+    // Explicitly reject untrusted client-supplied header totals
+    const disallowedHeaderFields = ['subtotalAmount', 'taxAmount', 'finalTotalAmount'];
+    for (const field of disallowedHeaderFields) {
+      if (field in data && data[field] !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Client financial field "${field}" is disallowed on sale header. Totals are calculated authoritatively by the backend.`,
+          path: [field],
+        });
+      }
+    }
+  });
 
 export const cancelSaleSchema = z.object({
   reason: z
@@ -68,6 +99,7 @@ export const salesQuerySchema = z.object({
   billNumber: z.string().optional(),
   customerId: z.string().uuid().optional(),
   customerType: z.nativeEnum(CustomerType).optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
   paymentMode: z.nativeEnum(PaymentMode).optional(),
   saleStatus: z.nativeEnum(SaleStatus).optional(),
   date: z.string().optional(), // YYYY-MM-DD

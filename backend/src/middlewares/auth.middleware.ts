@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { SaleType } from '@prisma/client';
 import { env } from '../config/env.js';
 import { UnauthorizedError } from '../common/errors/app-error.js';
 import { prisma } from '../config/database.js';
@@ -8,6 +9,9 @@ export interface AuthenticatedUser {
   id: string;
   username: string;
   role: 'ADMIN' | 'OUTLET' | 'PRODUCTION';
+  isMasterAdmin: boolean;
+  allowedBillingSaleTypes: SaleType[];
+  allowedReportSaleTypes: SaleType[];
 }
 
 declare global {
@@ -42,7 +46,15 @@ export async function authenticate(
     // Verify user is still active in database
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, username: true, role: true, isActive: true },
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        isActive: true,
+        isMasterAdmin: true,
+        allowedBillingSaleTypes: true,
+        allowedReportSaleTypes: true,
+      },
     });
 
     if (!user || !user.isActive) {
@@ -54,6 +66,9 @@ export async function authenticate(
       id: user.id,
       username: user.username,
       role: user.role,
+      isMasterAdmin: user.isMasterAdmin,
+      allowedBillingSaleTypes: user.allowedBillingSaleTypes,
+      allowedReportSaleTypes: user.allowedReportSaleTypes,
     };
 
     next();

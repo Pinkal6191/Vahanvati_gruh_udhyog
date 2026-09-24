@@ -1,6 +1,8 @@
 import { apiClient } from '../../services/api/api-client';
 import { CustomerType } from '../../types/common.types';
+import { SaleType } from '../../types/auth.types';
 
+export type { SaleType };
 export type PaymentMode = 'CASH' | 'UPI' | 'CARD' | 'OTHER';
 export type SaleStatus = 'COMPLETED' | 'CANCELLED';
 export type PaymentStatus = 'COMPLETED' | 'REFUNDED';
@@ -22,6 +24,7 @@ export interface SalePaymentPayload {
 export interface CreateSalePayload {
   customerId?: string | null;
   customerType?: CustomerType | null;
+  saleType: SaleType;
   items: CreateSaleItemPayload[];
   discountAmount?: number;
   payments: SalePaymentPayload[];
@@ -31,6 +34,7 @@ export interface CreateSalePayload {
 export interface ResolveCartPayload {
   customerId?: string | null;
   customerType?: CustomerType;
+  saleType: SaleType;
   items: Array<{
     productId: string;
     packConfigId?: string | null;
@@ -55,6 +59,7 @@ export interface ResolvedCartItem {
 export interface ResolvedCartResponse {
   customerId?: string | null;
   customerType: CustomerType;
+  saleType: SaleType;
   subtotalAmount: number;
   finalTotalAmount: number;
   items: ResolvedCartItem[];
@@ -88,6 +93,8 @@ export interface SaleRecord {
   billNumber: string;
   customerId?: string | null;
   customerTypeSnapshot: CustomerType;
+  saleType?: SaleType;
+  saleTypeSnapshot?: SaleType;
   customerNameSnapshot?: string | null;
   customerMobileSnapshot?: string | null;
   subtotalAmount: number;
@@ -113,6 +120,7 @@ export interface SalesQueryFilter {
   billNumber?: string;
   customerId?: string;
   customerType?: CustomerType;
+  saleType?: SaleType;
   paymentMode?: PaymentMode;
   saleStatus?: SaleStatus;
   date?: string;
@@ -189,6 +197,7 @@ export const BillingApi = {
     if (query?.billNumber) params.set('billNumber', query.billNumber);
     if (query?.customerId) params.set('customerId', query.customerId);
     if (query?.customerType) params.set('customerType', query.customerType);
+    if (query?.saleType) params.set('saleType', query.saleType);
     if (query?.paymentMode) params.set('paymentMode', query.paymentMode);
     if (query?.saleStatus) params.set('saleStatus', query.saleStatus);
     if (query?.date) params.set('date', query.date);

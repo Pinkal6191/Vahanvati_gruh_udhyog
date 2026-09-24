@@ -230,6 +230,7 @@ describe('Step 12 — POS / Billing Frontend Terminal Test Suite', () => {
       const payload: CreateSalePayload = {
         customerId: '00000000-0000-0000-0000-000000000099',
         customerType: 'INDIAN',
+        saleType: 'RETAIL',
         items: [
           {
             productId: 'prod-001',

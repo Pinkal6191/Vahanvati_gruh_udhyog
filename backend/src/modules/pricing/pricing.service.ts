@@ -1,6 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { NotFoundError, BadRequestError } from '../../common/errors/app-error.js';
-import { CustomerType, Prisma } from '@prisma/client';
+import { CustomerType, SaleType, Prisma } from '@prisma/client';
 import {
   CreatePriceInput,
   UpdatePriceInput,
@@ -9,44 +9,24 @@ import {
   PriceQueryInput,
 } from './pricing.validation.js';
 import { AuditService } from '../audit/audit.service.js';
+import {
+  mapSaleTypeToPricingTier,
+  ResolvedItemOutput,
+  ResolvedCartOutput,
+} from './pricing.types.js';
 
-export interface ResolvedItemOutput {
-  productId: string;
-  productName: string;
-  gujaratiName?: string | null;
-  packConfigId?: string | null;
-  weightOrPackName: string;
-  unitSymbol: string;
-  quantity: number;
-  baseWeightDeducted: number; // In base units (Grams or Pieces)
-  unitRate: number; // Snapshot authoritative rate
-  totalAmount: number;
-  customerType: CustomerType;
-  effectiveFrom: Date;
-  effectiveTo?: Date | null;
-  priceId: string;
-}
-
-export interface ResolvedCartOutput {
-  customerId: string;
-  customerType: CustomerType;
-  customerName: string;
-  customerMobile?: string | null;
-  items: ResolvedItemOutput[];
-  subtotalAmount: number;
-  finalTotalAmount: number;
-}
+export { ResolvedItemOutput, ResolvedCartOutput };
 
 export class PricingService {
   /**
    * Helper: Validates whether a given date range overlaps with existing active price records
-   * for the same product, pack variant, and customer tier.
+   * for the same product, pack variant, and pricing tier.
    */
   static async checkDateOverlap(
     tx: Prisma.TransactionClient,
     productId: string,
     packConfigId: string | null | undefined,
-    customerType: CustomerType,
+    pricingTier: SaleType,
     effectiveFrom: Date,
     effectiveTo: Date | null | undefined,
     excludePriceId?: string
@@ -58,12 +38,12 @@ export class PricingService {
       throw new BadRequestError('effectiveTo must be strictly after effectiveFrom');
     }
 
-    // Find all active prices for same product + pack variant + customer tier
+    // Find all active prices for same product + pack variant + pricing tier
     const existingPrices = await tx.productPrice.findMany({
       where: {
         productId,
         packConfigId: packConfigId ?? null,
-        customerType,
+        pricingTier,
         isActive: true,
         ...(excludePriceId ? { id: { not: excludePriceId } } : {}),
       },
@@ -81,7 +61,7 @@ export class PricingService {
 
       if (candidateEndsAfterEpStarts && epEndsAfterCandidateStarts) {
         throw new BadRequestError(
-          `Overlapping effective price period detected for product, variant, and ${customerType} tier (conflicts with existing price from ${new Date(ep.effectiveFrom).toISOString()})`
+          `Overlapping effective price period detected for product, variant, and ${pricingTier} tier (conflicts with existing price from ${new Date(ep.effectiveFrom).toISOString()})`
         );
       }
     }
@@ -119,12 +99,17 @@ export class PricingService {
       const effectiveFrom = input.effectiveFrom ? new Date(input.effectiveFrom) : new Date();
       const effectiveTo = input.effectiveTo ? new Date(input.effectiveTo) : null;
 
+      // Authoritative pricing tier resolution (with legacy customerType support)
+      const pricingTier =
+        input.pricingTier ??
+        (input.customerType === CustomerType.NRI ? SaleType.NRI : SaleType.RETAIL);
+
       // 3. Overlap validation
       await this.checkDateOverlap(
         tx,
         input.productId,
         input.packConfigId ?? null,
-        input.customerType,
+        pricingTier,
         effectiveFrom,
         effectiveTo
       );
@@ -134,7 +119,7 @@ export class PricingService {
         data: {
           productId: input.productId,
           packConfigId: input.packConfigId ?? null,
-          customerType: input.customerType,
+          pricingTier,
           rate: new Prisma.Decimal(input.rate),
           effectiveFrom,
           effectiveTo,
@@ -158,7 +143,7 @@ export class PricingService {
         newValues: {
           productId: newPrice.productId,
           packConfigId: newPrice.packConfigId,
-          customerType: newPrice.customerType,
+          pricingTier: newPrice.pricingTier,
           rate: Number(newPrice.rate),
           effectiveFrom: newPrice.effectiveFrom,
           effectiveTo: newPrice.effectiveTo,
@@ -189,7 +174,12 @@ export class PricingService {
       }
 
       const effectiveFrom = input.effectiveFrom ? new Date(input.effectiveFrom) : existing.effectiveFrom;
-      const effectiveTo = input.effectiveTo !== undefined ? (input.effectiveTo ? new Date(input.effectiveTo) : null) : existing.effectiveTo;
+      const effectiveTo =
+        input.effectiveTo !== undefined
+          ? input.effectiveTo
+            ? new Date(input.effectiveTo)
+            : null
+          : existing.effectiveTo;
 
       // Check overlap if dates or active status changed
       if (input.effectiveFrom || input.effectiveTo !== undefined || input.isActive === true) {
@@ -197,7 +187,7 @@ export class PricingService {
           tx,
           existing.productId,
           existing.packConfigId,
-          existing.customerType,
+          existing.pricingTier,
           effectiveFrom,
           effectiveTo,
           existing.id
@@ -267,7 +257,7 @@ export class PricingService {
           tx,
           existing.productId,
           existing.packConfigId,
-          existing.customerType,
+          existing.pricingTier,
           existing.effectiveFrom,
           existing.effectiveTo,
           existing.id
@@ -299,9 +289,10 @@ export class PricingService {
    *
    * STRICT RULES:
    * - Inactive product cannot be selected -> 400 Bad Request
-   * - NRI missing price -> 400 Bad Request ("Applicable NRI price is not configured for this product")
-   * - Indian missing price -> 400 Bad Request ("Applicable Indian price is not configured for this product")
-   * - Never fallback to Indian for NRI!
+   * - Missing Wholesale price -> 400 Bad Request ("WHOLESALE_PRICE_NOT_CONFIGURED")
+   * - Missing NRI price -> 400 Bad Request ("NRI_PRICE_NOT_CONFIGURED")
+   * - Missing Retail price -> 400 Bad Request ("RETAIL_PRICE_NOT_CONFIGURED")
+   * - Never fallback to another tier!
    * - Respects targetDate vs [effectiveFrom, effectiveTo]
    */
   static async resolveApplicablePrice(input: ResolvePriceInput): Promise<ResolvedItemOutput> {
@@ -340,21 +331,30 @@ export class PricingService {
       if (!product.isLooseWeightAllowed) {
         throw new BadRequestError(`Loose weight selling is not allowed for product: ${product.name}`);
       }
-      weightOrPackName = input.looseWeightInGrams >= 1000
-        ? `${input.looseWeightInGrams / 1000} kg`
-        : `${input.looseWeightInGrams}g`;
+      weightOrPackName =
+        input.looseWeightInGrams >= 1000
+          ? `${input.looseWeightInGrams / 1000} kg`
+          : `${input.looseWeightInGrams}g`;
       baseWeightDeducted = input.looseWeightInGrams * quantity;
     } else {
       weightOrPackName = `${quantity} ${product.primaryUnit.symbol}`;
       baseWeightDeducted = quantity;
     }
 
-    // 2. Query applicable price matching customer tier & target date
+    // Resolve authoritative pricing tier (with legacy customerType fallback if saleType/pricingTier omitted)
+    const resolvedSaleType: SaleType =
+      input.saleType ??
+      input.pricingTier ??
+      (input.customerType === CustomerType.NRI ? SaleType.NRI : SaleType.RETAIL);
+
+    const pricingTier = mapSaleTypeToPricingTier(resolvedSaleType);
+
+    // 2. Query applicable price matching pricing tier & target date
     const priceRecord = await prisma.productPrice.findFirst({
       where: {
         productId: product.id,
         packConfigId: input.packConfigId ?? null,
-        customerType: input.customerType,
+        pricingTier,
         isActive: true,
         effectiveFrom: { lte: targetDate },
         OR: [{ effectiveTo: null }, { effectiveTo: { gte: targetDate } }],
@@ -364,10 +364,12 @@ export class PricingService {
 
     // 3. STRICT RULE: NO FALLBACK TO ANOTHER TIER!
     if (!priceRecord) {
-      if (input.customerType === CustomerType.NRI) {
-        throw new BadRequestError('Applicable NRI price is not configured for this product');
+      if (pricingTier === SaleType.WHOLESALE) {
+        throw new BadRequestError('WHOLESALE_PRICE_NOT_CONFIGURED: Applicable Wholesale price is not configured for this product');
+      } else if (pricingTier === SaleType.NRI) {
+        throw new BadRequestError('NRI_PRICE_NOT_CONFIGURED: Applicable NRI price is not configured for this product');
       } else {
-        throw new BadRequestError('Applicable Indian price is not configured for this product');
+        throw new BadRequestError('RETAIL_PRICE_NOT_CONFIGURED: Applicable Retail price is not configured for this product');
       }
     }
 
@@ -392,7 +394,8 @@ export class PricingService {
       baseWeightDeducted,
       unitRate,
       totalAmount,
-      customerType: input.customerType,
+      pricingTier,
+      saleType: resolvedSaleType,
       effectiveFrom: priceRecord.effectiveFrom,
       effectiveTo: priceRecord.effectiveTo,
       priceId: priceRecord.id,
@@ -401,14 +404,22 @@ export class PricingService {
 
   /**
    * Authoritative Cart Price Resolver:
-   * Resolves exact rates for all items in a cart based on customer tier.
-   * Never exposes tier names or differential margins to invoice outputs.
+   * Resolves exact rates for all items in a cart based on authoritative SaleType.
+   * CustomerType remains demographic only.
    */
   static async resolveCart(input: ResolvePricesInput): Promise<ResolvedCartOutput> {
+    // Authoritative saleType resolution
+    // Legacy fallback ONLY if saleType is omitted: CustomerType.NRI -> SaleType.NRI else SaleType.RETAIL
+    const resolvedSaleType: SaleType =
+      input.saleType ??
+      (input.customerType === CustomerType.NRI ? SaleType.NRI : SaleType.RETAIL);
+
+    // Demographic resolution (remains CustomerType INDIAN / NRI)
     let customerType: CustomerType = input.customerType || CustomerType.INDIAN;
     let customerId = input.customerId || null;
     let customerName = 'Walk-in Customer';
     let customerMobile: string | null = null;
+    let customerGstin: string | null = null;
 
     if (customerId) {
       const customer = await prisma.customer.findUnique({ where: { id: customerId } });
@@ -418,8 +429,9 @@ export class PricingService {
       customerType = customer.customerType;
       customerName = customer.name;
       customerMobile = customer.mobile;
+      customerGstin = customer.gstin;
     } else {
-      // Find or fallback to walk-in customer
+      // Find or fallback to walk-in customer based on demographic customerType
       const defaultCustomer =
         (await prisma.customer.findFirst({
           where: { customerType, name: { contains: 'Walk-in' } },
@@ -433,6 +445,7 @@ export class PricingService {
         customerId = defaultCustomer.id;
         customerName = defaultCustomer.name;
         customerMobile = defaultCustomer.mobile;
+        customerGstin = defaultCustomer.gstin;
       } else {
         const created = await prisma.customer.create({
           data: {
@@ -442,6 +455,7 @@ export class PricingService {
         });
         customerId = created.id;
         customerName = created.name;
+        customerGstin = created.gstin;
       }
     }
 
@@ -451,7 +465,7 @@ export class PricingService {
     for (const item of input.items) {
       const resolved = await this.resolveApplicablePrice({
         productId: item.productId,
-        customerType,
+        saleType: resolvedSaleType,
         packConfigId: item.packConfigId ?? null,
         quantity: item.quantity,
         looseWeightInGrams: item.looseWeightInGrams ?? null,
@@ -462,16 +476,21 @@ export class PricingService {
       resolvedItems.push(resolved);
     }
 
-    // Round total amount to nearest integer rupee (ROUND_HALF_UP) as approved in BD-4
+    // Preserve existing monetary rounding:
+    // Subtotal rounded to 2 decimals
+    // Final total amount rounded to nearest integer rupee (ROUND_HALF_UP) as approved in BD-4
+    subtotalAmount = Math.round(subtotalAmount * 100) / 100;
     const finalTotalAmount = Math.round(subtotalAmount);
 
     return {
       customerId,
       customerType,
+      saleType: resolvedSaleType,
       customerName,
       customerMobile,
+      customerGstin,
       items: resolvedItems,
-      subtotalAmount: Math.round(subtotalAmount * 100) / 100,
+      subtotalAmount,
       finalTotalAmount,
     };
   }
@@ -482,9 +501,13 @@ export class PricingService {
   static async getCurrentPrices(query: PriceQueryInput) {
     const targetDate = query.date ? new Date(query.date) : new Date();
 
+    const pricingTier =
+      query.pricingTier ??
+      (query.customerType ? (query.customerType === 'NRI' ? SaleType.NRI : SaleType.RETAIL) : undefined);
+
     const where: Prisma.ProductPriceWhereInput = {
       ...(query.productId ? { productId: query.productId } : {}),
-      ...(query.customerType ? { customerType: query.customerType } : {}),
+      ...(pricingTier ? { pricingTier } : {}),
       ...(query.packConfigId !== undefined ? { packConfigId: query.packConfigId } : {}),
       ...(query.isActive !== undefined ? { isActive: query.isActive } : { isActive: true }),
       effectiveFrom: { lte: targetDate },
@@ -493,7 +516,7 @@ export class PricingService {
 
     return prisma.productPrice.findMany({
       where,
-      orderBy: [{ productId: 'asc' }, { customerType: 'asc' }, { effectiveFrom: 'desc' }],
+      orderBy: [{ productId: 'asc' }, { pricingTier: 'asc' }, { effectiveFrom: 'desc' }],
       include: {
         product: { select: { id: true, name: true, code: true, isActive: true } },
         packConfig: true,
@@ -504,16 +527,30 @@ export class PricingService {
   /**
    * Admin: View chronological price history for a product.
    */
-  static async getPriceHistory(productId: string, customerType?: CustomerType) {
+  static async getPriceHistory(
+    productId: string,
+    tierOrCustomerType?: SaleType | CustomerType
+  ) {
     const product = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) {
       throw new NotFoundError('Product not found');
     }
 
+    let pricingTier: SaleType | undefined;
+    if (tierOrCustomerType) {
+      if (tierOrCustomerType === CustomerType.INDIAN) {
+        pricingTier = SaleType.RETAIL;
+      } else if (tierOrCustomerType === CustomerType.NRI) {
+        pricingTier = SaleType.NRI;
+      } else {
+        pricingTier = tierOrCustomerType as SaleType;
+      }
+    }
+
     return prisma.productPrice.findMany({
       where: {
         productId,
-        ...(customerType ? { customerType } : {}),
+        ...(pricingTier ? { pricingTier } : {}),
       },
       orderBy: [{ effectiveFrom: 'desc' }, { createdAt: 'desc' }],
       include: {
@@ -553,12 +590,16 @@ export class PricingService {
         const effectiveFrom = item.effectiveFrom ? new Date(item.effectiveFrom) : new Date();
         const effectiveTo = item.effectiveTo ? new Date(item.effectiveTo) : null;
 
+        const pricingTier =
+          item.pricingTier ??
+          (item.customerType === CustomerType.NRI ? SaleType.NRI : SaleType.RETAIL);
+
         // Overlap check
         await this.checkDateOverlap(
           tx,
           item.productId,
           item.packConfigId ?? null,
-          item.customerType,
+          pricingTier,
           effectiveFrom,
           effectiveTo
         );
@@ -567,7 +608,7 @@ export class PricingService {
           data: {
             productId: item.productId,
             packConfigId: item.packConfigId ?? null,
-            customerType: item.customerType,
+            pricingTier,
             rate: new Prisma.Decimal(item.rate),
             effectiveFrom,
             effectiveTo,

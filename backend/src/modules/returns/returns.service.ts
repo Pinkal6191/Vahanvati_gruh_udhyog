@@ -167,6 +167,7 @@ export class ReturnsService {
           returnNumber,
           originalSaleId: originalSale.id,
           customerId: originalSale.customerId,
+          saleTypeSnapshot: originalSale.saleType,
           totalReturnAmount: new Prisma.Decimal(totalRefundAmount),
           refundPaymentMode: input.refundPaymentMode,
           status,

@@ -25,6 +25,12 @@ enum CustomerType {
   NRI
 }
 
+enum SaleType {
+  RETAIL
+  NRI
+  WHOLESALE
+}
+
 enum MovementType {
   SALE_OUT
   SALES_RETURN_IN
@@ -91,8 +97,11 @@ model User {
   email        String?   @unique @db.VarChar(255)
   passwordHash String    @map("password_hash") @db.VarChar(255)
   fullName     String    @map("full_name") @db.VarChar(100)
-  role         Role      @default(OUTLET)
-  isActive     Boolean   @default(true) @map("is_active")
+  role                    Role       @default(OUTLET)
+  isMasterAdmin           Boolean    @default(false) @map("is_master_admin")
+  allowedBillingSaleTypes SaleType[] @default([RETAIL, NRI]) @map("allowed_billing_sale_types")
+  allowedReportSaleTypes  SaleType[] @default([RETAIL, NRI]) @map("allowed_report_sale_types")
+  isActive                Boolean    @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -260,24 +269,24 @@ model ProductPackConfiguration {
 }
 
 model ProductPrice {
-  id            String       @id @default(uuid()) @db.Uuid
-  productId     String       @map("product_id") @db.Uuid
-  packConfigId  String?      @map("pack_config_id") @db.Uuid
-  customerType  CustomerType @default(INDIAN) @map("customer_type")
-  rate          Decimal      @db.Decimal(12, 2)
-  effectiveFrom DateTime     @default(now()) @map("effective_from") @db.Timestamptz(6)
-  effectiveTo   DateTime?    @map("effective_to") @db.Timestamptz(6)
-  isActive      Boolean      @default(true) @map("is_active")
-  createdById   String?      @map("created_by") @db.Uuid
-  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String    @id @default(uuid()) @db.Uuid
+  productId     String    @map("product_id") @db.Uuid
+  packConfigId  String?   @map("pack_config_id") @db.Uuid
+  pricingTier   SaleType  @default(RETAIL) @map("pricing_tier")
+  rate          Decimal   @db.Decimal(12, 2)
+  effectiveFrom DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo   DateTime? @map("effective_to") @db.Timestamptz(6)
+  isActive      Boolean   @default(true) @map("is_active")
+  createdById   String?   @map("created_by") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
   product    Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
   packConfig ProductPackConfiguration? @relation(fields: [packConfigId], references: [id], onDelete: Cascade)
   createdBy  User?                     @relation("PricesCreated", fields: [createdById], references: [id], onDelete: SetNull)
 
-  @@index([productId, customerType, effectiveFrom])
+  @@index([productId, pricingTier, effectiveFrom])
   @@index([productId, packConfigId])
   @@map("product_prices")
 }
@@ -331,6 +340,8 @@ model Sale {
   customerNameSnapshot   String        @map("customer_name_snapshot") @db.VarChar(100)
   customerMobileSnapshot String?       @map("customer_mobile_snapshot") @db.VarChar(20)
   customerTypeSnapshot   CustomerType  @map("customer_type_snapshot")
+  customerGstinSnapshot  String?       @map("customer_gstin_snapshot") @db.VarChar(50)
+  saleType               SaleType      @default(RETAIL) @map("sale_type")
   totalItemsCount        Int           @map("total_items_count")
   subtotalAmount         Decimal       @map("subtotal_amount") @db.Decimal(12, 2)
   discountAmount         Decimal       @default(0.00) @map("discount_amount") @db.Decimal(12, 2)
@@ -355,6 +366,7 @@ model Sale {
   @@index([billNumber])
   @@index([createdAt])
   @@index([customerId])
+  @@index([saleType, createdAt])
   @@map("sales")
 }
 
@@ -366,6 +378,7 @@ model SaleItem {
   productNameSnapshot   String   @map("product_name_snapshot") @db.VarChar(150)
   unitSymbolSnapshot    String   @map("unit_symbol_snapshot") @db.VarChar(20)
   weightOrPackSnapshot  String   @map("weight_or_pack_snapshot") @db.VarChar(50)
+  saleTypeSnapshot      SaleType @default(RETAIL) @map("sale_type_snapshot")
   quantity              Decimal  @db.Decimal(10, 3)
   baseWeightDeducted    Decimal  @map("base_weight_deducted") @db.Decimal(10, 3)
   unitRate              Decimal  @map("unit_rate") @db.Decimal(12, 2)
@@ -412,6 +425,7 @@ model SalesReturn {
   returnNumber       String            @unique @map("return_number") @db.VarChar(50)
   originalSaleId     String            @map("original_sale_id") @db.Uuid
   customerId         String            @map("customer_id") @db.Uuid
+  saleTypeSnapshot   SaleType          @default(RETAIL) @map("sale_type_snapshot")
   totalReturnAmount  Decimal           @map("total_return_amount") @db.Decimal(12, 2)
   refundPaymentMode  RefundPaymentMode @default(CASH) @map("refund_payment_mode")
   status             ReturnStatus      @default(COMPLETED) @map("status")

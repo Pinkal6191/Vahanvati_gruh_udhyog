@@ -18,7 +18,10 @@ export class ReportsController {
    */
   static async getSalesReport(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await ReportsService.getSalesReport(req.query as unknown as SalesReportQuery);
+      const result = await ReportsService.getSalesReport(
+        req.query as unknown as SalesReportQuery,
+        req.user
+      );
       res.status(200).json({ success: true, data: result });
     } catch (err) {
       next(err);

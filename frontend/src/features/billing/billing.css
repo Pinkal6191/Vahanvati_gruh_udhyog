@@ -115,6 +115,177 @@
   gap: var(--spacing-1);
 }
 
+/* SALE TYPE HEADER SELECTOR */
+.pos-header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pos-saletype-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
+  padding: 3px 6px;
+  border-radius: var(--radius-full);
+}
+
+.pos-saletype-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-gray-500);
+  padding-left: 4px;
+}
+
+.pos-saletype-icon {
+  color: var(--color-gray-400);
+}
+
+.pos-saletype-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pos-saletype-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pos-saletype-pill:hover:not(.disabled) {
+  background-color: var(--color-gray-200);
+  color: var(--color-gray-900);
+}
+
+.pos-saletype-pill.active.retail {
+  background-color: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
+}
+
+.pos-saletype-pill.active.nri {
+  background-color: #7c3aed;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.3);
+}
+
+.pos-saletype-pill.active.wholesale {
+  background-color: #d97706;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.3);
+}
+
+.pos-saletype-pill.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-400);
+}
+
+.pos-saletype-lock {
+  opacity: 0.7;
+}
+
+/* CUSTOMER DEMOGRAPHIC & PRICING DISPLAY CHIPS */
+.pos-demographic-chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pos-demographic-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  text-transform: uppercase;
+}
+
+.pos-saletype-badge-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #475569;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.pos-saletype-badge-display strong {
+  color: #0f172a;
+}
+
+.pos-customer-sub-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.pos-customer-mobile-tag {
+  font-size: 11px;
+  color: var(--color-gray-500);
+}
+
+/* UNPRICED ITEM & CART WARNING STYLES */
+.pos-item-unpriced-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #dc2626;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.pos-cart-item-row.has-price-error {
+  border-left: 3px solid #dc2626 !important;
+  background-color: #fff5f5;
+}
+
+.pos-unpriced-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  color: #92400e;
+  font-size: 12px;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
 /* ------------------------------------------------------------
    2. MAIN TWO-PANE WORKSPACE
    ------------------------------------------------------------ */
@@ -1775,6 +1946,12 @@
 
 /* RESPONSIVE BREAKPOINTS */
 @media (max-width: 1024px) {
+  .pos-top-header {
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+
   .pos-cart-pane {
     width: 350px;
     min-width: 320px;
@@ -1782,6 +1959,45 @@
 }
 
 @media (max-width: 768px) {
+  .pos-top-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .pos-header-left,
+  .pos-header-right {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .pos-header-center {
+    width: 100%;
+    order: 3;
+  }
+
+  .pos-saletype-container {
+    width: 100%;
+    justify-content: space-between;
+    border-radius: var(--radius-md);
+  }
+
+  .pos-saletype-toggle-group {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .pos-saletype-pill {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+    padding: 5px 2px;
+    font-size: 11px;
+  }
+
   .pos-terminal-layout {
     height: auto;
     overflow: visible;

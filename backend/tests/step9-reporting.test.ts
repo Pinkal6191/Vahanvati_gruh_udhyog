@@ -5,7 +5,7 @@ import { StockService } from '../src/modules/inventory/stock.service.js';
 import { SalesService } from '../src/modules/sales/sales.service.js';
 import { ReturnsService } from '../src/modules/returns/returns.service.js';
 import { ProductionService } from '../src/modules/production/production.service.js';
-import { MovementType, ReferenceType, PaymentMode, CustomerType, ProductionStatus, ReturnStatus } from '@prisma/client';
+import { MovementType, ReferenceType, PaymentMode, CustomerType, ProductionStatus, ReturnStatus, SaleType } from '@prisma/client';
 import http from 'http';
 
 async function runStep9ReportingTests() {
@@ -15,7 +15,7 @@ async function runStep9ReportingTests() {
 
   const ts = Date.now();
   let passedTests = 0;
-  const totalTests = 47;
+  const totalTests = 49;
 
   const createdSaleIds: string[] = [];
   const createdReturnIds: string[] = [];
@@ -142,7 +142,7 @@ async function runStep9ReportingTests() {
       {
         productId: product1.id,
         packConfigId: packP1.id,
-        customerType: CustomerType.INDIAN,
+        pricingTier: SaleType.RETAIL,
         rate: 100,
         effectiveFrom: new Date('2020-01-01'),
         createdById: adminAuth.user.id,
@@ -150,7 +150,7 @@ async function runStep9ReportingTests() {
       {
         productId: product2.id,
         packConfigId: packP2.id,
-        customerType: CustomerType.INDIAN,
+        pricingTier: SaleType.RETAIL,
         rate: 200,
         effectiveFrom: new Date('2020-01-01'),
         createdById: adminAuth.user.id,
@@ -766,6 +766,32 @@ async function runStep9ReportingTests() {
     console.assert(data47.data.summary.completedBillsCount >= 3, 'Must encompass transactions made today');
     passedTests++;
     console.log('  ✅ Same-day boundary 00:00:00 to 23:59:59 verified');
+
+    // ========================================================
+    // SECTION 11: PHASE 2B SALE TYPE REPORTING (Tests 48–49)
+    // ========================================================
+    console.log('▶ [48/49] Phase 2B: Sales Report Filtering by saleType=RETAIL...');
+    const res48 = await fetch(`${baseUrl}/reports/sales?startDate=${todayStr}&endDate=${todayStr}&saleType=RETAIL`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    const data48 = await res48.json();
+    console.assert(res48.status === 200, `Filtering report by saleType=RETAIL must return 200, got ${res48.status}`);
+    console.assert(data48.data.summary.completedBillsCount >= 1, 'Should find completed bills with saleType RETAIL');
+    passedTests++;
+    console.log('  ✅ Sales report filtered by saleType=RETAIL executed successfully.');
+
+    console.log('▶ [49/49] Phase 2B: Reporting RBAC Enforces allowedReportSaleTypes (403 for unauthorized saleType)...');
+    const res49 = await fetch(`${baseUrl}/reports/sales?startDate=${todayStr}&endDate=${todayStr}&saleType=WHOLESALE`, {
+      headers: { Authorization: `Bearer ${outletToken}` },
+    });
+    console.assert(res49.status === 403, `Outlet querying WHOLESALE reports must return 403 Forbidden, got ${res49.status}`);
+    const data49 = await res49.json();
+    console.assert(
+      JSON.stringify(data49).includes('not authorized to view WHOLESALE reports'),
+      'Must contain unauthorized message'
+    );
+    passedTests++;
+    console.log('  ✅ Outlet role strictly denied access to WHOLESALE sales reports (403 Forbidden).');
 
     console.log('\n🎉 ========================================================');
     console.log(`🎉 ALL ${passedTests}/${totalTests} STEP 9 REPORTING ENGINE TESTS PASSED!`);

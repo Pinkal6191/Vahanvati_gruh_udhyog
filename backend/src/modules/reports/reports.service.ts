@@ -13,19 +13,34 @@ import {
 } from './reports.validation.js';
 import { resolveDateRange, formatPeriodKey, round2, GroupByInterval } from './reports.utils.js';
 import { InventoryService } from '../inventory/inventory.service.js';
-import { NotFoundError } from '../../common/errors/app-error.js';
+import { NotFoundError, ForbiddenError } from '../../common/errors/app-error.js';
 
 export class ReportsService {
   /**
    * 1. Comprehensive Sales Report
    */
-  static async getSalesReport(query: SalesReportQuery) {
-    const { period, startDate, endDate, groupBy, paymentMode, customerId } = query;
+  static async getSalesReport(query: SalesReportQuery, user?: any) {
+    const { period, startDate, endDate, groupBy, paymentMode, customerId, saleType } = query;
     const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
+
+    // Enforce Reporting RBAC if user has restricted allowedReportSaleTypes
+    if (user?.allowedReportSaleTypes) {
+      if (saleType && !user.allowedReportSaleTypes.includes(saleType)) {
+        throw new ForbiddenError(
+          `Access denied: You are not authorized to view ${saleType} reports`
+        );
+      }
+    }
 
     const whereSale: any = {
       saleStatus: SaleStatus.COMPLETED,
     };
+
+    if (saleType) {
+      whereSale.saleType = saleType;
+    } else if (user?.allowedReportSaleTypes) {
+      whereSale.saleType = { in: user.allowedReportSaleTypes };
+    }
 
     if (start || end) {
       whereSale.createdAt = {};

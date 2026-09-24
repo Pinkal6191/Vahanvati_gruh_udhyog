@@ -1,5 +1,6 @@
 export type Role = 'ADMIN' | 'OUTLET' | 'PRODUCTION';
 export type UserRole = Role;
+export type SaleType = 'RETAIL' | 'NRI' | 'WHOLESALE';
 
 export interface User {
   id: string;
@@ -9,6 +10,9 @@ export interface User {
   role: Role;
   isActive?: boolean;
   lastLoginAt?: string | null;
+  isMasterAdmin?: boolean;
+  allowedBillingSaleTypes?: SaleType[];
+  allowedReportSaleTypes?: SaleType[];
 }
 
 export interface AuthTokens {

@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Package, AlertTriangle, PackageX, Plus } from 'lucide-react';
 import { Product } from '../../products/products.api';
 import { CustomerType } from '../../../types/common.types';
-import { formatCurrency, formatGramsToKg } from '../../../utils/formatters';
+import { SaleType } from '../../../types/auth.types';
+import { formatGramsToKg } from '../../../utils/formatters';
 
 export interface ProductCardProps {
   product: Product;
-  customerType: CustomerType;
+  customerType?: CustomerType;
+  saleType: SaleType;
   onAddToCart: (
     product: Product,
     options?: {
@@ -20,7 +22,7 @@ export interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
-  customerType,
+  saleType,
   onAddToCart,
 }) => {
   const stockBalance = product.stock?.currentBalance ?? 0;
@@ -37,8 +39,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     product.code?.startsWith('MASALA');
 
   // Fast-touch weight presets
-  // Masala: 100g, 200g, 500g, 1 kg
-  // Others: 500g, 1 kg
   const weightOptions = isMasala
     ? [
         { label: '100g', grams: 100 },
@@ -56,19 +56,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     isMasala ? 100 : 500
   );
 
-  // Loose / base per-kg rate
-  const looseRate = (customerType === 'NRI' ? product.nriPrice : product.indianPrice) ?? 0;
+  // Loose / base per-kg rate resolved according to SaleType (never fall back across sale types)
+  const looseRate =
+    saleType === 'WHOLESALE'
+      ? (product.wholesalePrice ?? 0)
+      : saleType === 'NRI'
+      ? (product.nriPrice ?? 0)
+      : (product.retailPrice ?? product.indianPrice ?? 0);
 
   // Packs matching selected weight
   const packs = product.packConfigurations || [];
   const matchingPack = packs.find((p) => p.weightInBaseUnits === selectedWeightGrams);
 
-  // Pack price record if available
+  // Pack price record resolved according to SaleType
   const packPriceRecord = matchingPack
     ? ((product as any).prices || []).find(
         (pr: any) =>
           pr.packConfigId === matchingPack.id &&
-          pr.customerType === customerType &&
+          (pr.pricingTier === saleType ||
+            pr.customerType === saleType ||
+            (saleType === 'RETAIL' && (pr.pricingTier === 'INDIAN' || pr.customerType === 'INDIAN'))) &&
           pr.isActive
       )
     : null;
@@ -78,9 +85,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const applicableRate =
     packRate !== null && packRate > 0
       ? packRate
-      : (selectedWeightGrams / 1000) * looseRate;
+      : looseRate > 0
+      ? (selectedWeightGrams / 1000) * looseRate
+      : 0;
 
-  const hasConfiguredPrice = looseRate > 0 || (packRate !== null && packRate > 0);
+  const hasConfiguredPrice = (packRate !== null && packRate > 0) || looseRate > 0;
 
   const selectedOpt = weightOptions.find((o) => o.grams === selectedWeightGrams);
 
@@ -169,8 +178,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <span className="pos-price-weight-tag">/{selectedOpt?.label || 'unit'}</span>
             </>
           ) : (
-            <span className="pos-no-price-badge" title="Price not configured in system">
-              Price Not Set
+            <span
+              className="pos-no-price-badge"
+              title={`No active ${saleType} price configured for this item`}
+            >
+              {saleType === 'WHOLESALE' ? 'Wholesale N/A' : saleType === 'NRI' ? 'NRI N/A' : 'Price Not Set'}
             </span>
           )}
         </div>
@@ -199,7 +211,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           className="pos-quick-add-btn"
           disabled={!hasConfiguredPrice || isOutOfStock}
           onClick={(e) => handleAddToCart(e)}
-          title={!hasConfiguredPrice ? 'Price not configured' : `Add ${selectedOpt?.label} to cart`}
+          title={!hasConfiguredPrice ? `No ${saleType} price configured` : `Add ${selectedOpt?.label} to cart`}
           aria-label="Add to cart"
         >
           <Plus size={16} />

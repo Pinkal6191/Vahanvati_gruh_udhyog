@@ -46,7 +46,16 @@ export interface Product {
   stock?: ProductStock | null;
   // Resolved price fields for UI convenience
   indianPrice?: number | null;
+  retailPrice?: number | null;
   nriPrice?: number | null;
+  wholesalePrice?: number | null;
+  prices?: Array<{
+    id?: string;
+    pricingTier: string;
+    packConfigId?: string | null;
+    rate: number;
+    isActive: boolean;
+  }>;
 }
 
 export interface ProductListResponse {

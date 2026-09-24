@@ -3,7 +3,7 @@ import { createApp } from '../src/app.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
 import { PricingService } from '../src/modules/pricing/pricing.service.js';
 import { BadRequestError, NotFoundError } from '../src/common/errors/app-error.js';
-import { CustomerType, Role } from '@prisma/client';
+import { CustomerType, Role, SaleType } from '@prisma/client';
 import http from 'http';
 
 async function runStep4PricingTests() {
@@ -13,7 +13,7 @@ async function runStep4PricingTests() {
 
   const ts = Date.now();
   let passedTests = 0;
-  const totalTests = 25;
+  const totalTests = 30;
 
   // 1. Setup App HTTP server on random free port for HTTP integration tests
   const app = createApp();
@@ -662,6 +662,100 @@ async function runStep4PricingTests() {
     console.assert(hasCreateAudit, 'Audit log must record CREATE actions for pricing');
     console.assert(hasUpdateAudit, 'Audit log must record UPDATE actions for pricing');
     console.log(`  ✅ Audit trail verified with ${auditEntries.length} verified PRODUCT_PRICE log entries.`);
+    passedTests++;
+
+    // ============================================================
+    // SECTION 7: PHASE 2B — WHOLESALE, ZERO FALLBACK & CROSS-COMBINATIONS (Tests 26 - 30)
+    // ============================================================
+
+    // Test 26: Create & Resolve WHOLESALE pricing
+    console.log('▶ [26/30] Phase 2B: Create & Resolve WHOLESALE Pricing...');
+    const wholesalePrice = await PricingService.createPrice(
+      {
+        productId: productA.id,
+        packConfigId: packA500.id,
+        pricingTier: SaleType.WHOLESALE,
+        rate: 110.0,
+      },
+      admin.id,
+      'ADMIN'
+    );
+    console.assert(Number(wholesalePrice.rate) === 110.0, 'Wholesale rate must be 110');
+    console.assert(wholesalePrice.pricingTier === SaleType.WHOLESALE, 'pricingTier must be WHOLESALE');
+
+    const resolvedWholesale = await PricingService.resolveApplicablePrice({
+      productId: productA.id,
+      packConfigId: packA500.id,
+      saleType: SaleType.WHOLESALE,
+      quantity: 10,
+    });
+    console.assert(resolvedWholesale.unitRate === 110.0, 'Resolved Wholesale unit rate must be 110.0');
+    console.assert(resolvedWholesale.totalAmount === 1100.0, 'Resolved Wholesale total must be 1100.0');
+    console.assert(resolvedWholesale.pricingTier === SaleType.WHOLESALE, 'Resolved pricingTier must be WHOLESALE');
+    console.log('  ✅ Created and resolved Wholesale price (₹110.00) successfully.');
+    passedTests++;
+
+    // Test 27: Strict No-Fallback: Missing Wholesale Price returns WHOLESALE_PRICE_NOT_CONFIGURED
+    console.log('▶ [27/30] Phase 2B: Strict Zero-Fallback on Missing Wholesale Price...');
+    let wholesaleMissingCaught = false;
+    try {
+      // productIndianOnly has ONLY Retail price
+      await PricingService.resolveApplicablePrice({
+        productId: productIndianOnly.id,
+        saleType: SaleType.WHOLESALE,
+        quantity: 1,
+      });
+    } catch (err: any) {
+      wholesaleMissingCaught = true;
+      console.assert(
+        err.message.includes('WHOLESALE_PRICE_NOT_CONFIGURED'),
+        `Error must specify WHOLESALE_PRICE_NOT_CONFIGURED, got: ${err.message}`
+      );
+    }
+    console.assert(wholesaleMissingCaught, 'Missing Wholesale price must throw clear business error without fallback to Retail');
+    console.log('  ✅ Strict zero-fallback verified: Missing Wholesale throws WHOLESALE_PRICE_NOT_CONFIGURED.');
+    passedTests++;
+
+    // Test 28: Cross-Combination: CustomerType = INDIAN + SaleType = WHOLESALE -> WHOLESALE pricing
+    console.log('▶ [28/30] Phase 2B: Cross-Combination: CustomerType INDIAN + SaleType WHOLESALE...');
+    const indianWholesaleCart = await PricingService.resolveCart({
+      customerType: CustomerType.INDIAN,
+      saleType: SaleType.WHOLESALE,
+      items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 5 }],
+    });
+    console.assert(indianWholesaleCart.customerType === CustomerType.INDIAN, 'Demographic must remain INDIAN');
+    console.assert(indianWholesaleCart.saleType === SaleType.WHOLESALE, 'Authoritative saleType must be WHOLESALE');
+    console.assert(indianWholesaleCart.items[0].unitRate === 110.0, 'Must apply Wholesale unit rate ₹110');
+    console.assert(indianWholesaleCart.finalTotalAmount === 550, 'Total must be ₹550');
+    console.log('  ✅ Cross-combination verified: Customer INDIAN + Sale WHOLESALE resolves Wholesale pricing.');
+    passedTests++;
+
+    // Test 29: Cross-Combination: CustomerType = NRI + SaleType = RETAIL -> RETAIL pricing
+    console.log('▶ [29/30] Phase 2B: Cross-Combination: CustomerType NRI + SaleType RETAIL...');
+    const nriRetailCart = await PricingService.resolveCart({
+      customerType: CustomerType.NRI,
+      saleType: SaleType.RETAIL,
+      items: [{ productId: productA.id, packConfigId: packA500.id, quantity: 2 }],
+    });
+    console.assert(nriRetailCart.customerType === CustomerType.NRI, 'Demographic must remain NRI');
+    console.assert(nriRetailCart.saleType === SaleType.RETAIL, 'Authoritative saleType must be RETAIL');
+    console.assert(nriRetailCart.items[0].unitRate === 165.5, 'Must apply Retail unit rate ₹165.50');
+    console.assert(nriRetailCart.finalTotalAmount === 331, 'Total must be ₹331');
+    console.log('  ✅ Cross-combination verified: Customer NRI + Sale RETAIL resolves Retail pricing.');
+    passedTests++;
+
+    // Test 30: Public API Protection: Public products catalog does not expose differential pricing
+    console.log('▶ [30/30] Phase 2B: Public API Protection against Internal Pricing Leakage...');
+    const publicRes = await fetch(`${baseUrl}/public/products`);
+    const publicData = (await publicRes.json()) as any;
+    console.assert(publicRes.status === 200, 'Public products endpoint must return 200');
+    console.assert(Array.isArray(publicData.data.products), 'Public products list must be an array');
+    for (const prod of publicData.data.products) {
+      console.assert(prod.prices === undefined, 'Public product must NOT contain prices array');
+      console.assert(prod.nriPrice === undefined, 'Public product must NOT contain nriPrice');
+      console.assert(prod.wholesalePrice === undefined, 'Public product must NOT contain wholesalePrice');
+    }
+    console.log('  ✅ Public API protection verified: Zero internal pricing leakage on public catalog.');
     passedTests++;
 
     // Clean up

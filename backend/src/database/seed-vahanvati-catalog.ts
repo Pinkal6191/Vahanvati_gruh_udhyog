@@ -1,4 +1,4 @@
-import { PrismaClient, CustomerType } from '@prisma/client';
+import { PrismaClient, CustomerType, SaleType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -240,14 +240,14 @@ export async function seedVahanvatiCatalog() {
         {
           productId: prod.id,
           packConfigId: null,
-          customerType: CustomerType.INDIAN,
+          pricingTier: SaleType.RETAIL,
           rate: item.indianPricePerKg,
           isActive: true,
         },
         {
           productId: prod.id,
           packConfigId: null,
-          customerType: CustomerType.NRI,
+          pricingTier: SaleType.NRI,
           rate: nriRate,
           isActive: true,
         },
@@ -272,14 +272,14 @@ export async function seedVahanvatiCatalog() {
           {
             productId: prod.id,
             packConfigId: packConfig.id,
-            customerType: CustomerType.INDIAN,
+            pricingTier: SaleType.RETAIL,
             rate: item.packIndianPrice,
             isActive: true,
           },
           {
             productId: prod.id,
             packConfigId: packConfig.id,
-            customerType: CustomerType.NRI,
+            pricingTier: SaleType.NRI,
             rate: Math.round(item.packIndianPrice * 1.5),
             isActive: true,
           },

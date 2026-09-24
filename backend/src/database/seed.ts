@@ -1,4 +1,4 @@
-import { PrismaClient, Role, CustomerType } from '@prisma/client';
+import { PrismaClient, Role, CustomerType, SaleType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -207,15 +207,15 @@ async function main() {
   });
 
   // Prices for Papdi:
-  // Base rate (per KG): Indian ₹280, NRI ₹450
+  // Base rate (per KG): Retail ₹280, NRI ₹450
   await prisma.productPrice.createMany({
     data: [
-      { productId: papdi.id, packConfigId: null, customerType: CustomerType.INDIAN, rate: 280.0 },
-      { productId: papdi.id, packConfigId: null, customerType: CustomerType.NRI, rate: 450.0 },
-      { productId: papdi.id, packConfigId: papdi500gm.id, customerType: CustomerType.INDIAN, rate: 140.0 },
-      { productId: papdi.id, packConfigId: papdi500gm.id, customerType: CustomerType.NRI, rate: 225.0 },
-      { productId: papdi.id, packConfigId: papdi1kg.id, customerType: CustomerType.INDIAN, rate: 280.0 },
-      { productId: papdi.id, packConfigId: papdi1kg.id, customerType: CustomerType.NRI, rate: 450.0 },
+      { productId: papdi.id, packConfigId: null, pricingTier: SaleType.RETAIL, rate: 280.0 },
+      { productId: papdi.id, packConfigId: null, pricingTier: SaleType.NRI, rate: 450.0 },
+      { productId: papdi.id, packConfigId: papdi500gm.id, pricingTier: SaleType.RETAIL, rate: 140.0 },
+      { productId: papdi.id, packConfigId: papdi500gm.id, pricingTier: SaleType.NRI, rate: 225.0 },
+      { productId: papdi.id, packConfigId: papdi1kg.id, pricingTier: SaleType.RETAIL, rate: 280.0 },
+      { productId: papdi.id, packConfigId: papdi1kg.id, pricingTier: SaleType.NRI, rate: 450.0 },
     ],
   });
 

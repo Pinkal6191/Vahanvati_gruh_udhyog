@@ -143,6 +143,8 @@ export const BillingPage: React.FC = () => {
         itemCount={cart.itemCount}
         customer={cart.customer}
         customerType={cart.customerType}
+        saleType={cart.saleType}
+        onSaleTypeChange={cart.setSaleType}
         onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
         onOpenCustomerModal={() => setIsCustomerModalOpen(true)}
       />
@@ -153,6 +155,7 @@ export const BillingPage: React.FC = () => {
         <ProductCatalogPane
           ref={catalogRef}
           customerType={cart.customerType}
+          saleType={cart.saleType}
           onAddToCart={cart.addToCart}
         />
 
@@ -175,6 +178,7 @@ export const BillingPage: React.FC = () => {
             items={cart.items}
             customer={cart.customer}
             customerType={cart.customerType}
+            saleType={cart.saleType}
             subtotal={cart.subtotal}
             discountAmount={cart.discountAmount}
             grandTotal={cart.grandTotal}

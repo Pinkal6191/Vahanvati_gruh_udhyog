@@ -7,6 +7,7 @@ import {
   PaymentMode,
   SaleRecord,
   CreateSalePayload,
+  SaleType,
 } from '../billing.api';
 
 export interface CartItem {
@@ -23,12 +24,15 @@ export interface CartItem {
   unitRate: number;
   totalAmount: number;
   stockBalance?: number;
+  hasPriceError?: boolean;
+  priceErrorMessage?: string;
 }
 
 export interface UseBillingCartReturn {
   items: CartItem[];
   customer: Customer | null;
   customerType: CustomerType;
+  saleType: SaleType;
   discountAmount: number;
   paidAmount: number;
   paymentMode: PaymentMode;
@@ -39,10 +43,13 @@ export interface UseBillingCartReturn {
   grandTotal: number;
   changeAmount: number;
   itemCount: number;
+  hasMissingPriceItem: boolean;
+  missingPriceItemsCount: number;
 
   // Actions
   setCustomer: (customer: Customer | null) => void;
   setCustomerType: (type: CustomerType) => void;
+  setSaleType: (type: SaleType) => void;
   setDiscountAmount: (val: number) => void;
   setPaidAmount: (val: number) => void;
   setPaymentMode: (mode: PaymentMode) => void;
@@ -67,7 +74,8 @@ export interface UseBillingCartReturn {
 export function useBillingCart(): UseBillingCartReturn {
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomerState] = useState<Customer | null>(null);
-  const [customerType, setCustomerTypeState] = useState<CustomerType>('INDIAN');
+  const [customerType, setCustomerTypeState] = useState<CustomerType>('INDIAN'); // Demographic
+  const [saleType, setSaleTypeState] = useState<SaleType>('RETAIL'); // Authoritative transaction selector
   const [discountAmount, setDiscountAmountState] = useState<number>(0);
   const [paidAmount, setPaidAmountState] = useState<number>(0);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('CASH');
@@ -75,9 +83,18 @@ export function useBillingCart(): UseBillingCartReturn {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isResolvingPrices, setIsResolvingPrices] = useState<boolean>(false);
 
+  // Missing price indicators
+  const hasMissingPriceItem = useMemo(() => {
+    return items.some((it) => it.unitRate <= 0 || it.hasPriceError);
+  }, [items]);
+
+  const missingPriceItemsCount = useMemo(() => {
+    return items.filter((it) => it.unitRate <= 0 || it.hasPriceError).length;
+  }, [items]);
+
   // Fallback estimated totals until backend sync responds
   const estimatedSubtotal = useMemo(
-    () => items.reduce((sum, item) => sum + item.totalAmount, 0),
+    () => items.reduce((sum, item) => sum + (item.hasPriceError || item.unitRate <= 0 ? 0 : item.totalAmount), 0),
     [items]
   );
   const [serverSubtotal, setServerSubtotal] = useState<number>(0);
@@ -89,7 +106,7 @@ export function useBillingCart(): UseBillingCartReturn {
 
   // Sync cart prices with backend authoritative pricing engine
   const syncWithBackendPricing = useCallback(
-    async (currentItems: CartItem[], cType: CustomerType, cId?: string | null) => {
+    async (currentItems: CartItem[], cType: CustomerType, sType: SaleType, cId?: string | null) => {
       if (currentItems.length === 0) {
         setServerSubtotal(0);
         return;
@@ -100,6 +117,7 @@ export function useBillingCart(): UseBillingCartReturn {
         const payload = {
           customerId: cId || undefined,
           customerType: cType,
+          saleType: sType,
           items: currentItems.map((item) => ({
             productId: item.productId,
             packConfigId: item.packConfigId || null,
@@ -123,18 +141,34 @@ export function useBillingCart(): UseBillingCartReturn {
                   : true)
             );
             if (match) {
+              const isInvalid = match.unitRate <= 0;
               return {
                 ...it,
                 unitRate: match.unitRate,
                 totalAmount: match.totalAmount,
                 packName: it.packName || match.weightOrPackName,
+                hasPriceError: isInvalid,
+                priceErrorMessage: isInvalid ? `No active ${sType} price configured` : undefined,
               };
             }
             return it;
           })
         );
-      } catch (err) {
-        console.warn('Backend price resolution fallback to local estimates:', err);
+      } catch (err: any) {
+        console.warn('Backend price resolution failed:', err);
+        // Mark items that lack local price as error
+        setItems((prev) =>
+          prev.map((it) => {
+            if (it.unitRate <= 0) {
+              return {
+                ...it,
+                hasPriceError: true,
+                priceErrorMessage: `No active ${sType} price configured`,
+              };
+            }
+            return it;
+          })
+        );
       } finally {
         setIsResolvingPrices(false);
       }
@@ -142,23 +176,34 @@ export function useBillingCart(): UseBillingCartReturn {
     []
   );
 
-  // Customer Selection
+  // Customer Selection: Updates customer demographic ONLY, does NOT change transaction saleType!
   const setCustomer = useCallback(
     (newCust: Customer | null) => {
       setCustomerState(newCust);
-      const newType = newCust?.customerType || 'INDIAN';
-      setCustomerTypeState(newType);
-      syncWithBackendPricing(items, newType, newCust?.id);
+      const demographic = newCust?.customerType || 'INDIAN';
+      setCustomerTypeState(demographic);
+      // Re-resolve existing cart with current items, new demographic, and current saleType
+      syncWithBackendPricing(items, demographic, saleType, newCust?.id);
     },
-    [items, syncWithBackendPricing]
+    [items, saleType, syncWithBackendPricing]
   );
 
   const setCustomerType = useCallback(
     (type: CustomerType) => {
       setCustomerTypeState(type);
-      syncWithBackendPricing(items, type, customer?.id);
+      syncWithBackendPricing(items, type, saleType, customer?.id);
     },
-    [items, customer, syncWithBackendPricing]
+    [items, saleType, customer, syncWithBackendPricing]
+  );
+
+  // SaleType Selection: Authoritative transaction pricing selector
+  // Switching SaleType re-resolves existing cart items without discarding cart
+  const setSaleType = useCallback(
+    (type: SaleType) => {
+      setSaleTypeState(type);
+      syncWithBackendPricing(items, customerType, type, customer?.id);
+    },
+    [items, customerType, customer, syncWithBackendPricing]
   );
 
   const setDiscountAmount = useCallback((val: number) => {
@@ -207,13 +252,15 @@ export function useBillingCart(): UseBillingCartReturn {
           return it;
         });
       } else {
-        // Resolve initial rate from product's pricing (pack rate or base rate)
+        // Resolve initial rate from product's pricing for current saleType (pack rate or base rate)
         let defaultRate = 0;
         if (packId) {
           const packPriceObj = ((product as any).prices || []).find(
             (pr: any) =>
               pr.packConfigId === packId &&
-              pr.customerType === customerType &&
+              (pr.pricingTier === saleType ||
+                pr.customerType === saleType ||
+                (saleType === 'RETAIL' && (pr.pricingTier === 'INDIAN' || pr.customerType === 'INDIAN'))) &&
               pr.isActive
           );
           if (packPriceObj) {
@@ -221,12 +268,16 @@ export function useBillingCart(): UseBillingCartReturn {
           }
         }
         if (defaultRate <= 0) {
-          defaultRate =
-            (customerType === 'NRI'
-              ? product.nriPrice ?? 0
-              : product.indianPrice ?? 0);
+          if (saleType === 'WHOLESALE') {
+            defaultRate = product.wholesalePrice ?? 0;
+          } else if (saleType === 'NRI') {
+            defaultRate = product.nriPrice ?? 0;
+          } else {
+            defaultRate = product.retailPrice ?? product.indianPrice ?? 0;
+          }
         }
 
+        const isMissingPrice = defaultRate <= 0;
         const singleItemPrice = weightGrams && !packId
           ? Math.round(((weightGrams / 1000) * defaultRate) * 100) / 100
           : defaultRate;
@@ -245,15 +296,16 @@ export function useBillingCart(): UseBillingCartReturn {
           unitRate: defaultRate,
           totalAmount: Math.round(singleItemPrice * qtyToAdd * 100) / 100,
           stockBalance: product.stock?.currentBalance,
+          hasPriceError: isMissingPrice,
+          priceErrorMessage: isMissingPrice ? `No active ${saleType} price configured` : undefined,
         };
         nextItems = [...items, newItem];
       }
 
       setItems(nextItems);
-      // Automatically tender exact amount if paidAmount was equal to previous total
-      await syncWithBackendPricing(nextItems, customerType, customer?.id);
+      await syncWithBackendPricing(nextItems, customerType, saleType, customer?.id);
     },
-    [items, customerType, customer, syncWithBackendPricing]
+    [items, customerType, saleType, customer, syncWithBackendPricing]
   );
 
   // Update item quantity by delta (+1 / -1)
@@ -281,9 +333,9 @@ export function useBillingCart(): UseBillingCartReturn {
       }
 
       setItems(nextItems);
-      await syncWithBackendPricing(nextItems, customerType, customer?.id);
+      await syncWithBackendPricing(nextItems, customerType, saleType, customer?.id);
     },
-    [items, customerType, customer, syncWithBackendPricing]
+    [items, customerType, saleType, customer, syncWithBackendPricing]
   );
 
   const setItemQuantity = useCallback(
@@ -306,9 +358,9 @@ export function useBillingCart(): UseBillingCartReturn {
         return it;
       });
       setItems(nextItems);
-      await syncWithBackendPricing(nextItems, customerType, customer?.id);
+      await syncWithBackendPricing(nextItems, customerType, saleType, customer?.id);
     },
-    [items, customerType, customer, syncWithBackendPricing, updateItemQuantity]
+    [items, customerType, saleType, customer, syncWithBackendPricing, updateItemQuantity]
   );
 
   const updateItemWeight = useCallback(
@@ -323,18 +375,18 @@ export function useBillingCart(): UseBillingCartReturn {
         return it;
       });
       setItems(nextItems);
-      await syncWithBackendPricing(nextItems, customerType, customer?.id);
+      await syncWithBackendPricing(nextItems, customerType, saleType, customer?.id);
     },
-    [items, customerType, customer, syncWithBackendPricing]
+    [items, customerType, saleType, customer, syncWithBackendPricing]
   );
 
   const removeItem = useCallback(
     async (id: string) => {
       const nextItems = items.filter((i) => i.id !== id);
       setItems(nextItems);
-      await syncWithBackendPricing(nextItems, customerType, customer?.id);
+      await syncWithBackendPricing(nextItems, customerType, saleType, customer?.id);
     },
-    [items, customerType, customer, syncWithBackendPricing]
+    [items, customerType, saleType, customer, syncWithBackendPricing]
   );
 
   const clearCart = useCallback(() => {
@@ -355,6 +407,15 @@ export function useBillingCart(): UseBillingCartReturn {
       throw new Error('Cart is empty. Please select products before completing the bill.');
     }
 
+    // Missing price validation: prevent checkout while unpriced
+    const unpricedItems = items.filter((it) => it.unitRate <= 0 || it.hasPriceError);
+    if (unpricedItems.length > 0) {
+      const names = unpricedItems.map((i) => i.productName).join(', ');
+      throw new Error(
+        `Cannot complete checkout: The following items do not have an active ${saleType} price configured: ${names}. Please remove them or configure their pricing.`
+      );
+    }
+
     const tender = paidAmount > 0 ? paidAmount : grandTotal;
     if (tender < grandTotal) {
       throw new Error(
@@ -364,9 +425,11 @@ export function useBillingCart(): UseBillingCartReturn {
 
     setIsSubmitting(true);
     try {
+      // Sends ONLY business inputs: no unitRate, no lineAmount, no subtotalAmount, no taxAmount, no finalTotalAmount
       const payload: CreateSalePayload = {
         customerId: customer?.id || null,
         customerType: customerType,
+        saleType: saleType,
         items: items.map((i) => ({
           productId: i.productId,
           packConfigId: i.packConfigId || null,
@@ -396,6 +459,7 @@ export function useBillingCart(): UseBillingCartReturn {
     grandTotal,
     customer,
     customerType,
+    saleType,
     discountAmount,
     paymentMode,
     transactionRef,
@@ -405,6 +469,7 @@ export function useBillingCart(): UseBillingCartReturn {
     items,
     customer,
     customerType,
+    saleType,
     discountAmount,
     paidAmount,
     paymentMode,
@@ -415,8 +480,11 @@ export function useBillingCart(): UseBillingCartReturn {
     grandTotal,
     changeAmount,
     itemCount,
+    hasMissingPriceItem,
+    missingPriceItemsCount,
     setCustomer,
     setCustomerType,
+    setSaleType,
     setDiscountAmount,
     setPaidAmount,
     setPaymentMode,
