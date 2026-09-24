@@ -13,6 +13,8 @@ export type PaymentMode = 'CASH' | 'UPI' | 'CARD' | 'OTHER';
 export type ProductionStatus = 'DRAFT' | 'COMPLETED' | 'CANCELLED';
 export type ReturnStatus = 'DRAFT' | 'COMPLETED' | 'CANCELLED';
 export type RefundPaymentMode = 'CASH' | 'UPI' | 'CARD' | 'CREDIT_NOTE';
+export type SaleType = 'RETAIL' | 'NRI' | 'WHOLESALE';
+export type CustomerType = 'INDIAN' | 'NRI';
 export type MovementType =
   | 'PRODUCTION_IN'
   | 'PURCHASE_IN'
@@ -31,15 +33,23 @@ export interface BaseReportQuery {
 // 1. Business Summary
 export interface BusinessSummaryQuery extends BaseReportQuery {
   date?: string;
+  saleType?: SaleType;
 }
 
 export interface BusinessSummaryResponse {
   period: string;
+  scope?: {
+    isMasterAdmin: boolean;
+    isScoped: boolean;
+    scopeLabel: string;
+    allowedSaleTypes: SaleType[];
+  };
   sales: {
     totalSales: number;
     billCount: number;
     averageBillValue: number;
   };
+  salesByType?: Record<SaleType, { totalSales: number; billCount: number }>;
   returns: {
     totalReturnsAmount: number;
     returnsCount: number;
@@ -69,6 +79,7 @@ export interface SalesReportQuery extends BaseReportQuery {
   groupBy?: GroupByInterval;
   paymentMode?: PaymentMode;
   customerId?: string;
+  saleType?: SaleType;
 }
 
 export interface SalesReportData {
@@ -82,6 +93,7 @@ export interface SalesReportData {
     cancelledBillsCount: number;
     cancelledAmount: number;
   };
+  salesByType?: Record<SaleType, { totalSalesAmount: number; completedBillsCount: number }>;
   paymentBreakdown: Record<string, number>;
   timeSeries: Array<{
     periodKey: string;
@@ -95,6 +107,7 @@ export interface SalesReportData {
 export interface ProductReportQuery extends BaseReportQuery {
   categoryId?: string;
   subcategoryId?: string;
+  saleType?: SaleType;
   sortBy?: 'amount' | 'quantity' | 'bills';
   order?: 'asc' | 'desc';
   limit?: number;
@@ -132,6 +145,8 @@ export interface ProductReportResponse {
 
 // 4. Customer Sales Report
 export interface CustomerReportQuery extends BaseReportQuery {
+  customerType?: CustomerType;
+  saleType?: SaleType;
   minBills?: number;
   sortBy?: 'purchases' | 'bills' | 'lastPurchase';
   order?: 'asc' | 'desc';
@@ -170,6 +185,7 @@ export interface CustomerReportResponse {
 
 // 5. Customer History
 export interface CustomerHistoryQuery {
+  saleType?: SaleType;
   limit?: number;
   page?: number;
 }
@@ -361,6 +377,7 @@ export interface ReturnsReportQuery extends BaseReportQuery {
   productId?: string;
   status?: ReturnStatus;
   refundPaymentMode?: RefundPaymentMode;
+  saleType?: SaleType;
 }
 
 export interface ReturnsReportData {

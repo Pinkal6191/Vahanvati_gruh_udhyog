@@ -19,14 +19,24 @@ import {
   ProductReportResponse,
   ReportDatePeriod,
   ProductSaleRecord,
+  SaleType,
 } from './reports.api';
+import { useAuth } from '../../hooks/useAuth';
 import { formatCurrency, formatWeight } from '../../utils/formatters';
 import './Reports.css';
 
 export const ProductSalesReportPage: React.FC = () => {
+  const { user } = useAuth();
   const [period, setPeriod] = useState<ReportDatePeriod>('this_month');
   const [startDate, setStartDate] = useState<string | undefined>();
   const [endDate, setEndDate] = useState<string | undefined>();
+  const [saleType, setSaleType] = useState<SaleType | undefined>();
+
+  const permittedSaleTypes: SaleType[] = user?.isMasterAdmin
+    ? ['RETAIL', 'NRI', 'WHOLESALE']
+    : (user?.allowedReportSaleTypes && user.allowedReportSaleTypes.length > 0
+        ? user.allowedReportSaleTypes
+        : ['RETAIL']);
 
   const [sortBy, setSortBy] = useState<'amount' | 'quantity' | 'bills'>('amount');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
@@ -45,6 +55,7 @@ export const ProductSalesReportPage: React.FC = () => {
         period,
         startDate,
         endDate,
+        saleType,
         sortBy,
         order,
         page,
@@ -60,7 +71,7 @@ export const ProductSalesReportPage: React.FC = () => {
 
   useEffect(() => {
     fetchProductReport();
-  }, [period, startDate, endDate, sortBy, order, page]);
+  }, [period, startDate, endDate, sortBy, order, page, saleType]);
 
   const handleFilterChange = (filters: {
     period?: ReportDatePeriod;
@@ -173,13 +184,40 @@ export const ProductSalesReportPage: React.FC = () => {
         title="Product-Wise Sales & Ranking"
         subtitle="Catalog sales distribution, revenue contribution, weights sold, and transaction frequencies."
         actions={
-          <ReportDateFilter
-            period={period}
-            startDate={startDate}
-            endDate={endDate}
-            onFilterChange={handleFilterChange}
-            isLoading={isLoading}
-          />
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {permittedSaleTypes.length > 1 && (
+              <select
+                className="report-filter-select"
+                value={saleType || ''}
+                onChange={(e) => {
+                  setSaleType((e.target.value as SaleType) || undefined);
+                  setPage(1);
+                }}
+                style={{
+                  height: '38px',
+                  padding: '0 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #d1d5db',
+                  background: '#fff',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#374151',
+                }}
+              >
+                <option value="">All Permitted Tiers</option>
+                {permittedSaleTypes.includes('RETAIL') && <option value="RETAIL">Retail Only</option>}
+                {permittedSaleTypes.includes('NRI') && <option value="NRI">NRI Only</option>}
+                {permittedSaleTypes.includes('WHOLESALE') && <option value="WHOLESALE">Wholesale Only</option>}
+              </select>
+            )}
+            <ReportDateFilter
+              period={period}
+              startDate={startDate}
+              endDate={endDate}
+              onFilterChange={handleFilterChange}
+              isLoading={isLoading}
+            />
+          </div>
         }
       />
 

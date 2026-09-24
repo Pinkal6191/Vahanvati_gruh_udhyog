@@ -34,7 +34,8 @@ export class ReportsController {
   static async getProductSalesReport(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await ReportsService.getProductSalesReport(
-        req.query as unknown as ProductReportQuery
+        req.query as unknown as ProductReportQuery,
+        req.user
       );
       res.status(200).json({ success: true, ...result });
     } catch (err) {
@@ -48,7 +49,8 @@ export class ReportsController {
   static async getCustomerSalesReport(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await ReportsService.getCustomerSalesReport(
-        req.query as unknown as CustomerReportQuery
+        req.query as unknown as CustomerReportQuery,
+        req.user
       );
       res.status(200).json({ success: true, ...result });
     } catch (err) {
@@ -63,7 +65,8 @@ export class ReportsController {
     try {
       const result = await ReportsService.getCustomerPurchaseHistory(
         req.params.customerId,
-        req.query as unknown as CustomerHistoryQuery
+        req.query as unknown as CustomerHistoryQuery,
+        req.user
       );
       res.status(200).json({ success: true, ...result });
     } catch (err) {
@@ -129,7 +132,8 @@ export class ReportsController {
   static async getReturnsReport(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await ReportsService.getReturnsReport(
-        req.query as unknown as ReturnsReportQuery
+        req.query as unknown as ReturnsReportQuery,
+        req.user
       );
       res.status(200).json({ success: true, data: result });
     } catch (err) {
@@ -143,7 +147,8 @@ export class ReportsController {
   static async getBusinessSummary(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await ReportsService.getBusinessSummary(
-        req.query as unknown as BusinessSummaryQuery
+        req.query as unknown as BusinessSummaryQuery,
+        req.user
       );
       res.status(200).json({ success: true, data: result });
     } catch (err) {

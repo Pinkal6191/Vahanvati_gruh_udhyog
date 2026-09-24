@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaymentMode, ProductionStatus, ReturnStatus, RefundPaymentMode, MovementType, SaleType } from '@prisma/client';
+import { PaymentMode, ProductionStatus, ReturnStatus, RefundPaymentMode, MovementType, SaleType, CustomerType } from '@prisma/client';
 
 export const salesReportQuerySchema = z.object({
   period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
@@ -17,6 +17,7 @@ export const productReportQuerySchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
   categoryId: z.string().uuid('Valid category ID required').optional(),
   subcategoryId: z.string().uuid('Valid subcategory ID required').optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
   sortBy: z.enum(['amount', 'quantity', 'bills']).default('amount'),
   order: z.enum(['asc', 'desc']).default('desc'),
   limit: z.coerce.number().min(1).max(100).default(50),
@@ -27,6 +28,8 @@ export const customerReportQuerySchema = z.object({
   period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
+  customerType: z.nativeEnum(CustomerType).optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
   minBills: z.coerce.number().min(1).optional(),
   sortBy: z.enum(['purchases', 'bills', 'lastPurchase']).default('purchases'),
   order: z.enum(['asc', 'desc']).default('desc'),
@@ -35,6 +38,7 @@ export const customerReportQuerySchema = z.object({
 });
 
 export const customerHistoryQuerySchema = z.object({
+  saleType: z.nativeEnum(SaleType).optional(),
   limit: z.coerce.number().min(1).max(100).default(20),
   page: z.coerce.number().min(1).default(1),
 });
@@ -73,6 +77,7 @@ export const returnsReportQuerySchema = z.object({
   productId: z.string().uuid('Valid product ID required').optional(),
   status: z.nativeEnum(ReturnStatus).optional(),
   refundPaymentMode: z.nativeEnum(RefundPaymentMode).optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
 });
 
 export const businessSummaryQuerySchema = z.object({
@@ -80,6 +85,7 @@ export const businessSummaryQuerySchema = z.object({
   period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
 });
 
 export type SalesReportQuery = z.infer<typeof salesReportQuerySchema>;

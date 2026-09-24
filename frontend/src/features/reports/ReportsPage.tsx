@@ -147,12 +147,17 @@ export const ReportsPage: React.FC = () => {
             />
 
             <ReportKpiCard
-              title="Gross Sales"
+              title={summary?.scope?.isScoped ? 'Authorized Sales (Scoped)' : 'Company Total Sales'}
               value={summary ? formatCurrency(summary.sales.totalSales) : '₹0.00'}
               subtitle={
                 summary
                   ? `${summary.sales.billCount} bills | ABV: ${formatCurrency(summary.sales.averageBillValue)}`
                   : '0 bills'
+              }
+              badge={
+                summary?.scope?.isScoped
+                  ? { text: 'Scoped', variant: 'warning' }
+                  : { text: 'Company Total', variant: 'neutral' }
               }
               icon={<Receipt size={18} />}
               isLoading={isLoading}
@@ -183,6 +188,52 @@ export const ReportsPage: React.FC = () => {
               isLoading={isLoading}
             />
           </div>
+          {/* SaleType Segmentation Breakdown */}
+          {summary?.salesByType && (
+            <div className="report-card" style={{ marginBottom: '24px', padding: '16px 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>
+                  {summary.scope?.scopeLabel || (user?.isMasterAdmin ? 'Company Total Sales by Tier' : 'Authorized Sales by Tier')}
+                </h4>
+                {summary.scope?.isScoped && (
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '2px 8px', borderRadius: '4px' }}>
+                    Scoped Access
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Retail Sales</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>
+                    {formatCurrency(summary.salesByType.RETAIL?.totalSales || 0)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                    {summary.salesByType.RETAIL?.billCount || 0} bills
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>NRI Sales</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>
+                    {formatCurrency(summary.salesByType.NRI?.totalSales || 0)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                    {summary.salesByType.NRI?.billCount || 0} bills
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Wholesale Sales</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>
+                    {formatCurrency(summary.salesByType.WHOLESALE?.totalSales || 0)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                    {summary.salesByType.WHOLESALE?.billCount || 0} bills
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Secondary Operational Indicators */}
           <div className="report-kpi-grid">

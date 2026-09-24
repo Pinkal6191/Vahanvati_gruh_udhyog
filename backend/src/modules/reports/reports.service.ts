@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database.js';
-import { SaleStatus, ProductionStatus, ReturnStatus, PaymentMode } from '@prisma/client';
+import { SaleStatus, ProductionStatus, ReturnStatus, PaymentMode, SaleType } from '@prisma/client';
 import {
   SalesReportQuery,
   ProductReportQuery,
@@ -14,33 +14,28 @@ import {
 import { resolveDateRange, formatPeriodKey, round2, GroupByInterval } from './reports.utils.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { NotFoundError, ForbiddenError } from '../../common/errors/app-error.js';
+import { resolveReportSaleTypeScope } from './reports.auth.js';
+import { AuthenticatedUser } from '../../middlewares/auth.middleware.js';
 
 export class ReportsService {
   /**
    * 1. Comprehensive Sales Report
    */
-  static async getSalesReport(query: SalesReportQuery, user?: any) {
+  static async getSalesReport(query: SalesReportQuery, user?: AuthenticatedUser) {
     const { period, startDate, endDate, groupBy, paymentMode, customerId, saleType } = query;
     const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
 
-    // Enforce Reporting RBAC if user has restricted allowedReportSaleTypes
-    if (user?.allowedReportSaleTypes) {
-      if (saleType && !user.allowedReportSaleTypes.includes(saleType)) {
-        throw new ForbiddenError(
-          `Access denied: You are not authorized to view ${saleType} reports`
-        );
-      }
-    }
+    const { effectiveSaleType, effectiveSaleTypes } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
 
     const whereSale: any = {
       saleStatus: SaleStatus.COMPLETED,
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
     };
-
-    if (saleType) {
-      whereSale.saleType = saleType;
-    } else if (user?.allowedReportSaleTypes) {
-      whereSale.saleType = { in: user.allowedReportSaleTypes };
-    }
 
     if (start || end) {
       whereSale.createdAt = {};
@@ -71,6 +66,9 @@ export class ReportsService {
     // Query cancelled sales in the same period for operational visibility
     const cancelledWhere: any = {
       saleStatus: SaleStatus.CANCELLED,
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
     };
     if (start || end) {
       cancelledWhere.createdAt = {};
@@ -95,7 +93,20 @@ export class ReportsService {
     let totalQuantitySold = 0;
     let totalWeightSold = 0;
 
+    // Segment sales by SaleType
+    const salesByType: Record<SaleType, { totalSalesAmount: number; completedBillsCount: number }> = {
+      [SaleType.RETAIL]: { totalSalesAmount: 0, completedBillsCount: 0 },
+      [SaleType.NRI]: { totalSalesAmount: 0, completedBillsCount: 0 },
+      [SaleType.WHOLESALE]: { totalSalesAmount: 0, completedBillsCount: 0 },
+    };
+
     for (const sale of completedSales) {
+      if (salesByType[sale.saleType]) {
+        salesByType[sale.saleType].completedBillsCount += 1;
+        salesByType[sale.saleType].totalSalesAmount = round2(
+          salesByType[sale.saleType].totalSalesAmount + Number(sale.finalTotalAmount)
+        );
+      }
       for (const item of sale.items) {
         totalQuantitySold += Number(item.quantity);
         totalWeightSold += Number(item.baseWeightDeducted);
@@ -162,6 +173,7 @@ export class ReportsService {
         cancelledBillsCount,
         cancelledAmount,
       },
+      salesByType,
       paymentBreakdown,
       timeSeries,
     };
@@ -170,13 +182,14 @@ export class ReportsService {
   /**
    * 2. Product-wise Sales Report & Ranking
    */
-  static async getProductSalesReport(query: ProductReportQuery) {
+  static async getProductSalesReport(query: ProductReportQuery, user?: AuthenticatedUser) {
     const {
       period,
       startDate,
       endDate,
       categoryId,
       subcategoryId,
+      saleType,
       sortBy = 'amount',
       order = 'desc',
       limit = 50,
@@ -185,9 +198,17 @@ export class ReportsService {
 
     const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
 
+    const { effectiveSaleType, effectiveSaleTypes } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
+
     const whereItem: any = {
       sale: {
         saleStatus: SaleStatus.COMPLETED,
+        ...(effectiveSaleType
+          ? { saleType: effectiveSaleType }
+          : { saleType: { in: effectiveSaleTypes } }),
       },
     };
 
@@ -312,11 +333,13 @@ export class ReportsService {
   /**
    * 3. Customer-wise Sales Report & Repeat Customer Metrics
    */
-  static async getCustomerSalesReport(query: CustomerReportQuery) {
+  static async getCustomerSalesReport(query: CustomerReportQuery, user?: AuthenticatedUser) {
     const {
       period,
       startDate,
       endDate,
+      customerType,
+      saleType,
       minBills,
       sortBy = 'purchases',
       order = 'desc',
@@ -326,9 +349,21 @@ export class ReportsService {
 
     const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
 
+    const { effectiveSaleType, effectiveSaleTypes } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
+
     const whereSale: any = {
       saleStatus: SaleStatus.COMPLETED,
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
     };
+
+    if (customerType) {
+      whereSale.customerTypeSnapshot = customerType;
+    }
 
     if (start || end) {
       whereSale.createdAt = {};
@@ -448,8 +483,12 @@ export class ReportsService {
   /**
    * 4. Customer Purchase History
    */
-  static async getCustomerPurchaseHistory(customerId: string, query: CustomerHistoryQuery) {
-    const { page = 1, limit = 20 } = query;
+  static async getCustomerPurchaseHistory(
+    customerId: string,
+    query: CustomerHistoryQuery,
+    user?: AuthenticatedUser
+  ) {
+    const { page = 1, limit = 20, saleType } = query;
 
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
@@ -459,9 +498,17 @@ export class ReportsService {
       throw new NotFoundError('Customer not found');
     }
 
-    const where = {
+    const { effectiveSaleType, effectiveSaleTypes } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
+
+    const where: any = {
       customerId,
       saleStatus: SaleStatus.COMPLETED,
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
     };
 
     const [total, sales] = await Promise.all([
@@ -848,11 +895,20 @@ export class ReportsService {
   /**
    * 9. Sales Return Report & Return Rate Analytics
    */
-  static async getReturnsReport(query: ReturnsReportQuery) {
-    const { period, startDate, endDate, productId, status, refundPaymentMode } = query;
+  static async getReturnsReport(query: ReturnsReportQuery, user?: AuthenticatedUser) {
+    const { period, startDate, endDate, productId, status, refundPaymentMode, saleType } = query;
     const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
 
-    const where: any = {};
+    const { effectiveSaleType, effectiveSaleTypes } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
+
+    const where: any = {
+      ...(effectiveSaleType
+        ? { saleTypeSnapshot: effectiveSaleType }
+        : { saleTypeSnapshot: { in: effectiveSaleTypes } }),
+    };
 
     if (start || end) {
       where.createdAt = {};
@@ -879,7 +935,12 @@ export class ReportsService {
     });
 
     // Completed sales in same period to compute Return Rate
-    const salesWhere: any = { saleStatus: SaleStatus.COMPLETED };
+    const salesWhere: any = {
+      saleStatus: SaleStatus.COMPLETED,
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
+    };
     if (start || end) {
       salesWhere.createdAt = {};
       if (start) salesWhere.createdAt.gte = start;
@@ -967,8 +1028,8 @@ export class ReportsService {
   /**
    * 10. Real-time Business Summary Dashboard
    */
-  static async getBusinessSummary(query: BusinessSummaryQuery) {
-    const { date, period, startDate, endDate } = query;
+  static async getBusinessSummary(query: BusinessSummaryQuery, user?: AuthenticatedUser) {
+    const { date, period, startDate, endDate, saleType } = query;
     // Default to today if no date range is provided
     const targetPeriod = !date && !startDate && !endDate && !period ? 'today' : period;
     const targetStart = date || startDate;
@@ -976,15 +1037,21 @@ export class ReportsService {
 
     const { start, end, periodDescription } = resolveDateRange(targetPeriod, targetStart, targetEnd);
 
+    const { effectiveSaleType, effectiveSaleTypes, isMasterAdmin, isScoped } =
+      resolveReportSaleTypeScope(user, saleType);
+
     const dateFilter: any = {};
     if (start) dateFilter.gte = start;
     if (end) dateFilter.lte = end;
 
-    // 1. Completed sales in period
+    // 1. Completed sales in period (scoped to authorized SaleTypes)
     const sales = await prisma.sale.findMany({
       where: {
         saleStatus: SaleStatus.COMPLETED,
         createdAt: dateFilter,
+        ...(effectiveSaleType
+          ? { saleType: effectiveSaleType }
+          : { saleType: { in: effectiveSaleTypes } }),
       },
       include: {
         items: true,
@@ -992,15 +1059,33 @@ export class ReportsService {
       },
     });
 
+    const salesByType: Record<SaleType, { totalSales: number; billCount: number }> = {
+      [SaleType.RETAIL]: { totalSales: 0, billCount: 0 },
+      [SaleType.NRI]: { totalSales: 0, billCount: 0 },
+      [SaleType.WHOLESALE]: { totalSales: 0, billCount: 0 },
+    };
+
+    for (const s of sales) {
+      if (salesByType[s.saleType]) {
+        salesByType[s.saleType].billCount += 1;
+        salesByType[s.saleType].totalSales = round2(
+          salesByType[s.saleType].totalSales + Number(s.finalTotalAmount)
+        );
+      }
+    }
+
     const totalSales = round2(sales.reduce((acc, s) => acc + Number(s.finalTotalAmount), 0));
     const billCount = sales.length;
     const averageBillValue = billCount > 0 ? round2(totalSales / billCount) : 0;
 
-    // 2. Returns in period
+    // 2. Returns in period (scoped to authorized SaleTypes)
     const returns = await prisma.salesReturn.findMany({
       where: {
         status: ReturnStatus.COMPLETED,
         createdAt: dateFilter,
+        ...(effectiveSaleType
+          ? { saleTypeSnapshot: effectiveSaleType }
+          : { saleTypeSnapshot: { in: effectiveSaleTypes } }),
       },
       select: { totalReturnAmount: true },
     });
@@ -1091,11 +1176,20 @@ export class ReportsService {
 
     return {
       period: periodDescription,
+      scope: {
+        isMasterAdmin,
+        isScoped,
+        scopeLabel: isMasterAdmin
+          ? 'Company Total Sales'
+          : `Authorized Sales (Scoped: ${effectiveSaleTypes.join(', ')})`,
+        allowedSaleTypes: effectiveSaleTypes,
+      },
       sales: {
         totalSales,
         billCount,
         averageBillValue,
       },
+      salesByType,
       returns: {
         totalReturnsAmount,
         returnsCount,

@@ -297,6 +297,19 @@ export const BillHistoryPage: React.FC = () => {
     },
   ];
 
+  const permittedSaleTypes = user?.isMasterAdmin
+    ? ['RETAIL', 'NRI', 'WHOLESALE']
+    : (user?.allowedReportSaleTypes && user.allowedReportSaleTypes.length > 0
+        ? user.allowedReportSaleTypes
+        : ['RETAIL']);
+
+  const saleTypeOptions = [
+    { value: '', label: permittedSaleTypes.length === 3 ? 'All Sale Types' : 'All Permitted Tiers' },
+    ...(permittedSaleTypes.includes('RETAIL') ? [{ value: 'RETAIL', label: 'Retail Only' }] : []),
+    ...(permittedSaleTypes.includes('NRI') ? [{ value: 'NRI', label: 'NRI Only' }] : []),
+    ...(permittedSaleTypes.includes('WHOLESALE') ? [{ value: 'WHOLESALE', label: 'Wholesale Only' }] : []),
+  ];
+
   return (
     <div className="master-data-page">
       <Breadcrumb
@@ -345,12 +358,7 @@ export const BillHistoryPage: React.FC = () => {
               setSaleTypeFilter(e.target.value);
               setPage(1);
             }}
-            options={[
-              { value: '', label: 'All Sale Types' },
-              { value: 'RETAIL', label: 'Retail Only' },
-              { value: 'NRI', label: 'NRI Only' },
-              { value: 'WHOLESALE', label: 'Wholesale Only' },
-            ]}
+            options={saleTypeOptions}
             className="filter-select-input"
           />
 

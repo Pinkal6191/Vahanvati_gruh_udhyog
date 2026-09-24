@@ -19,6 +19,8 @@ import {
   CustomerType,
   Prisma,
 } from '@prisma/client';
+import { resolveReportSaleTypeScope, assertCanViewSale } from '../reports/reports.auth.js';
+import { AuthenticatedUser } from '../../middlewares/auth.middleware.js';
 
 export class SalesService {
   /**
@@ -344,7 +346,7 @@ export class SalesService {
     });
   }
 
-  static async getSaleById(id: string) {
+  static async getSaleById(id: string, user?: AuthenticatedUser) {
     const sale = await prisma.sale.findUnique({
       where: { id },
       include: {
@@ -356,10 +358,11 @@ export class SalesService {
     });
 
     if (!sale) throw new NotFoundError('Sale not found');
+    assertCanViewSale(user, sale.saleType);
     return sale;
   }
 
-  static async getSaleByBillNumber(billNumber: string) {
+  static async getSaleByBillNumber(billNumber: string, user?: AuthenticatedUser) {
     const sale = await prisma.sale.findUnique({
       where: { billNumber },
       include: {
@@ -375,10 +378,11 @@ export class SalesService {
     });
 
     if (!sale) throw new NotFoundError(`Bill #${billNumber} not found`);
+    assertCanViewSale(user, sale.saleType);
     return sale;
   }
 
-  static async listSales(query: SalesQueryInput) {
+  static async listSales(query: SalesQueryInput, user?: AuthenticatedUser) {
     const {
       billNumber,
       customerId,
@@ -395,11 +399,17 @@ export class SalesService {
     } = query;
     const skip = (page - 1) * limit;
 
+    const { effectiveSaleType, effectiveSaleTypes } = resolveReportSaleTypeScope(user, saleType);
+
     const where: Prisma.SaleWhereInput = {};
     if (billNumber) where.billNumber = { contains: billNumber, mode: 'insensitive' };
     if (customerId) where.customerId = customerId;
     if (customerType) where.customerTypeSnapshot = customerType;
-    if (saleType) where.saleType = saleType;
+    if (effectiveSaleType) {
+      where.saleType = effectiveSaleType;
+    } else {
+      where.saleType = { in: effectiveSaleTypes };
+    }
     if (saleStatus) where.saleStatus = saleStatus;
     if (createdBy) where.createdBy = createdBy;
 
@@ -452,8 +462,8 @@ export class SalesService {
    * Generates formatted receipt data ready for direct 3-inch thermal printing.
    * Note: Customer tier (INDIAN/NRI) is intentionally omitted from the printed bill.
    */
-  static async getPrintPayload(saleId: string) {
-    const sale = await this.getSaleById(saleId);
+  static async getPrintPayload(saleId: string, user?: AuthenticatedUser) {
+    const sale = await this.getSaleById(saleId, user);
     const settings = await prisma.companySettings.findFirst();
 
     return {

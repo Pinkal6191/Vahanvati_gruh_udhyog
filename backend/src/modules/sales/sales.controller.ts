@@ -33,7 +33,7 @@ export class SalesController {
 
   static async getSaleById(req: Request, res: Response, next: NextFunction) {
     try {
-      const sale = await SalesService.getSaleById(req.params.id);
+      const sale = await SalesService.getSaleById(req.params.id, (req as any).user);
       res.status(200).json({ success: true, data: sale });
     } catch (err) {
       next(err);
@@ -43,7 +43,7 @@ export class SalesController {
   static async getSaleByBillNumber(req: Request, res: Response, next: NextFunction) {
     try {
       const billNumber = req.params.billNumber;
-      const sale = await SalesService.getSaleByBillNumber(billNumber);
+      const sale = await SalesService.getSaleByBillNumber(billNumber, (req as any).user);
       res.status(200).json({ success: true, data: sale });
     } catch (err) {
       next(err);
@@ -52,7 +52,7 @@ export class SalesController {
 
   static async listSales(req: Request, res: Response, next: NextFunction) {
     try {
-      const sales = await SalesService.listSales(req.query as any);
+      const sales = await SalesService.listSales(req.query as any, (req as any).user);
       res.status(200).json({ success: true, data: sales });
     } catch (err) {
       next(err);
@@ -61,7 +61,7 @@ export class SalesController {
 
   static async getPrintPayload(req: Request, res: Response, next: NextFunction) {
     try {
-      const payload = await SalesService.getPrintPayload(req.params.id);
+      const payload = await SalesService.getPrintPayload(req.params.id, (req as any).user);
       res.status(200).json({ success: true, data: payload });
     } catch (err) {
       next(err);
