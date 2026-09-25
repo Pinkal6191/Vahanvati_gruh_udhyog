@@ -307,8 +307,33 @@ export const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        {/* Website CMS Management - Admin Only */}
+        <Route
+          path="/manage"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <WebsitePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manage/:tab"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <WebsitePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/website"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <WebsitePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/website/:tab"
           element={
             <ProtectedRoute allowedRoles={['ADMIN']}>
               <WebsitePage />

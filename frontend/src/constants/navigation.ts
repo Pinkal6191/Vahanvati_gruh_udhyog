@@ -96,7 +96,7 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
       },
       {
         title: 'Website CMS',
-        path: '/website',
+        path: '/manage',
         roles: ['ADMIN'],
       },
       {

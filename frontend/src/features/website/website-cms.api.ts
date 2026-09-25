@@ -35,6 +35,27 @@ export interface CmsGalleryItem {
   updatedAt: string;
 }
 
+export interface CmsWebsiteSettings {
+  companyName?: string;
+  tagline?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  businessHours?: string;
+  googleMapsUrl?: string;
+  instagramUrl?: string;
+  youtubeUrl?: string;
+  gstin?: string;
+  fssaiLicense?: string;
+  whatsappNumber?: string;
+  phoneNumber?: string;
+  defaultWhatsappMessage?: string;
+  productWhatsappMessage?: string;
+  whatsappEnabled?: boolean;
+  floatingWhatsappEnabled?: boolean;
+  productInquiryEnabled?: boolean;
+}
+
 export const websiteCmsApi = {
   getContent: async (section: string): Promise<any> => {
     const res = await apiClient.get<any>(`/cms/content/${section}`);
@@ -111,6 +132,16 @@ export const websiteCmsApi = {
     tagline?: string;
   }): Promise<any> => {
     const res = await apiClient.patch<any>('/cms/contact', data);
+    return res.data;
+  },
+
+  getSettings: async (): Promise<CmsWebsiteSettings> => {
+    const res = await apiClient.get<CmsWebsiteSettings>('/cms/settings');
+    return res.data;
+  },
+
+  updateSettings: async (data: Partial<CmsWebsiteSettings>): Promise<CmsWebsiteSettings> => {
+    const res = await apiClient.patch<CmsWebsiteSettings>('/cms/settings', data);
     return res.data;
   },
 

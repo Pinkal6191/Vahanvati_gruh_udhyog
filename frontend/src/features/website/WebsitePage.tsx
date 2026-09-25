@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Globe,
   ExternalLink,
@@ -24,18 +25,30 @@ import {
   Upload,
   Film,
   Link as LinkIcon,
+  Settings as SettingsIcon,
+  MessageSquare,
+  Sliders,
 } from 'lucide-react';
 import { PageHeader } from '../../components/common/PageHeader/PageHeader';
 import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
 import { Button } from '../../components/ui/Button/Button';
 import { LoadingState } from '../../components/common/LoadingState/LoadingState';
-import { websiteCmsApi, CmsProduct, CmsGalleryItem } from './website-cms.api';
+import {
+  websiteCmsApi,
+  CmsProduct,
+  CmsGalleryItem,
+  CmsWebsiteSettings,
+} from './website-cms.api';
 import { resolveMediaUrl } from '../../services/api/api-client';
+import { clearPublicSettingsCache } from '../public-website/hooks/usePublicSettings';
 import './WebsitePage.css';
 
-type CmsTab = 'HOME' | 'ABOUT' | 'PRODUCTS' | 'GALLERY' | 'CONTACT';
+type CmsTab = 'HOME' | 'ABOUT' | 'PRODUCTS' | 'GALLERY' | 'CONTACT' | 'SETTINGS';
 
 export const WebsitePage: React.FC = () => {
+  const { tab } = useParams<{ tab?: string }>();
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState<CmsTab>('HOME');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -109,6 +122,42 @@ export const WebsitePage: React.FC = () => {
     youtubeUrl: 'https://www.youtube.com/watch?v=FrB9KyMpOxQ',
   });
 
+  // Website & WhatsApp Settings
+  const [websiteSettings, setWebsiteSettings] = useState<CmsWebsiteSettings>({
+    whatsappNumber: '919714917851',
+    phoneNumber: '+91 97149 17851',
+    defaultWhatsappMessage:
+      'Hello Vahanvati Gruh Udhyog, I would like to know more about your products.',
+    productWhatsappMessage:
+      'Hello Vahanvati Gruh Udhyog, I am interested in {productName}. Please share more details and pricing.',
+    whatsappEnabled: true,
+    floatingWhatsappEnabled: true,
+    productInquiryEnabled: true,
+    address: 'હાઈસ્કૂલની પાસે, નડિયાદ - પેટલાદ રોડ, પાડગોલ - ૩૮૮ ૪૪૦',
+    phone: '+91 97149 17851 / +91 97121 15118',
+    email: 'info@vahanvati.com',
+    businessHours: 'Monday - Sunday: 8:00 AM - 8:30 PM',
+    googleMapsUrl: 'https://maps.google.com/?q=Padgol+Gujarat',
+    instagramUrl: 'https://www.instagram.com/vahanvatigruhudhyog/',
+    youtubeUrl: 'https://www.youtube.com/watch?v=FrB9KyMpOxQ',
+    tagline: 'હાથ વણાટના સ્પે. સારેવડા તેમજ સેવો તથા વડી બનાવનાર.',
+  });
+
+  // Sync tab with URL parameter
+  useEffect(() => {
+    if (tab) {
+      const upper = tab.toUpperCase();
+      if (['HOME', 'ABOUT', 'PRODUCTS', 'GALLERY', 'CONTACT', 'SETTINGS'].includes(upper)) {
+        setActiveTab(upper as CmsTab);
+      }
+    }
+  }, [tab]);
+
+  const handleTabChange = (newTab: CmsTab) => {
+    setActiveTab(newTab);
+    navigate(`/manage/${newTab.toLowerCase()}`);
+  };
+
   useEffect(() => {
     loadAllCmsData();
   }, []);
@@ -116,17 +165,31 @@ export const WebsitePage: React.FC = () => {
   const loadAllCmsData = async () => {
     try {
       setLoading(true);
-      const [homeData, aboutData, prods, gallery] = await Promise.all([
+      const [homeData, aboutData, prods, gallery, settingsData] = await Promise.all([
         websiteCmsApi.getContent('home').catch(() => null),
         websiteCmsApi.getContent('about').catch(() => null),
         websiteCmsApi.getProducts().catch(() => []),
         websiteCmsApi.getGallery().catch(() => []),
+        websiteCmsApi.getSettings().catch(() => null),
       ]);
 
       if (homeData && Object.keys(homeData).length > 0) setHomeContent(homeData);
       if (aboutData && Object.keys(aboutData).length > 0) setAboutContent(aboutData);
       setProducts(prods);
       setGalleryItems(gallery);
+      if (settingsData && Object.keys(settingsData).length > 0) {
+        setWebsiteSettings(settingsData);
+        setContactSettings((prev) => ({
+          ...prev,
+          address: settingsData.address || prev.address,
+          phone: settingsData.phoneNumber || settingsData.phone || prev.phone,
+          email: settingsData.email || prev.email,
+          businessHours: settingsData.businessHours || prev.businessHours,
+          googleMapsUrl: settingsData.googleMapsUrl || prev.googleMapsUrl,
+          instagramUrl: settingsData.instagramUrl || prev.instagramUrl,
+          youtubeUrl: settingsData.youtubeUrl || prev.youtubeUrl,
+        }));
+      }
     } catch (err) {
       console.error('Failed to load CMS data:', err);
     } finally {
@@ -299,9 +362,25 @@ export const WebsitePage: React.FC = () => {
     try {
       setSaving(true);
       await websiteCmsApi.updateContactSettings(contactSettings);
+      clearPublicSettingsCache();
       showToast('success', 'Store contact & social settings updated!');
     } catch (err: any) {
       showToast('error', err.response?.data?.message || 'Failed to update contact settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 6. Save WhatsApp & Website Settings
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      const updated = await websiteCmsApi.updateSettings(websiteSettings);
+      setWebsiteSettings(updated);
+      clearPublicSettingsCache();
+      showToast('success', 'WhatsApp and website configuration saved successfully!');
+    } catch (err: any) {
+      showToast('error', err.response?.data?.message || 'Failed to save website settings');
     } finally {
       setSaving(false);
     }
@@ -453,7 +532,7 @@ export const WebsitePage: React.FC = () => {
         <button
           type="button"
           className={`cms-tab-btn ${activeTab === 'HOME' ? 'active' : ''}`}
-          onClick={() => setActiveTab('HOME')}
+          onClick={() => handleTabChange('HOME')}
         >
           <Home size={16} />
           <span>Home Page</span>
@@ -462,7 +541,7 @@ export const WebsitePage: React.FC = () => {
         <button
           type="button"
           className={`cms-tab-btn ${activeTab === 'ABOUT' ? 'active' : ''}`}
-          onClick={() => setActiveTab('ABOUT')}
+          onClick={() => handleTabChange('ABOUT')}
         >
           <FileText size={16} />
           <span>About Story</span>
@@ -471,7 +550,7 @@ export const WebsitePage: React.FC = () => {
         <button
           type="button"
           className={`cms-tab-btn ${activeTab === 'PRODUCTS' ? 'active' : ''}`}
-          onClick={() => setActiveTab('PRODUCTS')}
+          onClick={() => handleTabChange('PRODUCTS')}
         >
           <Package size={16} />
           <span>Product Visibility ({products.length})</span>
@@ -480,7 +559,7 @@ export const WebsitePage: React.FC = () => {
         <button
           type="button"
           className={`cms-tab-btn ${activeTab === 'GALLERY' ? 'active' : ''}`}
-          onClick={() => setActiveTab('GALLERY')}
+          onClick={() => handleTabChange('GALLERY')}
         >
           <ImageIcon size={16} />
           <span>Gallery & Videos ({galleryItems.length})</span>
@@ -489,10 +568,19 @@ export const WebsitePage: React.FC = () => {
         <button
           type="button"
           className={`cms-tab-btn ${activeTab === 'CONTACT' ? 'active' : ''}`}
-          onClick={() => setActiveTab('CONTACT')}
+          onClick={() => handleTabChange('CONTACT')}
         >
           <Phone size={16} />
           <span>Contact & Socials</span>
+        </button>
+
+        <button
+          type="button"
+          className={`cms-tab-btn ${activeTab === 'SETTINGS' ? 'active' : ''}`}
+          onClick={() => handleTabChange('SETTINGS')}
+        >
+          <SettingsIcon size={16} />
+          <span>Settings & WhatsApp</span>
         </button>
       </div>
 
@@ -1644,6 +1732,289 @@ export const WebsitePage: React.FC = () => {
                   setContactSettings({ ...contactSettings, googleMapsUrl: e.target.value })
                 }
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: SETTINGS & WHATSAPP CMS */}
+      {activeTab === 'SETTINGS' && (
+        <div className="cms-card">
+          <div className="cms-card-header">
+            <div>
+              <div className="cms-card-title">
+                <SettingsIcon size={20} color="#3f438f" />
+                <span>Website & WhatsApp Settings</span>
+              </div>
+              <div className="cms-card-subtitle">
+                Configure WhatsApp numbers, direct call phone, message templates, and inquiry toggles.
+              </div>
+            </div>
+            <Button
+              variant="primary"
+              leftIcon={<Save size={16} />}
+              onClick={handleSaveSettings}
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Settings'}
+            </Button>
+          </div>
+
+          <div className="cms-form-grid" style={{ gap: '1.75rem' }}>
+            {/* Feature Toggles */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                Inquiry & Button Controls
+              </h3>
+
+              <div className="cms-toggle-row">
+                <div className="cms-toggle-info">
+                  <span className="cms-toggle-title">Enable WhatsApp Inquiry Globally</span>
+                  <span className="cms-toggle-desc">
+                    Master switch for all WhatsApp buttons across the website (floating button, product cards, detail page, and contact page).
+                  </span>
+                </div>
+                <label className="cms-switch" aria-label="Toggle WhatsApp Globally">
+                  <input
+                    type="checkbox"
+                    checked={websiteSettings.whatsappEnabled !== false}
+                    onChange={(e) =>
+                      setWebsiteSettings({ ...websiteSettings, whatsappEnabled: e.target.checked })
+                    }
+                  />
+                  <span className="cms-switch-slider" />
+                </label>
+              </div>
+
+              <div className="cms-toggle-row">
+                <div className="cms-toggle-info">
+                  <span className="cms-toggle-title">Floating WhatsApp Quick Chat Button</span>
+                  <span className="cms-toggle-desc">
+                    Show the fixed bottom-right floating WhatsApp button across all public pages.
+                  </span>
+                </div>
+                <label className="cms-switch" aria-label="Toggle Floating WhatsApp Button">
+                  <input
+                    type="checkbox"
+                    checked={websiteSettings.floatingWhatsappEnabled !== false}
+                    onChange={(e) =>
+                      setWebsiteSettings({
+                        ...websiteSettings,
+                        floatingWhatsappEnabled: e.target.checked,
+                      })
+                    }
+                  />
+                  <span className="cms-switch-slider" />
+                </label>
+              </div>
+
+              <div className="cms-toggle-row">
+                <div className="cms-toggle-info">
+                  <span className="cms-toggle-title">Product-Level WhatsApp Inquiries</span>
+                  <span className="cms-toggle-desc">
+                    Show "Enquire on WhatsApp" action buttons on catalog product cards and product detail pages.
+                  </span>
+                </div>
+                <label className="cms-switch" aria-label="Toggle Product-Level WhatsApp Inquiries">
+                  <input
+                    type="checkbox"
+                    checked={websiteSettings.productInquiryEnabled !== false}
+                    onChange={(e) =>
+                      setWebsiteSettings({
+                        ...websiteSettings,
+                        productInquiryEnabled: e.target.checked,
+                      })
+                    }
+                  />
+                  <span className="cms-switch-slider" />
+                </label>
+              </div>
+            </div>
+
+            {/* Phone & Contact Numbers */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                Phone & WhatsApp Numbers
+              </h3>
+
+              <div className="cms-form-grid cms-form-grid-2">
+                <div>
+                  <label className="cms-label">
+                    WhatsApp Phone Number (for wa.me links)
+                  </label>
+                  <input
+                    type="text"
+                    className="cms-input"
+                    placeholder="919714917851"
+                    value={websiteSettings.whatsappNumber || ''}
+                    onChange={(e) =>
+                      setWebsiteSettings({ ...websiteSettings, whatsappNumber: e.target.value })
+                    }
+                  />
+                  <span style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.35rem', display: 'block' }}>
+                    Enter with country code (e.g. 919714917851 for India).
+                  </span>
+                </div>
+
+                <div>
+                  <label className="cms-label">
+                    Direct Call Phone Number (for tel: links)
+                  </label>
+                  <input
+                    type="text"
+                    className="cms-input"
+                    placeholder="+91 97149 17851"
+                    value={websiteSettings.phoneNumber || ''}
+                    onChange={(e) =>
+                      setWebsiteSettings({ ...websiteSettings, phoneNumber: e.target.value })
+                    }
+                  />
+                  <span style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.35rem', display: 'block' }}>
+                    Primary telephone number dialed when clicking "Call Now".
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Message Templates */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                WhatsApp Inquiry Message Templates
+              </h3>
+
+              <div>
+                <label className="cms-label">Default WhatsApp Message (Floating Button & General)</label>
+                <textarea
+                  className="cms-textarea"
+                  rows={2}
+                  value={websiteSettings.defaultWhatsappMessage || ''}
+                  onChange={(e) =>
+                    setWebsiteSettings({
+                      ...websiteSettings,
+                      defaultWhatsappMessage: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="cms-label">
+                  Product Inquiry Message Template (use <code>{'{productName}'}</code> placeholder)
+                </label>
+                <textarea
+                  className="cms-textarea"
+                  rows={2}
+                  value={websiteSettings.productWhatsappMessage || ''}
+                  onChange={(e) =>
+                    setWebsiteSettings({
+                      ...websiteSettings,
+                      productWhatsappMessage: e.target.value,
+                    })
+                  }
+                />
+                <div className="cms-preview-box">
+                  <div className="cms-preview-title">Live Message Preview:</div>
+                  <div className="cms-preview-content">
+                    {(websiteSettings.productWhatsappMessage ||
+                      'Hello Vahanvati Gruh Udhyog, I am interested in {productName}. Please share more details and pricing.'
+                    ).replace(/\{productName\}/g, 'તીખા સારેવડા (Tikha Sarewada)')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* General Contact Info */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                Company & Store Location Info
+              </h3>
+
+              <div>
+                <label className="cms-label">Gujarati Tagline / Specialization</label>
+                <input
+                  type="text"
+                  className="cms-input"
+                  style={{ fontFamily: 'Noto Sans Gujarati, sans-serif' }}
+                  value={websiteSettings.tagline || ''}
+                  onChange={(e) =>
+                    setWebsiteSettings({ ...websiteSettings, tagline: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="cms-label">Physical Store Address (Padgol, Gujarat)</label>
+                <textarea
+                  className="cms-textarea"
+                  rows={2}
+                  value={websiteSettings.address || ''}
+                  onChange={(e) =>
+                    setWebsiteSettings({ ...websiteSettings, address: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="cms-form-grid cms-form-grid-2">
+                <div>
+                  <label className="cms-label">Operating Hours</label>
+                  <input
+                    type="text"
+                    className="cms-input"
+                    value={websiteSettings.businessHours || ''}
+                    onChange={(e) =>
+                      setWebsiteSettings({ ...websiteSettings, businessHours: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="cms-label">Contact Email</label>
+                  <input
+                    type="email"
+                    className="cms-input"
+                    value={websiteSettings.email || ''}
+                    onChange={(e) =>
+                      setWebsiteSettings({ ...websiteSettings, email: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="cms-form-grid cms-form-grid-2">
+                <div>
+                  <label className="cms-label">Official Instagram URL</label>
+                  <input
+                    type="text"
+                    className="cms-input"
+                    value={websiteSettings.instagramUrl || ''}
+                    onChange={(e) =>
+                      setWebsiteSettings({ ...websiteSettings, instagramUrl: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="cms-label">Primary YouTube URL</label>
+                  <input
+                    type="text"
+                    className="cms-input"
+                    value={websiteSettings.youtubeUrl || ''}
+                    onChange={(e) =>
+                      setWebsiteSettings({ ...websiteSettings, youtubeUrl: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="cms-label">Google Maps Link</label>
+                <input
+                  type="text"
+                  className="cms-input"
+                  value={websiteSettings.googleMapsUrl || ''}
+                  onChange={(e) =>
+                    setWebsiteSettings({ ...websiteSettings, googleMapsUrl: e.target.value })
+                  }
+                />
+              </div>
             </div>
           </div>
         </div>

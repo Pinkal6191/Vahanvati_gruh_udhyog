@@ -54,6 +54,7 @@ const getNavIcon = (path: string) => {
     case '/users':
       return <UserCog size={18} />;
     case '/website':
+    case '/manage':
       return <Globe size={18} />;
     case '/settings':
       return <Settings size={18} />;
