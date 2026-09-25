@@ -57,16 +57,14 @@ export class ReturnsService {
       await tx.$queryRaw`SELECT id, invoice_prefix FROM company_settings LIMIT 1 FOR UPDATE`;
 
       const now = new Date();
-      const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const datePart = `${yyyy}${mm}${dd}`;
 
       const latestToday = await tx.salesReturn.findFirst({
         where: {
-          createdAt: {
-            gte: todayStart,
-            lte: todayEnd,
-          },
+          returnNumber: { startsWith: `RET-${datePart}-` },
         },
         orderBy: { returnNumber: 'desc' },
         select: { returnNumber: true },
@@ -96,12 +94,13 @@ export class ReturnsService {
           returned_quantity: Prisma.Decimal;
           base_weight_deducted: Prisma.Decimal;
           unit_rate: Prisma.Decimal;
+          total: Prisma.Decimal;
           product_name_snapshot: string;
           unit_symbol_snapshot: string;
           weight_or_pack_snapshot: string;
         }>
       >`
-        SELECT id, sale_id, product_id, quantity, returned_quantity, base_weight_deducted, unit_rate,
+        SELECT id, sale_id, product_id, quantity, returned_quantity, base_weight_deducted, unit_rate, total,
                product_name_snapshot, unit_symbol_snapshot, weight_or_pack_snapshot
         FROM sale_items
         WHERE id IN (${Prisma.join(uniqueSaleItemIds.map((id) => Prisma.raw(`'${id}'::uuid`)))})
@@ -138,9 +137,17 @@ export class ReturnsService {
           );
         }
 
-        // Calculate refund using historical original sale rate snapshot
-        const unitRate = Number(originalItem.unit_rate);
-        const refundAmount = Math.round(unitRate * reqItem.returnedQuantity * 100) / 100;
+        // Calculate refund using true effective unit rate (item total divided by sold quantity)
+        // This accounts for pack configurations or loose weight where unit_rate may be per-kg
+        const itemTotal = Number(originalItem.total);
+        const effectiveUnitRate = soldQty > 0 ? Math.round((itemTotal / soldQty) * 100) / 100 : Number(originalItem.unit_rate);
+        
+        let refundAmount: number;
+        if (reqItem.returnedQuantity === returnableQty && returnableQty === soldQty) {
+          refundAmount = itemTotal;
+        } else {
+          refundAmount = Math.round(effectiveUnitRate * reqItem.returnedQuantity * 100) / 100;
+        }
         totalRefundAmount += refundAmount;
 
         // Calculate base weight to restock proportionally
@@ -152,7 +159,7 @@ export class ReturnsService {
           productId: originalItem.product_id,
           productName: originalItem.product_name_snapshot,
           returnedQuantity: reqItem.returnedQuantity,
-          unitRateSnapshot: unitRate,
+          unitRateSnapshot: effectiveUnitRate,
           refundAmount,
           restockCondition: reqItem.restockCondition ?? RestockCondition.RESTOCKABLE,
           baseWeightToRestock,
@@ -296,10 +303,11 @@ export class ReturnsService {
             returned_quantity: Prisma.Decimal;
             base_weight_deducted: Prisma.Decimal;
             unit_rate: Prisma.Decimal;
+            total: Prisma.Decimal;
             product_name_snapshot: string;
           }>
         >`
-          SELECT id, sale_id, product_id, quantity, returned_quantity, base_weight_deducted, unit_rate, product_name_snapshot
+          SELECT id, sale_id, product_id, quantity, returned_quantity, base_weight_deducted, unit_rate, total, product_name_snapshot
           FROM sale_items
           WHERE id IN (${Prisma.join(uniqueSaleItemIds.map((id) => Prisma.raw(`'${id}'::uuid`)))})
           ORDER BY id ASC
@@ -329,8 +337,14 @@ export class ReturnsService {
             );
           }
 
-          const unitRate = Number(originalItem.unit_rate);
-          const refundAmount = Math.round(unitRate * reqItem.returnedQuantity * 100) / 100;
+          const itemTotal = Number(originalItem.total);
+          const effectiveUnitRate = soldQty > 0 ? Math.round((itemTotal / soldQty) * 100) / 100 : Number(originalItem.unit_rate);
+          let refundAmount: number;
+          if (reqItem.returnedQuantity === returnableQty && returnableQty === soldQty) {
+            refundAmount = itemTotal;
+          } else {
+            refundAmount = Math.round(effectiveUnitRate * reqItem.returnedQuantity * 100) / 100;
+          }
           totalRefundAmount += refundAmount;
 
           await tx.salesReturnItem.create({
@@ -339,7 +353,7 @@ export class ReturnsService {
               saleItemId: originalItem.id,
               productId: originalItem.product_id,
               returnedQuantity: new Prisma.Decimal(reqItem.returnedQuantity),
-              unitRateSnapshot: new Prisma.Decimal(unitRate),
+              unitRateSnapshot: new Prisma.Decimal(effectiveUnitRate),
               refundAmount: new Prisma.Decimal(refundAmount),
               restockCondition: reqItem.restockCondition ?? RestockCondition.RESTOCKABLE,
             },
@@ -690,8 +704,21 @@ export class ReturnsService {
         0,
         Math.round((soldQuantity - alreadyReturnedQuantity) * 1000) / 1000
       );
-      const unitRate = Number(item.unitRate);
-      const maxReturnAmount = Math.round(unitRate * remainingReturnableQuantity * 100) / 100;
+      const itemTotal = Number(item.total);
+      // Effective price charged per sold unit/pack
+      const effectiveUnitRate = soldQuantity > 0
+        ? Math.round((itemTotal / soldQuantity) * 100) / 100
+        : Number(item.unitRate);
+
+      let maxReturnAmount: number;
+      if (remainingReturnableQuantity === soldQuantity) {
+        maxReturnAmount = itemTotal;
+      } else {
+        maxReturnAmount = Math.min(
+          itemTotal,
+          Math.round(effectiveUnitRate * remainingReturnableQuantity * 100) / 100
+        );
+      }
 
       return {
         saleItemId: item.id,
@@ -703,13 +730,18 @@ export class ReturnsService {
         soldQuantity,
         alreadyReturnedQuantity,
         remainingReturnableQuantity,
-        unitRate,
+        unitRate: effectiveUnitRate,
+        baseRate: Number(item.unitRate),
+        itemTotal,
         maxReturnAmount,
         isEligibleForReturn: remainingReturnableQuantity > 0,
       };
     });
 
-    const totalEligibleAmount = items.reduce((sum, item) => sum + item.maxReturnAmount, 0);
+    const totalEligibleAmount = Math.min(
+      Number(sale.finalTotalAmount),
+      items.reduce((sum, item) => sum + item.maxReturnAmount, 0)
+    );
 
     return {
       originalSaleId: sale.id,

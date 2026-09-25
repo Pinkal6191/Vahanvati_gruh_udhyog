@@ -33,6 +33,13 @@ import {
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
 import './SalesReturnsPage.css';
 
+const formatItemQty = (qty: number, weightOrPack?: string, unitSymbol?: string) => {
+  if (weightOrPack && weightOrPack !== unitSymbol) {
+    return `${qty} ${qty === 1 ? 'pack' : 'packs'}`;
+  }
+  return `${qty} ${unitSymbol || 'kg'}`;
+};
+
 export const SalesReturnDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -345,10 +352,10 @@ export const SalesReturnDetailPage: React.FC = () => {
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    {item.originalSoldQuantity} {item.unitSymbol}
+                    {formatItemQty(item.originalSoldQuantity, item.weightOrPack, item.unitSymbol)}
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                    {item.returnedQuantity} {item.unitSymbol}
+                    {formatItemQty(item.returnedQuantity, item.weightOrPack, item.unitSymbol)}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <span className="rate-locked-badge">{formatCurrency(item.unitRateSnapshot)}</span>

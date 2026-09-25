@@ -58,6 +58,13 @@ interface SelectedReturnItem {
   remainingReturnable: number;
 }
 
+const formatItemQty = (qty: number, weightOrPack?: string, unitSymbol?: string) => {
+  if (weightOrPack && weightOrPack !== unitSymbol) {
+    return `${qty} ${qty === 1 ? 'pack' : 'packs'}`;
+  }
+  return `${qty} ${unitSymbol || 'kg'}`;
+};
+
 export const SalesReturnsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -594,22 +601,27 @@ export const SalesReturnsPage: React.FC = () => {
       <div className="returns-kpis">
         <div className="kpi-card">
           <div className="kpi-icon-wrapper primary">
-            <RotateCcw size={22} />
+            <RotateCcw size={20} />
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Today's Returns</span>
-            <span className="kpi-value">{summary?.todayReturnCount ?? 0}</span>
+            <span className="kpi-value" title={String(summary?.todayReturnCount ?? 0)}>
+              {summary?.todayReturnCount ?? 0}
+            </span>
             <span className="kpi-subtext">Completed returns today</span>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-icon-wrapper error">
-            <Coins size={22} />
+            <Coins size={20} />
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Today's Refund</span>
-            <span className="kpi-value">
+            <span
+              className="kpi-value"
+              title={summary ? formatCurrency(summary.todayReturnAmount) : '₹0.00'}
+            >
               {summary ? formatCurrency(summary.todayReturnAmount) : '₹0.00'}
             </span>
             <span className="kpi-subtext">Total refunded today</span>
@@ -618,33 +630,39 @@ export const SalesReturnsPage: React.FC = () => {
 
         <div className="kpi-card">
           <div className="kpi-icon-wrapper success">
-            <CheckCircle2 size={22} />
+            <CheckCircle2 size={20} />
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Completed Returns</span>
-            <span className="kpi-value">{summary?.completedCount ?? 0}</span>
+            <span className="kpi-value" title={String(summary?.completedCount ?? 0)}>
+              {summary?.completedCount ?? 0}
+            </span>
             <span className="kpi-subtext">Restocked in inventory</span>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-icon-wrapper warning">
-            <Clock size={22} />
+            <Clock size={20} />
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Open Drafts</span>
-            <span className="kpi-value">{summary?.draftCount ?? 0}</span>
+            <span className="kpi-value" title={String(summary?.draftCount ?? 0)}>
+              {summary?.draftCount ?? 0}
+            </span>
             <span className="kpi-subtext">Pending finalization</span>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-icon-wrapper neutral">
-            <Ban size={22} />
+            <Ban size={20} />
           </div>
           <div className="kpi-details">
             <span className="kpi-label">Cancelled Returns</span>
-            <span className="kpi-value">{summary?.cancelledCount ?? 0}</span>
+            <span className="kpi-value" title={String(summary?.cancelledCount ?? 0)}>
+              {summary?.cancelledCount ?? 0}
+            </span>
             <span className="kpi-subtext">Reversed returns</span>
           </div>
         </div>
@@ -933,15 +951,15 @@ export const SalesReturnsPage: React.FC = () => {
                               </div>
                             </td>
                             <td style={{ textAlign: 'right' }}>
-                              {item.soldQuantity} {item.unitSymbol}
+                              {formatItemQty(item.soldQuantity, item.weightOrPack, item.unitSymbol)}
                             </td>
                             <td style={{ textAlign: 'right' }}>
-                              {item.alreadyReturnedQuantity} {item.unitSymbol}
+                              {formatItemQty(item.alreadyReturnedQuantity, item.weightOrPack, item.unitSymbol)}
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               {item.isEligibleForReturn ? (
                                 <span className="returnable-pill">
-                                  {item.remainingReturnableQuantity} {item.unitSymbol}
+                                  {formatItemQty(item.remainingReturnableQuantity, item.weightOrPack, item.unitSymbol)}
                                 </span>
                               ) : (
                                 <span className="returnable-pill depleted">Depleted</span>
