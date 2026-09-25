@@ -11,6 +11,9 @@ import {
   ShieldCheck,
   Lock,
 } from 'lucide-react';
+import { FloatingWhatsApp } from '../../features/public-website/components/FloatingWhatsApp';
+import { usePublicSettings } from '../../features/public-website/hooks/usePublicSettings';
+import { cleanPhoneNumberForTel } from '../../features/public-website/services/whatsapp.utils';
 import './PublicLayout.css';
 
 export interface PublicLayoutProps {
@@ -20,6 +23,10 @@ export interface PublicLayoutProps {
 export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { settings } = usePublicSettings();
+
+  const telHref = cleanPhoneNumberForTel(settings?.phoneNumber || settings?.phone || '+91 97149 17851');
+  const displayPhone = settings?.phoneNumber || settings?.phone || '+91 97149 17851';
 
   // Close mobile drawer on route transition
   React.useEffect(() => {
@@ -169,12 +176,12 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
 
               <div style={{ marginTop: 'auto', paddingTop: '1.5rem' }}>
                 <a
-                  href="tel:+919714917851"
+                  href={telHref}
                   className="public-cta-btn"
                   style={{ width: '100%', justifyContent: 'center' }}
                 >
                   <Phone size={16} />
-                  <span>Call +91 97149 17851</span>
+                  <span>Call {displayPhone.split('/')[0].trim()}</span>
                 </a>
               </div>
             </div>
@@ -301,6 +308,9 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
           </div>
         </div>
       </footer>
+
+      {/* Global Floating WhatsApp Quick Contact Button */}
+      <FloatingWhatsApp />
     </div>
   );
 };

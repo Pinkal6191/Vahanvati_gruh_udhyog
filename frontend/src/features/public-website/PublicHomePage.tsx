@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { publicWebsiteApi, PublicHomeData } from './public-website.api';
 import { resolveMediaUrl } from '../../services/api/api-client';
+import { ProductInquiryButtons } from './components/ProductInquiryButtons';
+import { cleanPhoneNumberForTel } from './services/whatsapp.utils';
 import './PublicWebsite.css';
 
 // Approved YouTube Videos
@@ -168,12 +170,18 @@ export const PublicHomePage: React.FC = () => {
               {data.featuredProducts.slice(0, 8).map((product) => (
                 <article key={product.id} className="public-product-card">
                   <div className="public-product-img-box">
-                    <img
-                      src={resolveMediaUrl(product.imageUrl) || '/logo.png'}
-                      alt={product.name}
-                      className="public-product-img"
-                      loading="lazy"
-                    />
+                    <Link
+                      to={`/products/${product.id}`}
+                      className="public-product-img-link"
+                      title={`View details of ${product.name}`}
+                    >
+                      <img
+                        src={resolveMediaUrl(product.imageUrl) || '/logo.png'}
+                        alt={product.name}
+                        className="public-product-img"
+                        loading="lazy"
+                      />
+                    </Link>
                     {product.isFeatured && (
                       <span className="public-product-badge">Featured</span>
                     )}
@@ -183,7 +191,15 @@ export const PublicHomePage: React.FC = () => {
                     <div className="public-product-category">
                       {product.subcategory?.category?.name || 'Snacks'}
                     </div>
-                    <h3 className="public-product-name">{product.name}</h3>
+                    <h3 className="public-product-name">
+                      <Link
+                        to={`/products/${product.id}`}
+                        className="public-product-title-link"
+                        title={`View details of ${product.name}`}
+                      >
+                        {product.name}
+                      </Link>
+                    </h3>
                     {product.gujaratiName && (
                       <div className="public-product-gu-name">{product.gujaratiName}</div>
                     )}
@@ -196,13 +212,7 @@ export const PublicHomePage: React.FC = () => {
                     )}
 
                     <div className="public-product-footer">
-                      <span className="public-product-pack-tag">
-                        {product.primaryUnit?.symbol || 'Unit'}
-                      </span>
-                      <Link to={`/products/${product.id}`} className="public-inquire-btn">
-                        <span>Details</span>
-                        <ArrowRight size={14} />
-                      </Link>
+                      <ProductInquiryButtons product={product} layout="card" />
                     </div>
                   </div>
                 </article>
@@ -318,9 +328,9 @@ export const PublicHomePage: React.FC = () => {
             હાઈસ્કૂલની પાસે, નડિયાદ - પેટલાદ રોડ, પાડગોલ - ૩૮૮ ૪૪૦, જિ. આણંદ, ગુજરાત.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="tel:+919714917851" className="public-btn-primary">
+            <a href={cleanPhoneNumberForTel(data?.company?.phone)} className="public-btn-primary">
               <Phone size={18} />
-              <span>Call +91 97149 17851</span>
+              <span>Call {data?.company?.phone?.split('/')[0]?.trim() || '+91 97149 17851'}</span>
             </a>
             <Link to="/contact" className="public-btn-secondary">
               <span>View Map & Directions</span>

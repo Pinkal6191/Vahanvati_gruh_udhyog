@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Phone, Package, ShieldCheck, MapPin, ExternalLink } from 'lucide-react';
 import { publicWebsiteApi, PublicProduct } from './public-website.api';
 import { resolveMediaUrl } from '../../services/api/api-client';
+import { ProductInquiryButtons } from './components/ProductInquiryButtons';
 import './PublicWebsite.css';
 
 export const PublicProductDetailPage: React.FC = () => {
@@ -162,14 +163,7 @@ export const PublicProductDetailPage: React.FC = () => {
 
             {/* Actions */}
             <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <a
-                href="tel:+919714917851"
-                className="public-contact-action-btn call"
-                style={{ textAlign: 'center', textDecoration: 'none' }}
-              >
-                <Phone size={18} />
-                <span>Call to Inquire / Order: +91 97149 17851</span>
-              </a>
+              <ProductInquiryButtons product={product} layout="detail" />
               <Link
                 to="/contact"
                 className="public-contact-action-btn directions"

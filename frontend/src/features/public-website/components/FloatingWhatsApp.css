@@ -1,0 +1,115 @@
+/* ========================================================
+   Floating WhatsApp Button — Vahanvati Gruh Udhyog
+   ======================================================== */
+
+.floating-whatsapp-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.floating-whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #25d366;
+  color: #ffffff;
+  border-radius: 9999px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4), 0 2px 6px rgba(0, 0, 0, 0.15);
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.floating-whatsapp-btn:hover {
+  background-color: #20ba5a;
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5), 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.floating-whatsapp-btn:focus-visible {
+  outline: 3px solid #3f438f;
+  outline-offset: 3px;
+}
+
+.floating-whatsapp-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.floating-whatsapp-label {
+  max-width: 0;
+  opacity: 0;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  padding-left: 0;
+}
+
+/* Expand label on desktop hover */
+@media (min-width: 768px) {
+  .floating-whatsapp-container:hover .floating-whatsapp-label {
+    max-width: 180px;
+    opacity: 1;
+    padding-left: 10px;
+    padding-right: 6px;
+  }
+}
+
+/* Subtle attention ripple animation */
+.floating-whatsapp-btn::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.6);
+  animation: whatsapp-pulse 3s infinite;
+  pointer-events: none;
+}
+
+@keyframes whatsapp-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.6);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 14px rgba(37, 211, 102, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .floating-whatsapp-container {
+    bottom: 20px;
+    right: 20px;
+  }
+  .floating-whatsapp-btn {
+    padding: 10px;
+  }
+  .floating-whatsapp-icon {
+    width: 28px;
+    height: 28px;
+  }
+}

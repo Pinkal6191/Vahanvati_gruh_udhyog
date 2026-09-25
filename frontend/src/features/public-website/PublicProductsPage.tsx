@@ -1,11 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Phone, ArrowRight, Package, Sparkles, Layers } from 'lucide-react';
+import { Search, Phone, Package, Sparkles, Layers } from 'lucide-react';
 import { publicWebsiteApi, PublicProduct, PublicCategory } from './public-website.api';
 import { resolveMediaUrl } from '../../services/api/api-client';
+import { ProductInquiryButtons } from './components/ProductInquiryButtons';
+import { usePublicSettings } from './hooks/usePublicSettings';
+import { cleanPhoneNumberForTel } from './services/whatsapp.utils';
 import './PublicWebsite.css';
 
 export const PublicProductsPage: React.FC = () => {
+  const { settings } = usePublicSettings();
+  const telHref = cleanPhoneNumberForTel(settings?.phoneNumber || settings?.phone || '+91 97149 17851');
+  const displayPhone = settings?.phoneNumber || settings?.phone || '+91 97149 17851 / +91 97121 15118';
+
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCategory = searchParams.get('category') || '';
   const [search, setSearch] = useState('');
@@ -48,10 +55,21 @@ export const PublicProductsPage: React.FC = () => {
     }
   };
 
+  // Filter out any internal test categories so only genuine product categories are displayed
+  const displayCategories = useMemo(() => {
+    return categories.filter((c) => {
+      const isTestPattern =
+        /\b(1790\d+|1788\d+|cat_\d+|invc_\d+|sc_\d+)\b/i.test(c.code) ||
+        /\b1790\d+\b/.test(c.name) ||
+        /^(cat|inv cat|sec category|bill cat|ca cat)\s*\d+/i.test(c.name);
+      return !isTestPattern;
+    });
+  }, [categories]);
+
   // Group products category-wise
   const categoryGroups = useMemo(() => {
     if (selectedCategory) {
-      const activeCat = categories.find((c) => c.id === selectedCategory);
+      const activeCat = displayCategories.find((c) => c.id === selectedCategory);
       return [
         {
           categoryId: selectedCategory,
@@ -64,7 +82,7 @@ export const PublicProductsPage: React.FC = () => {
     const groupsMap = new Map<string, { categoryId: string; categoryName: string; products: PublicProduct[] }>();
 
     // Pre-populate with known categories in order
-    categories.forEach((cat) => {
+    displayCategories.forEach((cat) => {
       groupsMap.set(cat.id, {
         categoryId: cat.id,
         categoryName: cat.name,
@@ -89,7 +107,7 @@ export const PublicProductsPage: React.FC = () => {
 
     // Filter out empty categories
     return Array.from(groupsMap.values()).filter((g) => g.products.length > 0);
-  }, [products, categories, selectedCategory]);
+  }, [products, displayCategories, selectedCategory]);
 
   return (
     <div>
@@ -204,7 +222,7 @@ export const PublicProductsPage: React.FC = () => {
                   All Categories ({products.length})
                 </button>
 
-                {categories.map((cat) => (
+                {displayCategories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
@@ -327,15 +345,21 @@ export const PublicProductsPage: React.FC = () => {
                     {group.products.map((product) => (
                       <article key={product.id} className="public-product-card">
                         <div className="public-product-img-box">
-                          <img
-                            src={resolveMediaUrl(product.imageUrl) || '/logo.png'}
-                            alt={product.name}
-                            className="public-product-img"
-                            loading="lazy"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/logo.png';
-                            }}
-                          />
+                          <Link
+                            to={`/products/${product.id}`}
+                            className="public-product-img-link"
+                            title={`View details of ${product.name}`}
+                          >
+                            <img
+                              src={resolveMediaUrl(product.imageUrl) || '/logo.png'}
+                              alt={product.name}
+                              className="public-product-img"
+                              loading="lazy"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/logo.png';
+                              }}
+                            />
+                          </Link>
                           {product.isFeatured && (
                             <span className="public-product-badge">Featured</span>
                           )}
@@ -345,7 +369,15 @@ export const PublicProductsPage: React.FC = () => {
                           <div className="public-product-category">
                             {product.subcategory?.name || group.categoryName}
                           </div>
-                          <h3 className="public-product-name">{product.name}</h3>
+                          <h3 className="public-product-name">
+                            <Link
+                              to={`/products/${product.id}`}
+                              className="public-product-title-link"
+                              title={`View details of ${product.name}`}
+                            >
+                              {product.name}
+                            </Link>
+                          </h3>
                           {product.gujaratiName && (
                             <div className="public-product-gu-name">{product.gujaratiName}</div>
                           )}
@@ -358,13 +390,7 @@ export const PublicProductsPage: React.FC = () => {
                           )}
 
                           <div className="public-product-footer">
-                            <span className="public-product-pack-tag">
-                              Unit: {product.primaryUnit?.symbol || product.primaryUnit?.name || 'Pack'}
-                            </span>
-                            <Link to={`/products/${product.id}`} className="public-inquire-btn">
-                              <span>Details</span>
-                              <ArrowRight size={14} />
-                            </Link>
+                            <ProductInquiryButtons product={product} layout="card" />
                           </div>
                         </div>
                       </article>
@@ -394,12 +420,12 @@ export const PublicProductsPage: React.FC = () => {
             Call us directly or visit our store in Padgol for fresh, authentic batches.
           </p>
           <a
-            href="tel:+919714917851"
+            href={telHref}
             className="public-btn-primary"
             style={{ background: '#3f438f', color: '#ffffff' }}
           >
             <Phone size={18} />
-            <span>Call +91 97149 17851 / +91 97121 15118</span>
+            <span>Call {displayPhone}</span>
           </a>
         </div>
       </section>
