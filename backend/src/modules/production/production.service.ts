@@ -71,16 +71,14 @@ export class ProductionService {
       await tx.$queryRaw`SELECT id, invoice_prefix FROM company_settings LIMIT 1 FOR UPDATE`;
 
       const now = new Date();
-      const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const datePart = `${yyyy}${mm}${dd}`;
 
       const latestToday = await tx.productionEntry.findFirst({
         where: {
-          createdAt: {
-            gte: todayStart,
-            lte: todayEnd,
-          },
+          productionNumber: { startsWith: `PRD-${datePart}-` },
         },
         orderBy: { productionNumber: 'desc' },
         select: { productionNumber: true },

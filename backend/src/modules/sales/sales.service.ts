@@ -139,16 +139,14 @@ export class SalesService {
 
       // 4.2 Generate Sequential Bill Number (e.g. VGU-YYYYMMDD-0001)
       const now = new Date();
-      const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const datePart = `${yyyy}${mm}${dd}`;
 
       const latestSaleToday = await tx.sale.findFirst({
         where: {
-          createdAt: {
-            gte: todayStart,
-            lte: todayEnd,
-          },
+          billNumber: { startsWith: `${prefix}-${datePart}-` },
         },
         orderBy: { billNumber: 'desc' },
         select: { billNumber: true },
