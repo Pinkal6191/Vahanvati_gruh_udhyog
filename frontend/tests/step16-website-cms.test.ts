@@ -2,6 +2,11 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { canAccessRoute } from '../src/utils/rbac';
 import { User } from '../src/types/auth.types';
+import {
+  cleanPhoneNumberForWhatsApp,
+  cleanPhoneNumberForTel,
+  buildWhatsAppInquiryUrl,
+} from '../src/features/public-website/services/whatsapp.utils';
 
 describe('Step 16 — Business Website & Basic CMS Frontend Test Suite', () => {
   const adminUser: User = {
@@ -196,33 +201,94 @@ describe('Step 16 — Business Website & Basic CMS Frontend Test Suite', () => {
   });
 
   // ========================================================
-  // 6. CONTACT & LOCATION CREDENTIALS
+  // 7. WHATSAPP INQUIRY & URL ENCODING CONFORMANCE
   // ========================================================
-  describe('6. Authentic Contact & FSSAI Standards', () => {
-    const COMPANY_DATA = {
-      name: 'Vahanvati Gruh Udhyog',
-      tagline: 'હાથ વણાટના સ્પે. સારેવડા તેમજ સેવો તથા વડી બનાવનાર.',
-      address: 'હાઈસ્કૂલની પાસે, નડિયાદ - પેટલાદ રોડ, પાડગોલ - ૩૮૮ ૪૪૦',
-      phone1: '+91 97149 17851',
-      phone2: '+91 97121 15118',
-      fssaiLicense: '20720004000511',
-      gstin: '24BCIPP6428E1ZL',
-    };
-
-    it('should verify authentic store location in Padgol', () => {
-      assert.ok(COMPANY_DATA.address.includes('પાડગોલ'));
-      assert.ok(COMPANY_DATA.address.includes('નડિયાદ - પેટલાદ રોડ'));
-      assert.ok(COMPANY_DATA.address.includes('૩૮૮ ૪૪૦'));
+  describe('7. WhatsApp Inquiry URL Generation & Encoding', () => {
+    it('should cleanly strip non-digits and preserve/add country code 91', () => {
+      assert.equal(cleanPhoneNumberForWhatsApp('+91 97149 17851'), '919714917851');
+      assert.equal(cleanPhoneNumberForWhatsApp('9714917851'), '919714917851');
+      assert.equal(cleanPhoneNumberForWhatsApp('+91-97149-17851'), '919714917851');
+      assert.equal(cleanPhoneNumberForWhatsApp('(91) 97149 17851'), '919714917851');
     });
 
-    it('should verify official contact telephone numbers', () => {
-      assert.ok(COMPANY_DATA.phone1.includes('97149 17851'));
-      assert.ok(COMPANY_DATA.phone2.includes('97121 15118'));
+    it('should generate valid wa.me URLs with proper URL encoding for Unicode/Gujarati text', () => {
+      const url = buildWhatsAppInquiryUrl(
+        '+91 97149 17851',
+        'Hello Vahanvati Gruh Udhyog, I am interested in {productName}. Please share more details and pricing.',
+        'Rice Sarewada',
+        'ચોખાના સારેવડા'
+      );
+
+      assert.ok(url.startsWith('https://wa.me/919714917851?text='));
+      // Must contain percent-encoded text for spaces and Gujarati characters
+      assert.ok(url.includes('%20') || url.includes('+'));
+      // Verify decoded message contains both English and Gujarati product name
+      const queryParam = url.split('?text=')[1];
+      const decoded = decodeURIComponent(queryParam);
+      assert.ok(decoded.includes('Rice Sarewada'));
+      assert.ok(decoded.includes('ચોખાના સારેવડા'));
+      assert.ok(decoded.includes('Hello Vahanvati Gruh Udhyog'));
     });
 
-    it('should verify official statutory licenses', () => {
-      assert.equal(COMPANY_DATA.fssaiLicense, '20720004000511');
-      assert.equal(COMPANY_DATA.gstin, '24BCIPP6428E1ZL');
+    it('should handle general inquiry without product name', () => {
+      const url = buildWhatsAppInquiryUrl(
+        '919714917851',
+        'Hello Vahanvati Gruh Udhyog, I would like to know more about your products.'
+      );
+
+      assert.ok(url.startsWith('https://wa.me/919714917851?text='));
+      const decoded = decodeURIComponent(url.split('?text=')[1]);
+      assert.equal(decoded, 'Hello Vahanvati Gruh Udhyog, I would like to know more about your products.');
+    });
+  });
+
+  // ========================================================
+  // 8. DIRECT PHONE CALL LINK CONFORMANCE
+  // ========================================================
+  describe('8. Direct Phone Call (tel:) Link Generation', () => {
+    it('should cleanly format tel: URI taking primary number from multi-phone strings', () => {
+      assert.equal(cleanPhoneNumberForTel('+91 97149 17851 / +91 97121 15118'), '+919714917851');
+      assert.equal(cleanPhoneNumberForTel('9714917851, 9712115118'), '+919714917851');
+      assert.equal(cleanPhoneNumberForTel('+91-97149-17851'), '+919714917851');
+    });
+  });
+
+  // ========================================================
+  // 9. WEBSITE CMS /manage ROUTE RBAC PROTECTION
+  // ========================================================
+  describe('9. RBAC Protection for /manage and Subroutes', () => {
+    const manageRoutes = [
+      '/manage',
+      '/manage/home',
+      '/manage/about',
+      '/manage/products',
+      '/manage/gallery',
+      '/manage/contact',
+      '/manage/settings',
+    ];
+
+    it('ADMIN role should have full access to /manage and all CMS subroutes', () => {
+      for (const route of manageRoutes) {
+        assert.equal(canAccessRoute(route, adminUser), true, `ADMIN must access ${route}`);
+      }
+    });
+
+    it('OUTLET role should be strictly FORBIDDEN from /manage and all CMS subroutes', () => {
+      for (const route of manageRoutes) {
+        assert.equal(canAccessRoute(route, outletUser), false, `OUTLET must NOT access ${route}`);
+      }
+    });
+
+    it('PRODUCTION role should be strictly FORBIDDEN from /manage and all CMS subroutes', () => {
+      for (const route of manageRoutes) {
+        assert.equal(canAccessRoute(route, productionUser), false, `PRODUCTION must NOT access ${route}`);
+      }
+    });
+
+    it('Anonymous visitors should be strictly FORBIDDEN from /manage and all CMS subroutes', () => {
+      for (const route of manageRoutes) {
+        assert.equal(canAccessRoute(route, null), false, `Anonymous visitor must NOT access ${route}`);
+      }
     });
   });
 });
