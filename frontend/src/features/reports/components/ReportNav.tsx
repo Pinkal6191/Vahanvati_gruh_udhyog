@@ -10,6 +10,7 @@ import {
   Boxes,
   ArrowLeftRight,
   ShieldCheck,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 import { hasRole } from '../../../utils/rbac';
@@ -53,6 +54,12 @@ const REPORT_NAV_ITEMS: ReportNavItem[] = [
     label: 'Returns',
     path: '/reports/returns',
     icon: <RotateCcw size={16} />,
+    allowedRoles: ['ADMIN', 'OUTLET'],
+  },
+  {
+    label: 'Statutory / CA',
+    path: '/reports/statutory',
+    icon: <FileSpreadsheet size={16} />,
     allowedRoles: ['ADMIN', 'OUTLET'],
   },
   {

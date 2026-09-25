@@ -197,3 +197,97 @@
     align-items: stretch;
   }
 }
+
+/* ============================================================
+   Phase 2F: Statutory Print Layout (@media print)
+   ============================================================ */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 10pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app navigation chrome and screen-only controls */
+  nav,
+  aside,
+  header,
+  .app-sidebar,
+  .app-header,
+  .report-nav-container,
+  .report-header-actions,
+  .report-table-toolbar,
+  .no-print,
+  button {
+    display: none !important;
+  }
+
+  /* Full-width content wrapper */
+  .app-layout,
+  .app-main,
+  .app-content,
+  .report-page-container,
+  .report-table-card {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Preserve KPI cards in print */
+  .report-kpi-grid,
+  .report-kpi-grid-5,
+  .report-kpi-grid-3 {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .report-mini-list-card {
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 12px !important;
+    border-radius: 4px !important;
+    flex: 1 !important;
+    background: #f8fafc !important;
+    box-shadow: none !important;
+  }
+
+  /* Repeating table header and page breaks */
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #94a3b8 !important;
+    padding: 4px 6px !important;
+  }
+
+  th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+  }
+}

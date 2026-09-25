@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database.js';
-import { SaleStatus, ProductionStatus, ReturnStatus, PaymentMode, SaleType } from '@prisma/client';
+import { SaleStatus, ProductionStatus, ReturnStatus, PaymentMode, SaleType, RefundPaymentMode, CustomerType } from '@prisma/client';
 import {
   SalesReportQuery,
   ProductReportQuery,
@@ -10,8 +10,18 @@ import {
   StockMovementsReportQuery,
   ReturnsReportQuery,
   BusinessSummaryQuery,
+  StatutorySalesReportQuery,
+  StatutoryItemizedReportQuery,
+  StatutoryReturnsReportQuery,
+  StatutoryGstSummaryQuery,
 } from './reports.validation.js';
 import { resolveDateRange, formatPeriodKey, round2, GroupByInterval } from './reports.utils.js';
+import {
+  statutorySalesToCsv,
+  statutoryItemizedToCsv,
+  statutoryReturnsToCsv,
+  statutoryGstSummaryToCsv,
+} from './reports.csv.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { NotFoundError, ForbiddenError } from '../../common/errors/app-error.js';
 import { resolveReportSaleTypeScope } from './reports.auth.js';
@@ -1207,6 +1217,702 @@ export class ReportsService {
       },
       paymentSummary,
       topProducts,
+    };
+  }
+
+  // ============================================================
+  // Phase 2F: Statutory / CA Compliance Reporting & Export
+  // ============================================================
+
+  /**
+   * Statutory Bill-Level Sales Register
+   * Fully audited bill-by-bill report honoring RBAC and immutable historical snapshots.
+   */
+  static async getStatutorySalesRegister(
+    query: StatutorySalesReportQuery,
+    user?: AuthenticatedUser
+  ) {
+    const { period, startDate, endDate, saleType, customerType, paymentMode, gstinOnly, status, format } = query;
+    const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
+
+    const { effectiveSaleType, effectiveSaleTypes, isScoped, isMasterAdmin } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
+
+    const whereSale: any = {
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
+    };
+
+    if (start || end) {
+      whereSale.createdAt = {};
+      if (start) whereSale.createdAt.gte = start;
+      if (end) whereSale.createdAt.lte = end;
+    }
+
+    if (customerType) {
+      whereSale.customerTypeSnapshot = customerType;
+    }
+
+    if (paymentMode) {
+      whereSale.payments = {
+        some: { paymentMode },
+      };
+    }
+
+    if (gstinOnly) {
+      whereSale.customerGstinSnapshot = { not: null };
+    }
+
+    if (status === 'COMPLETED') {
+      whereSale.saleStatus = SaleStatus.COMPLETED;
+    } else if (status === 'CANCELLED') {
+      whereSale.saleStatus = SaleStatus.CANCELLED;
+    }
+
+    const sales = await prisma.sale.findMany({
+      where: whereSale,
+      include: {
+        payments: true,
+        user: { select: { fullName: true, username: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Compute statutory metrics
+    let completedBills = 0;
+    let cancelledBills = 0;
+    let subtotalAmount = 0;
+    let discountAmount = 0;
+    let taxAmount = 0;
+    let finalTotalAmount = 0;
+    let paidAmount = 0;
+    let cancelledAmount = 0;
+
+    for (const s of sales) {
+      if (s.saleStatus === SaleStatus.COMPLETED) {
+        completedBills += 1;
+        subtotalAmount += Number(s.subtotalAmount);
+        discountAmount += Number(s.discountAmount);
+        taxAmount += Number(s.taxAmount);
+        finalTotalAmount += Number(s.finalTotalAmount);
+        paidAmount += Number(s.paidAmount);
+      } else if (s.saleStatus === SaleStatus.CANCELLED) {
+        cancelledBills += 1;
+        cancelledAmount += Number(s.finalTotalAmount);
+      }
+    }
+
+    subtotalAmount = round2(subtotalAmount);
+    discountAmount = round2(discountAmount);
+    const taxableAmount = round2(subtotalAmount - discountAmount);
+    taxAmount = round2(taxAmount);
+    finalTotalAmount = round2(finalTotalAmount);
+    paidAmount = round2(paidAmount);
+    cancelledAmount = round2(cancelledAmount);
+
+    if (format === 'csv') {
+      return statutorySalesToCsv(sales);
+    }
+
+    const formattedData = sales.map((s) => ({
+      id: s.id,
+      billNumber: s.billNumber,
+      date: s.createdAt.toISOString(),
+      saleType: s.saleType,
+      customerName: s.customerNameSnapshot,
+      customerMobile: s.customerMobileSnapshot,
+      customerType: s.customerTypeSnapshot,
+      customerGstin: s.customerGstinSnapshot,
+      isB2B: Boolean(s.customerGstinSnapshot && s.customerGstinSnapshot.trim().length > 0),
+      subtotalAmount: Number(s.subtotalAmount),
+      discountAmount: Number(s.discountAmount),
+      taxableAmount: round2(Number(s.subtotalAmount) - Number(s.discountAmount)),
+      taxAmount: Number(s.taxAmount),
+      finalTotalAmount: Number(s.finalTotalAmount),
+      paidAmount: Number(s.paidAmount),
+      paymentStatus: s.paymentStatus,
+      paymentModes: Array.from(new Set(s.payments.map((p) => p.paymentMode))),
+      saleStatus: s.saleStatus,
+      cancellationReason: s.cancellationReason,
+      biller: s.user ? s.user.fullName || s.user.username : 'Unknown',
+    }));
+
+    return {
+      summary: {
+        period: periodDescription,
+        totalRecordedBills: sales.length,
+        completedBills,
+        cancelledBills,
+        subtotalAmount,
+        discountAmount,
+        taxableAmount,
+        taxAmount,
+        finalTotalAmount,
+        paidAmount,
+        cancelledAmount,
+        isScoped,
+        isMasterAdmin,
+        visibleSaleTypes: effectiveSaleTypes,
+        formulaNotes:
+          'Taxable Amount = subtotalAmount - discountAmount; Completed sales calculate turnover; Cancelled sales tracked separately.',
+      },
+      data: formattedData,
+    };
+  }
+
+  /**
+   * Statutory Itemized Sales Register
+   * Line-item level audit report preserving immutable pricing, unit, and item snapshots.
+   */
+  static async getStatutoryItemizedSalesRegister(
+    query: StatutoryItemizedReportQuery,
+    user?: AuthenticatedUser
+  ) {
+    const { period, startDate, endDate, saleType, customerType, gstinOnly, status, format } = query;
+    const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
+
+    const { effectiveSaleType, effectiveSaleTypes, isScoped, isMasterAdmin } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
+
+    const saleWhere: any = {
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
+    };
+
+    if (start || end) {
+      saleWhere.createdAt = {};
+      if (start) saleWhere.createdAt.gte = start;
+      if (end) saleWhere.createdAt.lte = end;
+    }
+
+    if (customerType) {
+      saleWhere.customerTypeSnapshot = customerType;
+    }
+
+    if (gstinOnly) {
+      saleWhere.customerGstinSnapshot = { not: null };
+    }
+
+    if (status === 'COMPLETED') {
+      saleWhere.saleStatus = SaleStatus.COMPLETED;
+    } else if (status === 'CANCELLED') {
+      saleWhere.saleStatus = SaleStatus.CANCELLED;
+    }
+
+    const items = await prisma.saleItem.findMany({
+      where: {
+        sale: saleWhere,
+      },
+      include: {
+        sale: {
+          select: {
+            id: true,
+            billNumber: true,
+            createdAt: true,
+            saleType: true,
+            customerNameSnapshot: true,
+            customerTypeSnapshot: true,
+            customerGstinSnapshot: true,
+            saleStatus: true,
+            cancellationReason: true,
+          },
+        },
+      },
+      orderBy: [{ sale: { createdAt: 'desc' } }, { id: 'asc' }],
+    });
+
+    let completedItemsCount = 0;
+    let cancelledItemsCount = 0;
+    let totalQuantity = 0;
+    let totalSubtotal = 0;
+    let totalDiscount = 0;
+    let totalAmount = 0;
+
+    for (const it of items) {
+      if (it.sale.saleStatus === SaleStatus.COMPLETED) {
+        completedItemsCount += 1;
+        totalQuantity += Number(it.quantity);
+        totalSubtotal += Number(it.subtotal);
+        totalDiscount += Number(it.discount);
+        totalAmount += Number(it.total);
+      } else {
+        cancelledItemsCount += 1;
+      }
+    }
+
+    totalQuantity = round2(totalQuantity);
+    totalSubtotal = round2(totalSubtotal);
+    totalDiscount = round2(totalDiscount);
+    totalAmount = round2(totalAmount);
+
+    if (format === 'csv') {
+      return statutoryItemizedToCsv(items);
+    }
+
+    const formattedData = items.map((it) => {
+      const isB2B = Boolean(
+        it.sale.customerGstinSnapshot && it.sale.customerGstinSnapshot.trim().length > 0
+      );
+      return {
+        id: it.id,
+        saleId: it.sale.id,
+        billNumber: it.sale.billNumber,
+        date: it.sale.createdAt.toISOString(),
+        saleType: it.saleTypeSnapshot || it.sale.saleType,
+        customerName: it.sale.customerNameSnapshot,
+        customerType: it.sale.customerTypeSnapshot,
+        customerGstin: it.sale.customerGstinSnapshot,
+        isB2B,
+        productName: it.productNameSnapshot,
+        unitSymbol: it.unitSymbolSnapshot,
+        weightOrPack: it.weightOrPackSnapshot,
+        quantity: Number(it.quantity),
+        unitRate: Number(it.unitRate),
+        subtotal: Number(it.subtotal),
+        discount: Number(it.discount),
+        total: Number(it.total),
+        saleStatus: it.sale.saleStatus,
+        cancellationReason: it.sale.cancellationReason,
+      };
+    });
+
+    return {
+      summary: {
+        period: periodDescription,
+        totalItemsCount: items.length,
+        completedItemsCount,
+        cancelledItemsCount,
+        totalQuantity,
+        totalSubtotal,
+        totalDiscount,
+        totalAmount,
+        isScoped,
+        isMasterAdmin,
+        visibleSaleTypes: effectiveSaleTypes,
+      },
+      data: formattedData,
+    };
+  }
+
+  /**
+   * Statutory Sales Returns Register
+   * Dedicated return register cross-referencing original sales, refund modes, and restock conditions.
+   */
+  static async getStatutoryReturnsRegister(
+    query: StatutoryReturnsReportQuery,
+    user?: AuthenticatedUser
+  ) {
+    const { period, startDate, endDate, saleType, customerType, refundPaymentMode, status, format } = query;
+    const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
+
+    const { effectiveSaleType, effectiveSaleTypes, isScoped, isMasterAdmin } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
+
+    const whereReturn: any = {
+      ...(effectiveSaleType
+        ? { saleTypeSnapshot: effectiveSaleType }
+        : { saleTypeSnapshot: { in: effectiveSaleTypes } }),
+    };
+
+    if (start || end) {
+      whereReturn.createdAt = {};
+      if (start) whereReturn.createdAt.gte = start;
+      if (end) whereReturn.createdAt.lte = end;
+    }
+
+    if (customerType) {
+      whereReturn.customer = { customerType };
+    }
+
+    if (refundPaymentMode) {
+      whereReturn.refundPaymentMode = refundPaymentMode;
+    }
+
+    if (status) {
+      whereReturn.status = status;
+    }
+
+    const returns = await prisma.salesReturn.findMany({
+      where: whereReturn,
+      include: {
+        originalSale: {
+          select: {
+            billNumber: true,
+            customerNameSnapshot: true,
+            customerTypeSnapshot: true,
+            customerGstinSnapshot: true,
+          },
+        },
+        customer: {
+          select: {
+            name: true,
+            customerType: true,
+            gstin: true,
+          },
+        },
+        items: {
+          include: {
+            saleItem: true,
+            product: { select: { id: true, name: true, code: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let completedReturns = 0;
+    let cancelledReturns = 0;
+    let draftReturns = 0;
+    let totalRefundAmount = 0;
+    let totalReturnedQuantity = 0;
+
+    for (const ret of returns) {
+      if (ret.status === ReturnStatus.COMPLETED) {
+        completedReturns += 1;
+        totalRefundAmount += Number(ret.totalReturnAmount);
+        for (const item of ret.items) {
+          totalReturnedQuantity += Number(item.returnedQuantity);
+        }
+      } else if (ret.status === ReturnStatus.CANCELLED) {
+        cancelledReturns += 1;
+      } else if (ret.status === ReturnStatus.DRAFT) {
+        draftReturns += 1;
+      }
+    }
+
+    totalRefundAmount = round2(totalRefundAmount);
+    totalReturnedQuantity = round2(totalReturnedQuantity);
+
+    if (format === 'csv') {
+      return statutoryReturnsToCsv(returns);
+    }
+
+    const formattedData = returns.map((ret) => {
+      const custName = ret.customer?.name || ret.originalSale?.customerNameSnapshot || 'Unknown';
+      const custType = ret.originalSale?.customerTypeSnapshot || ret.customer?.customerType || CustomerType.INDIAN;
+      const gstin = ret.originalSale?.customerGstinSnapshot || ret.customer?.gstin || null;
+
+      return {
+        id: ret.id,
+        returnNumber: ret.returnNumber,
+        originalBillNumber: ret.originalSale?.billNumber || 'Unknown',
+        date: ret.createdAt.toISOString(),
+        completedAt: ret.completedAt ? ret.completedAt.toISOString() : null,
+        customerName: custName,
+        customerType: custType,
+        customerGstin: gstin,
+        isB2B: Boolean(gstin && gstin.trim().length > 0),
+        saleType: ret.saleTypeSnapshot,
+        refundPaymentMode: ret.refundPaymentMode,
+        totalReturnAmount: Number(ret.totalReturnAmount),
+        status: ret.status,
+        reason: ret.reason,
+        cancellationReason: ret.cancellationReason,
+        items: ret.items.map((item) => ({
+          id: item.id,
+          productName: item.saleItem?.productNameSnapshot || item.product?.name || 'Unknown',
+          returnedQuantity: Number(item.returnedQuantity),
+          unitRate: Number(item.unitRateSnapshot),
+          refundAmount: Number(item.refundAmount),
+          restockCondition: item.restockCondition,
+        })),
+      };
+    });
+
+    return {
+      summary: {
+        period: periodDescription,
+        totalReturns: returns.length,
+        completedReturns,
+        cancelledReturns,
+        draftReturns,
+        totalRefundAmount,
+        totalReturnedQuantity,
+        isScoped,
+        isMasterAdmin,
+        visibleSaleTypes: effectiveSaleTypes,
+      },
+      data: formattedData,
+    };
+  }
+
+  /**
+   * Statutory GST / Tax Summary
+   * Segmented by SaleType and GST Classification (B2B vs B2C).
+   * Reports aggregate taxAmount without inventing CGST/SGST/IGST splits.
+   */
+  static async getStatutoryGstSummary(
+    query: StatutoryGstSummaryQuery,
+    user?: AuthenticatedUser
+  ) {
+    const { period, startDate, endDate, saleType, customerType, gstinOnly, format } = query;
+    const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
+
+    const { effectiveSaleType, effectiveSaleTypes, isScoped, isMasterAdmin } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
+
+    // 1. Query Completed Sales
+    const saleWhere: any = {
+      saleStatus: SaleStatus.COMPLETED,
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
+    };
+
+    if (start || end) {
+      saleWhere.createdAt = {};
+      if (start) saleWhere.createdAt.gte = start;
+      if (end) saleWhere.createdAt.lte = end;
+    }
+
+    if (customerType) {
+      saleWhere.customerTypeSnapshot = customerType;
+    }
+
+    if (gstinOnly) {
+      saleWhere.customerGstinSnapshot = { not: null };
+    }
+
+    const completedSales = await prisma.sale.findMany({
+      where: saleWhere,
+      select: {
+        id: true,
+        saleType: true,
+        customerTypeSnapshot: true,
+        customerGstinSnapshot: true,
+        subtotalAmount: true,
+        discountAmount: true,
+        taxAmount: true,
+        finalTotalAmount: true,
+      },
+    });
+
+    // 2. Query Cancelled Sales
+    const cancelledWhere: any = {
+      saleStatus: SaleStatus.CANCELLED,
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
+    };
+
+    if (start || end) {
+      cancelledWhere.createdAt = {};
+      if (start) cancelledWhere.createdAt.gte = start;
+      if (end) cancelledWhere.createdAt.lte = end;
+    }
+    if (customerType) cancelledWhere.customerTypeSnapshot = customerType;
+    if (gstinOnly) cancelledWhere.customerGstinSnapshot = { not: null };
+
+    const cancelledSales = await prisma.sale.findMany({
+      where: cancelledWhere,
+      select: {
+        saleType: true,
+        customerGstinSnapshot: true,
+        finalTotalAmount: true,
+      },
+    });
+
+    // 3. Query Completed Returns
+    const returnWhere: any = {
+      status: ReturnStatus.COMPLETED,
+      ...(effectiveSaleType
+        ? { saleTypeSnapshot: effectiveSaleType }
+        : { saleTypeSnapshot: { in: effectiveSaleTypes } }),
+    };
+
+    if (start || end) {
+      returnWhere.createdAt = {};
+      if (start) returnWhere.createdAt.gte = start;
+      if (end) returnWhere.createdAt.lte = end;
+    }
+
+    if (customerType) {
+      returnWhere.customer = { customerType };
+    }
+
+    const completedReturns = await prisma.salesReturn.findMany({
+      where: returnWhere,
+      include: {
+        originalSale: {
+          select: {
+            customerGstinSnapshot: true,
+          },
+        },
+      },
+    });
+
+    // Data structures for segmenting
+    const emptySegment = () => ({
+      billsCount: 0,
+      subtotalAmount: 0,
+      discountAmount: 0,
+      taxableAmount: 0,
+      taxAmount: 0,
+      finalTotalAmount: 0,
+      returnsCount: 0,
+      returnAmount: 0,
+      netAmount: 0,
+      cancelledBillsCount: 0,
+      cancelledAmount: 0,
+    });
+
+    const bySaleType: Record<SaleType, ReturnType<typeof emptySegment>> = {
+      [SaleType.RETAIL]: emptySegment(),
+      [SaleType.NRI]: emptySegment(),
+      [SaleType.WHOLESALE]: emptySegment(),
+    };
+
+    const byGstClassification: Record<'B2B' | 'B2C', ReturnType<typeof emptySegment>> = {
+      B2B: emptySegment(),
+      B2C: emptySegment(),
+    };
+
+    // Overall summary accumulators
+    let totalCompletedBills = 0;
+    let grossSubtotal = 0;
+    let grossDiscount = 0;
+    let grossTaxAmount = 0;
+    let grossFinalAmount = 0;
+
+    // Process completed sales
+    for (const s of completedSales) {
+      const sub = Number(s.subtotalAmount);
+      const disc = Number(s.discountAmount);
+      const tax = Number(s.taxAmount);
+      const finalTot = Number(s.finalTotalAmount);
+      const isB2B = Boolean(s.customerGstinSnapshot && s.customerGstinSnapshot.trim().length > 0);
+      const gstClass = isB2B ? 'B2B' : 'B2C';
+
+      totalCompletedBills += 1;
+      grossSubtotal += sub;
+      grossDiscount += disc;
+      grossTaxAmount += tax;
+      grossFinalAmount += finalTot;
+
+      // Update bySaleType
+      if (bySaleType[s.saleType]) {
+        const seg = bySaleType[s.saleType];
+        seg.billsCount += 1;
+        seg.subtotalAmount = round2(seg.subtotalAmount + sub);
+        seg.discountAmount = round2(seg.discountAmount + disc);
+        seg.taxableAmount = round2(seg.subtotalAmount - seg.discountAmount);
+        seg.taxAmount = round2(seg.taxAmount + tax);
+        seg.finalTotalAmount = round2(seg.finalTotalAmount + finalTot);
+      }
+
+      // Update byGstClassification
+      const gSeg = byGstClassification[gstClass];
+      gSeg.billsCount += 1;
+      gSeg.subtotalAmount = round2(gSeg.subtotalAmount + sub);
+      gSeg.discountAmount = round2(gSeg.discountAmount + disc);
+      gSeg.taxableAmount = round2(gSeg.subtotalAmount - gSeg.discountAmount);
+      gSeg.taxAmount = round2(gSeg.taxAmount + tax);
+      gSeg.finalTotalAmount = round2(gSeg.finalTotalAmount + finalTot);
+    }
+
+    // Process completed returns
+    let totalCompletedReturns = 0;
+    let totalReturnAmount = 0;
+
+    for (const ret of completedReturns) {
+      const retAmt = Number(ret.totalReturnAmount);
+      const isB2B = Boolean(
+        ret.originalSale?.customerGstinSnapshot &&
+          ret.originalSale.customerGstinSnapshot.trim().length > 0
+      );
+      const gstClass = isB2B ? 'B2B' : 'B2C';
+
+      totalCompletedReturns += 1;
+      totalReturnAmount = round2(totalReturnAmount + retAmt);
+
+      if (bySaleType[ret.saleTypeSnapshot]) {
+        const seg = bySaleType[ret.saleTypeSnapshot];
+        seg.returnsCount += 1;
+        seg.returnAmount = round2(seg.returnAmount + retAmt);
+      }
+
+      const gSeg = byGstClassification[gstClass];
+      gSeg.returnsCount += 1;
+      gSeg.returnAmount = round2(gSeg.returnAmount + retAmt);
+    }
+
+    // Process cancelled sales
+    let totalCancelledBills = 0;
+    let totalCancelledAmount = 0;
+
+    for (const cs of cancelledSales) {
+      const cAmt = Number(cs.finalTotalAmount);
+      const isB2B = Boolean(cs.customerGstinSnapshot && cs.customerGstinSnapshot.trim().length > 0);
+      const gstClass = isB2B ? 'B2B' : 'B2C';
+
+      totalCancelledBills += 1;
+      totalCancelledAmount = round2(totalCancelledAmount + cAmt);
+
+      if (bySaleType[cs.saleType]) {
+        const seg = bySaleType[cs.saleType];
+        seg.cancelledBillsCount += 1;
+        seg.cancelledAmount = round2(seg.cancelledAmount + cAmt);
+      }
+
+      const gSeg = byGstClassification[gstClass];
+      gSeg.cancelledBillsCount += 1;
+      gSeg.cancelledAmount = round2(gSeg.cancelledAmount + cAmt);
+    }
+
+    // Calculate net amounts for all segments
+    for (const st of Object.values(bySaleType)) {
+      st.netAmount = round2(st.finalTotalAmount - st.returnAmount);
+    }
+    for (const cls of Object.values(byGstClassification)) {
+      cls.netAmount = round2(cls.finalTotalAmount - cls.returnAmount);
+    }
+
+    grossSubtotal = round2(grossSubtotal);
+    grossDiscount = round2(grossDiscount);
+    const taxableAmount = round2(grossSubtotal - grossDiscount);
+    grossTaxAmount = round2(grossTaxAmount);
+    grossFinalAmount = round2(grossFinalAmount);
+    const netFinalAmount = round2(grossFinalAmount - totalReturnAmount);
+    totalCancelledAmount = round2(totalCancelledAmount);
+
+    const summary = {
+      period: periodDescription,
+      completedBills: totalCompletedBills,
+      grossSubtotalAmount: grossSubtotal,
+      discountAmount: grossDiscount,
+      taxableAmount,
+      taxAmount: grossTaxAmount,
+      finalTotalAmount: grossFinalAmount,
+      completedReturns: totalCompletedReturns,
+      returnAmount: totalReturnAmount,
+      netFinalAmount,
+      cancelledBills: totalCancelledBills,
+      cancelledFinalAmount: totalCancelledAmount,
+      isScoped,
+      isMasterAdmin,
+      visibleSaleTypes: effectiveSaleTypes,
+      formulaNotes:
+        'Taxable Amount = grossSubtotalAmount - discountAmount; Net Final Amount = finalTotalAmount - returnAmount; Aggregate taxAmount reported without CGST/SGST/IGST synthesis.',
+    };
+
+    if (format === 'csv') {
+      return statutoryGstSummaryToCsv(summary, bySaleType, byGstClassification);
+    }
+
+    return {
+      summary,
+      bySaleType,
+      byGstClassification,
     };
   }
 }

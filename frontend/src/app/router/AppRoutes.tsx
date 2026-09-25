@@ -34,6 +34,7 @@ import { StockReportPage } from '../../features/reports/StockReportPage';
 import { StockMovementsReportPage } from '../../features/reports/StockMovementsReportPage';
 import { StockReconciliationReportPage } from '../../features/reports/StockReconciliationReportPage';
 import { ReturnsReportPage } from '../../features/reports/ReturnsReportPage';
+import { StatutoryReportPage } from '../../features/reports/StatutoryReportPage';
 import { UsersPage } from '../../features/users/UsersPage';
 import { WebsitePage } from '../../features/website/WebsitePage';
 import { SettingsPage } from '../../features/settings/SettingsPage';
@@ -255,6 +256,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET']}>
               <ReturnsReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/statutory"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'OUTLET']}>
+              <StatutoryReportPage />
             </ProtectedRoute>
           }
         />

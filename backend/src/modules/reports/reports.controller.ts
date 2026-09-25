@@ -155,4 +155,100 @@ export class ReportsController {
       next(err);
     }
   }
+
+  // ==========================================
+  // Phase 2F: Statutory / CA Compliance Handlers
+  // ==========================================
+
+  /**
+   * GET /api/v1/reports/statutory/sales
+   */
+  static async getStatutorySales(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ReportsService.getStatutorySalesRegister(
+        req.query as any,
+        req.user
+      );
+
+      if (req.query.format === 'csv') {
+        const filename = `statutory-sales-register-${new Date().toISOString().slice(0, 10)}.csv`;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.status(200).send(result);
+      }
+
+      res.status(200).json({ success: true, ...(result as object) });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/reports/statutory/sales/itemized
+   */
+  static async getStatutoryItemizedSales(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ReportsService.getStatutoryItemizedSalesRegister(
+        req.query as any,
+        req.user
+      );
+
+      if (req.query.format === 'csv') {
+        const filename = `statutory-itemized-sales-${new Date().toISOString().slice(0, 10)}.csv`;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.status(200).send(result);
+      }
+
+      res.status(200).json({ success: true, ...(result as object) });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/reports/statutory/returns
+   */
+  static async getStatutoryReturns(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ReportsService.getStatutoryReturnsRegister(
+        req.query as any,
+        req.user
+      );
+
+      if (req.query.format === 'csv') {
+        const filename = `statutory-sales-returns-${new Date().toISOString().slice(0, 10)}.csv`;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.status(200).send(result);
+      }
+
+      res.status(200).json({ success: true, ...(result as object) });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/reports/statutory/gst-summary
+   */
+  static async getStatutoryGstSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ReportsService.getStatutoryGstSummary(
+        req.query as any,
+        req.user
+      );
+
+      if (req.query.format === 'csv') {
+        const filename = `statutory-gst-summary-${new Date().toISOString().slice(0, 10)}.csv`;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.status(200).send(result);
+      }
+
+      res.status(200).json({ success: true, ...(result as object) });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

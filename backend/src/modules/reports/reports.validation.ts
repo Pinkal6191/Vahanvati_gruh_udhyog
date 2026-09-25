@@ -97,3 +97,56 @@ export type StockReportQuery = z.infer<typeof stockReportQuerySchema>;
 export type StockMovementsReportQuery = z.infer<typeof stockMovementsReportQuerySchema>;
 export type ReturnsReportQuery = z.infer<typeof returnsReportQuerySchema>;
 export type BusinessSummaryQuery = z.infer<typeof businessSummaryQuerySchema>;
+
+// ==========================================
+// Phase 2F: Statutory / CA Compliance Queries
+// ==========================================
+
+export const statutorySalesReportQuerySchema = z.object({
+  period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
+  customerType: z.nativeEnum(CustomerType).optional(),
+  paymentMode: z.nativeEnum(PaymentMode).optional(),
+  gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean()).optional(),
+  status: z.enum(['ALL', 'COMPLETED', 'CANCELLED']).default('ALL'),
+  format: z.enum(['json', 'csv']).default('json'),
+});
+
+export const statutoryItemizedReportQuerySchema = z.object({
+  period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
+  customerType: z.nativeEnum(CustomerType).optional(),
+  gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean()).optional(),
+  status: z.enum(['ALL', 'COMPLETED', 'CANCELLED']).default('ALL'),
+  format: z.enum(['json', 'csv']).default('json'),
+});
+
+export const statutoryReturnsReportQuerySchema = z.object({
+  period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
+  customerType: z.nativeEnum(CustomerType).optional(),
+  refundPaymentMode: z.nativeEnum(RefundPaymentMode).optional(),
+  status: z.nativeEnum(ReturnStatus).optional(),
+  format: z.enum(['json', 'csv']).default('json'),
+});
+
+export const statutoryGstSummaryQuerySchema = z.object({
+  period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
+  saleType: z.nativeEnum(SaleType).optional(),
+  customerType: z.nativeEnum(CustomerType).optional(),
+  gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean()).optional(),
+  format: z.enum(['json', 'csv']).default('json'),
+});
+
+export type StatutorySalesReportQuery = z.infer<typeof statutorySalesReportQuerySchema>;
+export type StatutoryItemizedReportQuery = z.infer<typeof statutoryItemizedReportQuerySchema>;
+export type StatutoryReturnsReportQuery = z.infer<typeof statutoryReturnsReportQuerySchema>;
+export type StatutoryGstSummaryQuery = z.infer<typeof statutoryGstSummaryQuerySchema>;

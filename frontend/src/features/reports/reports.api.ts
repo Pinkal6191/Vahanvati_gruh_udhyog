@@ -1,4 +1,5 @@
 import { apiClient } from '../../services/api/api-client';
+import { storageService } from '../../services/storage/storage.service';
 
 export type ReportDatePeriod =
   | 'today'
@@ -486,4 +487,255 @@ export const reportsApi = {
     const res = await apiClient.get<{ data: ReturnsReportData }>(`/reports/returns${qs}`);
     return (res as any).data || (res as any);
   },
+
+  // ==========================================
+  // Phase 2F: Statutory / CA Compliance Reports
+  // ==========================================
+
+  // 11. Statutory Sales Register
+  async getStatutorySales(query: StatutoryReportQuery = {}): Promise<StatutorySalesResponse> {
+    const qs = buildQueryString(query);
+    const res = await apiClient.get<StatutorySalesResponse>(`/reports/statutory/sales${qs}`);
+    return res as any;
+  },
+
+  // 12. Statutory Itemized Sales Register
+  async getStatutoryItemizedSales(
+    query: StatutoryReportQuery = {}
+  ): Promise<StatutoryItemizedResponse> {
+    const qs = buildQueryString(query);
+    const res = await apiClient.get<StatutoryItemizedResponse>(
+      `/reports/statutory/sales/itemized${qs}`
+    );
+    return res as any;
+  },
+
+  // 13. Statutory Sales Returns Register
+  async getStatutoryReturns(query: StatutoryReportQuery = {}): Promise<StatutoryReturnsResponse> {
+    const qs = buildQueryString(query);
+    const res = await apiClient.get<StatutoryReturnsResponse>(`/reports/statutory/returns${qs}`);
+    return res as any;
+  },
+
+  // 14. Statutory GST Summary
+  async getStatutoryGstSummary(
+    query: StatutoryReportQuery = {}
+  ): Promise<StatutoryGstSummaryResponse> {
+    const qs = buildQueryString(query);
+    const res = await apiClient.get<StatutoryGstSummaryResponse>(
+      `/reports/statutory/gst-summary${qs}`
+    );
+    return res as any;
+  },
+
+  // Download Statutory Report CSV
+  async downloadStatutoryCsv(path: string, query: Record<string, any>, filename: string): Promise<void> {
+    const qs = buildQueryString({ ...query, format: 'csv' });
+    const token = storageService.getAccessToken();
+    const res = await fetch(`${apiClient.getBaseUrl()}${path}${qs}`, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to download CSV: HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  },
 };
+
+// ==========================================
+// Phase 2F: Statutory Types
+// ==========================================
+
+export interface StatutoryReportQuery extends BaseReportQuery {
+  saleType?: SaleType;
+  customerType?: CustomerType;
+  paymentMode?: PaymentMode;
+  gstinOnly?: boolean;
+  status?: 'ALL' | 'COMPLETED' | 'CANCELLED';
+  refundPaymentMode?: RefundPaymentMode;
+  format?: 'json' | 'csv';
+}
+
+export interface StatutorySaleRow {
+  id: string;
+  billNumber: string;
+  date: string;
+  saleType: SaleType;
+  customerName: string;
+  customerMobile: string | null;
+  customerType: CustomerType;
+  customerGstin: string | null;
+  isB2B: boolean;
+  subtotalAmount: number;
+  discountAmount: number;
+  taxableAmount: number;
+  taxAmount: number;
+  finalTotalAmount: number;
+  paidAmount: number;
+  paymentStatus: string;
+  paymentModes: string[];
+  saleStatus: string;
+  cancellationReason: string | null;
+  biller: string;
+}
+
+export interface StatutorySalesSummary {
+  period: string;
+  totalRecordedBills: number;
+  completedBills: number;
+  cancelledBills: number;
+  subtotalAmount: number;
+  discountAmount: number;
+  taxableAmount: number;
+  taxAmount: number;
+  finalTotalAmount: number;
+  paidAmount: number;
+  cancelledAmount: number;
+  isScoped: boolean;
+  isMasterAdmin: boolean;
+  visibleSaleTypes: SaleType[];
+  formulaNotes?: string;
+}
+
+export interface StatutorySalesResponse {
+  success: boolean;
+  summary: StatutorySalesSummary;
+  data: StatutorySaleRow[];
+}
+
+export interface StatutoryItemizedSaleRow {
+  id: string;
+  saleId: string;
+  billNumber: string;
+  date: string;
+  saleType: SaleType;
+  customerName: string;
+  customerType: CustomerType;
+  customerGstin: string | null;
+  isB2B: boolean;
+  productName: string;
+  unitSymbol: string;
+  weightOrPack: string;
+  quantity: number;
+  unitRate: number;
+  subtotal: number;
+  discount: number;
+  total: number;
+  saleStatus: string;
+  cancellationReason: string | null;
+}
+
+export interface StatutoryItemizedSummary {
+  period: string;
+  totalItemsCount: number;
+  completedItemsCount: number;
+  cancelledItemsCount: number;
+  totalQuantity: number;
+  totalSubtotal: number;
+  totalDiscount: number;
+  totalAmount: number;
+  isScoped: boolean;
+  isMasterAdmin: boolean;
+  visibleSaleTypes: SaleType[];
+}
+
+export interface StatutoryItemizedResponse {
+  success: boolean;
+  summary: StatutoryItemizedSummary;
+  data: StatutoryItemizedSaleRow[];
+}
+
+export interface StatutoryReturnItem {
+  id: string;
+  productName: string;
+  returnedQuantity: number;
+  unitRate: number;
+  refundAmount: number;
+  restockCondition: string;
+}
+
+export interface StatutoryReturnRow {
+  id: string;
+  returnNumber: string;
+  originalBillNumber: string;
+  date: string;
+  completedAt: string | null;
+  customerName: string;
+  customerType: CustomerType;
+  customerGstin: string | null;
+  isB2B: boolean;
+  saleType: SaleType;
+  refundPaymentMode: RefundPaymentMode;
+  totalReturnAmount: number;
+  status: ReturnStatus;
+  reason: string;
+  cancellationReason: string | null;
+  items: StatutoryReturnItem[];
+}
+
+export interface StatutoryReturnsSummary {
+  period: string;
+  totalReturns: number;
+  completedReturns: number;
+  cancelledReturns: number;
+  draftReturns: number;
+  totalRefundAmount: number;
+  totalReturnedQuantity: number;
+  isScoped: boolean;
+  isMasterAdmin: boolean;
+  visibleSaleTypes: SaleType[];
+}
+
+export interface StatutoryReturnsResponse {
+  success: boolean;
+  summary: StatutoryReturnsSummary;
+  data: StatutoryReturnRow[];
+}
+
+export interface GstSegmentSummary {
+  billsCount: number;
+  subtotalAmount: number;
+  discountAmount: number;
+  taxableAmount: number;
+  taxAmount: number;
+  finalTotalAmount: number;
+  returnsCount: number;
+  returnAmount: number;
+  netAmount: number;
+  cancelledBillsCount: number;
+  cancelledAmount: number;
+}
+
+export interface StatutoryGstSummaryResponse {
+  success: boolean;
+  summary: {
+    period: string;
+    completedBills: number;
+    grossSubtotalAmount: number;
+    discountAmount: number;
+    taxableAmount: number;
+    taxAmount: number;
+    finalTotalAmount: number;
+    completedReturns: number;
+    returnAmount: number;
+    netFinalAmount: number;
+    cancelledBills: number;
+    cancelledFinalAmount: number;
+    isScoped: boolean;
+    isMasterAdmin: boolean;
+    visibleSaleTypes: SaleType[];
+    formulaNotes: string;
+  };
+  bySaleType: Record<SaleType, GstSegmentSummary>;
+  byGstClassification: Record<'B2B' | 'B2C', GstSegmentSummary>;
+}
