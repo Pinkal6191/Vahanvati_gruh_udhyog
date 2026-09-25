@@ -15,6 +15,7 @@ publicRoutes.get('/products', WebsiteController.getPublicProducts);
 publicRoutes.get('/products/:id', WebsiteController.getPublicProductDetail);
 publicRoutes.get('/gallery', WebsiteController.getPublicGallery);
 publicRoutes.get('/contact', WebsiteController.getPublicContact);
+publicRoutes.get('/settings', WebsiteController.getPublicSettings);
 
 // ========================================================
 // CMS ADMIN ROUTES (Guarded by authenticate + ADMIN role)
@@ -40,6 +41,9 @@ cmsRoutes.delete('/gallery/:id', WebsiteController.deleteGalleryItem);
 
 // Contact and store settings
 cmsRoutes.patch('/contact', WebsiteController.updateContactSettings);
+cmsRoutes.get('/settings', WebsiteController.getCmsSettings);
+cmsRoutes.patch('/settings', WebsiteController.updateCmsSettings);
+cmsRoutes.put('/settings', WebsiteController.updateCmsSettings);
 
 // Media upload endpoint (local photo and video files)
 cmsRoutes.post('/upload', uploadSingleMedia, WebsiteController.uploadMedia);

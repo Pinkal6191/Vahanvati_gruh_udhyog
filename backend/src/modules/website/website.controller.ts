@@ -85,6 +85,18 @@ export class WebsiteController {
     }
   }
 
+  static async getPublicSettings(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await WebsiteService.getPublicSettings();
+      res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // ========================================================
   // CMS ADMIN CONTROLLERS
   // ========================================================
@@ -212,9 +224,36 @@ export class WebsiteController {
     }
   }
 
+  static async getCmsSettings(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await WebsiteService.getCmsSettings();
+      res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateCmsSettings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id;
+      const updated = await WebsiteService.updateCmsSettings(req.body, userId);
+      res.status(200).json({
+        success: true,
+        message: 'Website settings updated successfully',
+        data: updated,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updateContactSettings(req: Request, res: Response, next: NextFunction) {
     try {
-      const updated = await WebsiteService.updateContactSettings(req.body);
+      const userId = (req as any).user?.id;
+      const updated = await WebsiteService.updateContactSettings(req.body, userId);
       res.status(200).json({
         success: true,
         message: 'Contact settings updated',

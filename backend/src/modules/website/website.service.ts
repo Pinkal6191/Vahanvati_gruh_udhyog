@@ -82,16 +82,37 @@ export class WebsiteService {
       },
     });
 
-    // Categories summary for quick exploration
+    // Categories summary for quick exploration (only categories with active website-visible products)
     const categories = await prisma.category.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        subcategories: {
+          some: {
+            isActive: true,
+            products: {
+              some: {
+                isActive: true,
+                isWebsiteVisible: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { displayOrder: 'asc' },
       select: {
         id: true,
         name: true,
         code: true,
         subcategories: {
-          where: { isActive: true },
+          where: {
+            isActive: true,
+            products: {
+              some: {
+                isActive: true,
+                isWebsiteVisible: true,
+              },
+            },
+          },
           select: {
             id: true,
             name: true,
@@ -218,14 +239,35 @@ export class WebsiteService {
     });
 
     const categories = await prisma.category.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        subcategories: {
+          some: {
+            isActive: true,
+            products: {
+              some: {
+                isActive: true,
+                isWebsiteVisible: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { displayOrder: 'asc' },
       select: {
         id: true,
         name: true,
         code: true,
         subcategories: {
-          where: { isActive: true },
+          where: {
+            isActive: true,
+            products: {
+              some: {
+                isActive: true,
+                isWebsiteVisible: true,
+              },
+            },
+          },
           select: {
             id: true,
             name: true,
@@ -348,16 +390,21 @@ export class WebsiteService {
   }
 
   /**
-   * Get public contact information (Padgol, Phones, Google Maps, Socials)
+   * Get public contact information (Padgol, Phones, Google Maps, Socials, WhatsApp)
    */
   static async getPublicContact() {
-    const settings = await prisma.companySettings.findFirst();
+    const [settings, websiteSettingsRecord] = await Promise.all([
+      prisma.companySettings.findFirst(),
+      prisma.websiteContent.findUnique({ where: { section: 'settings' } }),
+    ]);
+
+    const wsContent = (websiteSettingsRecord?.content as any) || {};
 
     return {
       companyName: settings?.companyName || 'Vahanvati Gruh Udhyog',
       tagline: settings?.tagline || 'હાથ વણાટના સ્પે. સારેવડા તેમજ સેવો તથા વડી બનાવનાર.',
       address: settings?.address || 'હાઈસ્કૂલની પાસે, નડિયાદ - પેટલાદ રોડ, પાડગોલ - ૩૮૮ ૪૪૦',
-      phone: settings?.phone || '+91 97149 17851 / +91 97121 15118',
+      phone: wsContent.phoneNumber || settings?.phone || '+91 97149 17851 / +91 97121 15118',
       email: settings?.email || 'info@vahanvati.com',
       businessHours: settings?.businessHours || 'Monday - Sunday: 8:00 AM - 8:30 PM',
       googleMapsUrl: settings?.googleMapsUrl || 'https://maps.google.com/?q=Padgol+Gujarat',
@@ -365,7 +412,28 @@ export class WebsiteService {
       youtubeUrl: settings?.youtubeUrl || 'https://www.youtube.com/watch?v=FrB9KyMpOxQ',
       gstin: settings?.gstin || '24BCIPP6428E1ZL',
       fssaiLicense: settings?.fssaiLicense || '20720004000511',
+      // WhatsApp & Direct Call Configuration
+      whatsappNumber: wsContent.whatsappNumber || '919714917851',
+      phoneNumber: wsContent.phoneNumber || settings?.phone || '+91 97149 17851',
+      defaultWhatsappMessage:
+        wsContent.defaultWhatsappMessage ||
+        'Hello Vahanvati Gruh Udhyog, I would like to know more about your products.',
+      productWhatsappMessage:
+        wsContent.productWhatsappMessage ||
+        'Hello Vahanvati Gruh Udhyog, I am interested in {productName}. Please share more details and pricing.',
+      whatsappEnabled: wsContent.whatsappEnabled !== undefined ? Boolean(wsContent.whatsappEnabled) : true,
+      floatingWhatsappEnabled:
+        wsContent.floatingWhatsappEnabled !== undefined ? Boolean(wsContent.floatingWhatsappEnabled) : true,
+      productInquiryEnabled:
+        wsContent.productInquiryEnabled !== undefined ? Boolean(wsContent.productInquiryEnabled) : true,
     };
+  }
+
+  /**
+   * Get public settings (Alias for public contact & WhatsApp configuration)
+   */
+  static async getPublicSettings() {
+    return this.getPublicContact();
   }
 
   // ========================================================
@@ -373,10 +441,10 @@ export class WebsiteService {
   // ========================================================
 
   /**
-   * Update website section content (home, about, etc.)
+   * Update website section content (home, about, contact, settings)
    */
   static async updateWebsiteContent(section: string, content: any, userId?: string) {
-    if (!['home', 'about', 'contact'].includes(section)) {
+    if (!['home', 'about', 'contact', 'settings'].includes(section)) {
       throw new BadRequestError(`Invalid website content section: ${section}`);
     }
 
@@ -543,26 +611,65 @@ export class WebsiteService {
   }
 
   /**
-   * Update company contact, hours, and social media links
+   * Get all CMS settings (Company contact + WhatsApp settings)
    */
-  static async updateContactSettings(data: {
-    address?: string;
-    phone?: string;
-    email?: string;
-    businessHours?: string;
-    googleMapsUrl?: string;
-    instagramUrl?: string;
-    youtubeUrl?: string;
-    tagline?: string;
-  }) {
+  static async getCmsSettings() {
+    return this.getPublicContact();
+  }
+
+  /**
+   * Update CMS settings (both companySettings and websiteContent 'settings')
+   */
+  static async updateCmsSettings(data: any, userId?: string) {
     const settings = await prisma.companySettings.findFirst();
-    if (!settings) {
-      throw new NotFoundError('Company settings not initialized');
+
+    // Extract CompanySettings fields
+    const companyData: any = {};
+    if (data.address !== undefined) companyData.address = data.address;
+    if (data.phone !== undefined) companyData.phone = data.phone;
+    if (data.email !== undefined) companyData.email = data.email;
+    if (data.businessHours !== undefined) companyData.businessHours = data.businessHours;
+    if (data.googleMapsUrl !== undefined) companyData.googleMapsUrl = data.googleMapsUrl;
+    if (data.instagramUrl !== undefined) companyData.instagramUrl = data.instagramUrl;
+    if (data.youtubeUrl !== undefined) companyData.youtubeUrl = data.youtubeUrl;
+    if (data.tagline !== undefined) companyData.tagline = data.tagline;
+
+    if (settings && Object.keys(companyData).length > 0) {
+      await prisma.companySettings.update({
+        where: { id: settings.id },
+        data: companyData,
+      });
     }
 
-    return prisma.companySettings.update({
-      where: { id: settings.id },
-      data,
+    // Extract WebsiteContent 'settings' fields
+    const existingContentRecord = await prisma.websiteContent.findUnique({ where: { section: 'settings' } });
+    const existingContent = (existingContentRecord?.content as any) || {};
+
+    const newContent: any = { ...existingContent };
+    if (data.whatsappNumber !== undefined) {
+      // Strip non-digits for pure international format
+      newContent.whatsappNumber = String(data.whatsappNumber).replace(/[^\d]/g, '');
+    }
+    if (data.phoneNumber !== undefined) newContent.phoneNumber = String(data.phoneNumber).trim();
+    if (data.defaultWhatsappMessage !== undefined) newContent.defaultWhatsappMessage = String(data.defaultWhatsappMessage);
+    if (data.productWhatsappMessage !== undefined) newContent.productWhatsappMessage = String(data.productWhatsappMessage);
+    if (data.whatsappEnabled !== undefined) newContent.whatsappEnabled = Boolean(data.whatsappEnabled);
+    if (data.floatingWhatsappEnabled !== undefined) newContent.floatingWhatsappEnabled = Boolean(data.floatingWhatsappEnabled);
+    if (data.productInquiryEnabled !== undefined) newContent.productInquiryEnabled = Boolean(data.productInquiryEnabled);
+
+    await prisma.websiteContent.upsert({
+      where: { section: 'settings' },
+      update: { content: newContent, updatedBy: userId },
+      create: { section: 'settings', content: newContent, updatedBy: userId },
     });
+
+    return this.getCmsSettings();
+  }
+
+  /**
+   * Update company contact, hours, and social media links
+   */
+  static async updateContactSettings(data: any, userId?: string) {
+    return this.updateCmsSettings(data, userId);
   }
 }
