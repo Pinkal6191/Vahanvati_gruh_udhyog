@@ -12,6 +12,14 @@ export interface PublicCompanyInfo {
   youtubeUrl: string;
   gstin?: string;
   fssaiLicense?: string;
+  // WhatsApp & Direct Call Configuration
+  whatsappNumber?: string;
+  phoneNumber?: string;
+  defaultWhatsappMessage?: string;
+  productWhatsappMessage?: string;
+  whatsappEnabled?: boolean;
+  floatingWhatsappEnabled?: boolean;
+  productInquiryEnabled?: boolean;
 }
 
 export interface PublicProductPack {
@@ -172,6 +180,11 @@ export const publicWebsiteApi = {
 
   getContact: async (): Promise<PublicCompanyInfo> => {
     const res = await apiClient.get<PublicCompanyInfo>('/public/contact');
+    return res.data;
+  },
+
+  getSettings: async (): Promise<PublicCompanyInfo> => {
+    const res = await apiClient.get<PublicCompanyInfo>('/public/settings');
     return res.data;
   },
 };
