@@ -8,17 +8,20 @@ import { Badge } from '../../components/ui/Badge/Badge';
 import { Modal } from '../../components/ui/Modal/Modal';
 import { Input } from '../../components/forms/Input/Input';
 import { Select } from '../../components/forms/Select/Select';
+import { Checkbox } from '../../components/forms/Checkbox/Checkbox';
 import { SearchInput } from '../../components/forms/SearchInput/SearchInput';
 import { ConfirmationDialog } from '../../components/feedback/ConfirmationDialog/ConfirmationDialog';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
 import { useToast } from '../../hooks/useToast';
 import { formatDate, formatDateTime } from '../../utils/formatters';
-import { UsersApi, UserAccount, CreateUserInput, UpdateUserInput } from './users.api';
+import { UsersApi, UserAccount, CreateUserInput, UpdateUserInput, SaleType } from './users.api';
 import { Role } from '../../types/auth.types';
+import { useAuth } from '../../hooks/useAuth';
 import '../products/master-data.css';
 
 export const UsersPage: React.FC = () => {
   const { addToast } = useToast();
+  const { user: currentUser } = useAuth();
 
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -37,6 +40,9 @@ export const UsersPage: React.FC = () => {
   const [formEmail, setFormEmail] = useState<string>('');
   const [formPassword, setFormPassword] = useState<string>('');
   const [formRole, setFormRole] = useState<Role>('OUTLET');
+  const [formIsMasterAdmin, setFormIsMasterAdmin] = useState<boolean>(false);
+  const [formAllowedBillingSaleTypes, setFormAllowedBillingSaleTypes] = useState<SaleType[]>(['RETAIL']);
+  const [formAllowedReportSaleTypes, setFormAllowedReportSaleTypes] = useState<SaleType[]>(['RETAIL']);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -95,6 +101,9 @@ export const UsersPage: React.FC = () => {
     setFormEmail('');
     setFormPassword('');
     setFormRole('OUTLET');
+    setFormIsMasterAdmin(false);
+    setFormAllowedBillingSaleTypes(['RETAIL']);
+    setFormAllowedReportSaleTypes(['RETAIL']);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -107,6 +116,17 @@ export const UsersPage: React.FC = () => {
     setFormEmail(user.email || '');
     setFormPassword('');
     setFormRole(user.role);
+    setFormIsMasterAdmin(Boolean(user.isMasterAdmin));
+    setFormAllowedBillingSaleTypes(
+      user.allowedBillingSaleTypes && user.allowedBillingSaleTypes.length > 0
+        ? user.allowedBillingSaleTypes
+        : ['RETAIL']
+    );
+    setFormAllowedReportSaleTypes(
+      user.allowedReportSaleTypes && user.allowedReportSaleTypes.length > 0
+        ? user.allowedReportSaleTypes
+        : ['RETAIL']
+    );
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -137,6 +157,15 @@ export const UsersPage: React.FC = () => {
       }
     }
 
+    if (formAllowedBillingSaleTypes.length === 0) {
+      setFormError('At least one allowed Billing Sale Type must be selected.');
+      return;
+    }
+    if (formAllowedReportSaleTypes.length === 0) {
+      setFormError('At least one allowed Report Sale Type must be selected.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       if (editingUser) {
@@ -145,6 +174,9 @@ export const UsersPage: React.FC = () => {
           email: formEmail.trim() || undefined,
           role: formRole,
           password: formPassword ? formPassword : undefined,
+          isMasterAdmin: formIsMasterAdmin,
+          allowedBillingSaleTypes: formAllowedBillingSaleTypes,
+          allowedReportSaleTypes: formAllowedReportSaleTypes,
         };
         await UsersApi.update(editingUser.id, updatePayload);
         addToast({
@@ -159,6 +191,9 @@ export const UsersPage: React.FC = () => {
           fullName: formFullName.trim(),
           email: formEmail.trim() || undefined,
           role: formRole,
+          isMasterAdmin: formIsMasterAdmin,
+          allowedBillingSaleTypes: formAllowedBillingSaleTypes,
+          allowedReportSaleTypes: formAllowedReportSaleTypes,
         };
         await UsersApi.create(createPayload);
         addToast({
@@ -235,12 +270,40 @@ export const UsersPage: React.FC = () => {
     },
     {
       key: 'role',
-      header: 'Role & Permissions',
+      header: 'Role & Classification',
       width: '180px',
       cell: (row) => (
-        <Badge variant={getRoleBadgeVariant(row.role)} size="sm">
-          {row.role}
-        </Badge>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+          <Badge variant={getRoleBadgeVariant(row.role)} size="sm">
+            {row.role}
+          </Badge>
+          {row.isMasterAdmin && (
+            <Badge variant="brand" size="sm">
+              Master Admin
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'saleTypes',
+      header: 'Authorized Sale Types',
+      width: '230px',
+      cell: (row) => (
+        <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div>
+            <span style={{ fontWeight: 600, color: 'var(--color-gray-600)' }}>Billing: </span>
+            <span style={{ color: 'var(--color-gray-900)' }}>
+              {(row.allowedBillingSaleTypes || ['RETAIL']).join(', ')}
+            </span>
+          </div>
+          <div>
+            <span style={{ fontWeight: 600, color: 'var(--color-gray-600)' }}>Reports: </span>
+            <span style={{ color: 'var(--color-gray-900)' }}>
+              {(row.allowedReportSaleTypes || ['RETAIL']).join(', ')}
+            </span>
+          </div>
+        </div>
       ),
     },
     {
@@ -480,6 +543,89 @@ export const UsersPage: React.FC = () => {
             isRequired
             helperText="Enforces role-based permissions throughout the system"
           />
+
+          {/* Master Admin Toggle - Only accessible to Master Admins */}
+          {currentUser?.isMasterAdmin && (
+            <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem', padding: '0.75rem', backgroundColor: '#fef3c7', borderRadius: '0.5rem', border: '1px solid #fde68a' }}>
+              <Checkbox
+                id="userIsMasterAdmin"
+                label={
+                  <span style={{ fontWeight: 600, color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Shield size={16} /> Grant Master Admin Privileges
+                  </span>
+                }
+                checked={formIsMasterAdmin}
+                onChange={(e) => setFormIsMasterAdmin(e.target.checked)}
+              />
+              <p style={{ margin: '0.25rem 0 0 1.5rem', fontSize: '0.75rem', color: '#b45309' }}>
+                Master Admins have full unrestricted access to all SaleTypes, user management, and security controls.
+              </p>
+            </div>
+          )}
+
+          {/* Allowed Billing SaleTypes */}
+          <div style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+              Allowed Billing Sale Types <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+              {(['RETAIL', 'NRI', 'WHOLESALE'] as SaleType[]).map((st) => {
+                const canGrant = currentUser?.isMasterAdmin || currentUser?.allowedBillingSaleTypes?.includes(st);
+                const isChecked = formAllowedBillingSaleTypes.includes(st);
+                return (
+                  <Checkbox
+                    key={`billing-${st}`}
+                    id={`billing-${st}`}
+                    label={st}
+                    checked={isChecked}
+                    disabled={!canGrant}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormAllowedBillingSaleTypes([...formAllowedBillingSaleTypes, st]);
+                      } else {
+                        setFormAllowedBillingSaleTypes(formAllowedBillingSaleTypes.filter((t) => t !== st));
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+              Specifies which commercial SaleTypes this user is permitted to bill at the POS.
+            </p>
+          </div>
+
+          {/* Allowed Report SaleTypes */}
+          <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+              Allowed Report Sale Types <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+              {(['RETAIL', 'NRI', 'WHOLESALE'] as SaleType[]).map((st) => {
+                const canGrant = currentUser?.isMasterAdmin || currentUser?.allowedReportSaleTypes?.includes(st);
+                const isChecked = formAllowedReportSaleTypes.includes(st);
+                return (
+                  <Checkbox
+                    key={`report-${st}`}
+                    id={`report-${st}`}
+                    label={st}
+                    checked={isChecked}
+                    disabled={!canGrant}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormAllowedReportSaleTypes([...formAllowedReportSaleTypes, st]);
+                      } else {
+                        setFormAllowedReportSaleTypes(formAllowedReportSaleTypes.filter((t) => t !== st));
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+              Specifies which commercial SaleTypes this user is permitted to view in sales and performance reports.
+            </p>
+          </div>
 
           <Input
             label={editingUser ? 'Reset Password (Leave blank to keep current)' : 'Password'}

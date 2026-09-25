@@ -13,7 +13,7 @@ export class UsersController {
 
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const user = await UsersService.create(req.body);
+      const user = await UsersService.create(req.body, (req as any).user);
       res.status(201).json({ success: true, data: user });
     } catch (err) {
       next(err);
@@ -22,7 +22,7 @@ export class UsersController {
 
   static async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const user = await UsersService.update(req.params.id, req.body);
+      const user = await UsersService.update(req.params.id, req.body, (req as any).user);
       res.status(200).json({ success: true, data: user });
     } catch (err) {
       next(err);

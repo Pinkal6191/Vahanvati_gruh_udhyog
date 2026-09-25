@@ -72,6 +72,7 @@ export const ProductsPage: React.FC = () => {
   const [formIsLooseAllowed, setFormIsLooseAllowed] = useState<boolean>(true);
   const [formIndianPrice, setFormIndianPrice] = useState<string>('');
   const [formNriPrice, setFormNriPrice] = useState<string>('');
+  const [formWholesalePrice, setFormWholesalePrice] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -127,6 +128,7 @@ export const ProductsPage: React.FC = () => {
             ...prod,
             indianPrice: prices.indian ?? null,
             nriPrice: prices.nri ?? null,
+            wholesalePrice: prices.wholesale ?? null,
           };
         })
       );
@@ -173,6 +175,7 @@ export const ProductsPage: React.FC = () => {
     setFormIsLooseAllowed(true);
     setFormIndianPrice('');
     setFormNriPrice('');
+    setFormWholesalePrice('');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -192,6 +195,7 @@ export const ProductsPage: React.FC = () => {
     setFormIsLooseAllowed(product.isLooseWeightAllowed);
     setFormIndianPrice(product.indianPrice ? String(product.indianPrice) : '');
     setFormNriPrice(product.nriPrice ? String(product.nriPrice) : '');
+    setFormWholesalePrice(product.wholesalePrice ? String(product.wholesalePrice) : '');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -220,6 +224,7 @@ export const ProductsPage: React.FC = () => {
 
     const indianRate = formIndianPrice ? parseFloat(formIndianPrice) : undefined;
     const nriRate = formNriPrice ? parseFloat(formNriPrice) : undefined;
+    const wholesaleRate = formWholesalePrice ? parseFloat(formWholesalePrice) : undefined;
 
     if (indianRate !== undefined && (isNaN(indianRate) || indianRate <= 0)) {
       setFormError('Indian price must be a valid positive number.');
@@ -227,6 +232,10 @@ export const ProductsPage: React.FC = () => {
     }
     if (nriRate !== undefined && (isNaN(nriRate) || nriRate <= 0)) {
       setFormError('NRI price must be a valid positive number.');
+      return;
+    }
+    if (wholesaleRate !== undefined && (isNaN(wholesaleRate) || wholesaleRate <= 0)) {
+      setFormError('Wholesale price must be a valid positive number.');
       return;
     }
 
@@ -245,6 +254,7 @@ export const ProductsPage: React.FC = () => {
           minimumStockThreshold: Number(formMinThreshold),
           indianPrice: indianRate,
           nriPrice: nriRate,
+          wholesalePrice: wholesaleRate,
         };
         await ProductsApi.update(editingProduct.id, updatePayload);
         addToast({
@@ -265,6 +275,7 @@ export const ProductsPage: React.FC = () => {
           minimumStockThreshold: Number(formMinThreshold),
           indianPrice: indianRate,
           nriPrice: nriRate,
+          wholesalePrice: wholesaleRate,
         };
         await ProductsApi.create(createPayload);
         addToast({
@@ -359,6 +370,18 @@ export const ProductsPage: React.FC = () => {
         <span className="price-text" style={{ color: 'var(--color-primary-800)' }}>
           {row.nriPrice !== null && row.nriPrice !== undefined
             ? formatCurrency(row.nriPrice)
+            : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'wholesalePrice',
+      header: 'Wholesale Price',
+      width: '130px',
+      cell: (row) => (
+        <span className="price-text" style={{ color: '#b45309', fontWeight: 600 }}>
+          {row.wholesalePrice !== null && row.wholesalePrice !== undefined
+            ? formatCurrency(row.wholesalePrice)
             : '—'}
         </span>
       ),
@@ -700,7 +723,7 @@ export const ProductsPage: React.FC = () => {
               value={formIndianPrice}
               onChange={(e) => setFormIndianPrice(e.target.value)}
               placeholder="e.g. 150.00"
-              helperText="Base selling rate for Indian customers"
+              helperText="Base selling rate for Indian customers (Retail)"
             />
 
             <Input
@@ -712,6 +735,19 @@ export const ProductsPage: React.FC = () => {
               onChange={(e) => setFormNriPrice(e.target.value)}
               placeholder="e.g. 220.00"
               helperText="Special export rate for NRI customers"
+            />
+          </div>
+
+          <div className="modal-form-row">
+            <Input
+              label="Wholesale Price (₹)"
+              id="prodWholesalePrice"
+              type="number"
+              step="0.01"
+              value={formWholesalePrice}
+              onChange={(e) => setFormWholesalePrice(e.target.value)}
+              placeholder="e.g. 100.00"
+              helperText="Special discounted rate for Bulk Wholesale transactions"
             />
           </div>
 

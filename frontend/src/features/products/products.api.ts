@@ -91,6 +91,7 @@ export interface CreateProductInput {
   // Optional initial prices
   indianPrice?: number;
   nriPrice?: number;
+  wholesalePrice?: number;
 }
 
 export interface UpdateProductInput {
@@ -107,13 +108,15 @@ export interface UpdateProductInput {
   // Optional price updates
   indianPrice?: number;
   nriPrice?: number;
+  wholesalePrice?: number;
 }
 
 export interface ProductPriceEntry {
   id: string;
   productId: string;
   packConfigId?: string | null;
-  customerType: 'INDIAN' | 'NRI';
+  pricingTier?: 'RETAIL' | 'NRI' | 'WHOLESALE';
+  customerType?: 'INDIAN' | 'NRI';
   rate: number;
   isActive: boolean;
 }
@@ -140,18 +143,18 @@ export const ProductsApi = {
   },
 
   create: async (data: CreateProductInput): Promise<Product> => {
-    const { indianPrice, nriPrice, ...productData } = data;
+    const { indianPrice, nriPrice, wholesalePrice, ...productData } = data;
     const response = await apiClient.post<Product>('/products', productData);
     const createdProduct = response.data;
 
-    // If initial pricing provided, save via batch pricing endpoint
-    if (createdProduct?.id && (indianPrice !== undefined || nriPrice !== undefined)) {
+    // If initial pricing provided, save via batch pricing endpoint using canonical pricingTier
+    if (createdProduct?.id && (indianPrice !== undefined || nriPrice !== undefined || wholesalePrice !== undefined)) {
       try {
         const pricesToCreate = [];
         if (indianPrice !== undefined && indianPrice > 0) {
           pricesToCreate.push({
             productId: createdProduct.id,
-            customerType: 'INDIAN' as const,
+            pricingTier: 'RETAIL' as const,
             rate: Number(indianPrice),
             isActive: true,
           });
@@ -159,8 +162,16 @@ export const ProductsApi = {
         if (nriPrice !== undefined && nriPrice > 0) {
           pricesToCreate.push({
             productId: createdProduct.id,
-            customerType: 'NRI' as const,
+            pricingTier: 'NRI' as const,
             rate: Number(nriPrice),
+            isActive: true,
+          });
+        }
+        if (wholesalePrice !== undefined && wholesalePrice > 0) {
+          pricesToCreate.push({
+            productId: createdProduct.id,
+            pricingTier: 'WHOLESALE' as const,
+            rate: Number(wholesalePrice),
             isActive: true,
           });
         }
@@ -176,18 +187,18 @@ export const ProductsApi = {
   },
 
   update: async (id: string, data: UpdateProductInput): Promise<Product> => {
-    const { indianPrice, nriPrice, ...productData } = data;
+    const { indianPrice, nriPrice, wholesalePrice, ...productData } = data;
     const response = await apiClient.patch<Product>(`/products/${id}`, productData);
     const updatedProduct = response.data;
 
-    // Update prices if provided
-    if (indianPrice !== undefined || nriPrice !== undefined) {
+    // Update prices if provided using canonical pricingTier
+    if (indianPrice !== undefined || nriPrice !== undefined || wholesalePrice !== undefined) {
       try {
         const pricesToSave = [];
         if (indianPrice !== undefined && indianPrice > 0) {
           pricesToSave.push({
             productId: id,
-            customerType: 'INDIAN' as const,
+            pricingTier: 'RETAIL' as const,
             rate: Number(indianPrice),
             isActive: true,
           });
@@ -195,8 +206,16 @@ export const ProductsApi = {
         if (nriPrice !== undefined && nriPrice > 0) {
           pricesToSave.push({
             productId: id,
-            customerType: 'NRI' as const,
+            pricingTier: 'NRI' as const,
             rate: Number(nriPrice),
+            isActive: true,
+          });
+        }
+        if (wholesalePrice !== undefined && wholesalePrice > 0) {
+          pricesToSave.push({
+            productId: id,
+            pricingTier: 'WHOLESALE' as const,
+            rate: Number(wholesalePrice),
             isActive: true,
           });
         }
@@ -221,13 +240,14 @@ export const ProductsApi = {
     return response.data || [];
   },
 
-  fetchProductPrices: async (productId: string): Promise<{ indian?: number; nri?: number }> => {
+  fetchProductPrices: async (productId: string): Promise<{ indian?: number; nri?: number; wholesale?: number }> => {
     try {
       const response = await apiClient.get<ProductPriceEntry[]>(`/pricing/current?productId=${productId}`);
       const prices = response.data || [];
-      const indian = prices.find((p) => p.customerType === 'INDIAN' && !p.packConfigId)?.rate;
-      const nri = prices.find((p) => p.customerType === 'NRI' && !p.packConfigId)?.rate;
-      return { indian, nri };
+      const indian = prices.find((p) => (p.pricingTier === 'RETAIL' || (p as any).customerType === 'INDIAN') && !p.packConfigId)?.rate;
+      const nri = prices.find((p) => (p.pricingTier === 'NRI' || (p as any).customerType === 'NRI') && !p.packConfigId)?.rate;
+      const wholesale = prices.find((p) => p.pricingTier === 'WHOLESALE' && !p.packConfigId)?.rate;
+      return { indian, nri, wholesale };
     } catch {
       return {};
     }

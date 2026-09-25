@@ -1,6 +1,8 @@
 import { apiClient } from '../../services/api/api-client';
 import { Role } from '../../types/auth.types';
 
+export type SaleType = 'RETAIL' | 'NRI' | 'WHOLESALE';
+
 export interface UserAccount {
   id: string;
   username: string;
@@ -8,6 +10,9 @@ export interface UserAccount {
   email?: string | null;
   role: Role;
   isActive: boolean;
+  isMasterAdmin?: boolean;
+  allowedBillingSaleTypes?: SaleType[];
+  allowedReportSaleTypes?: SaleType[];
   lastLoginAt?: string | null;
   createdAt: string;
   updatedAt?: string;
@@ -19,6 +24,9 @@ export interface CreateUserInput {
   fullName: string;
   email?: string;
   role: Role;
+  isMasterAdmin?: boolean;
+  allowedBillingSaleTypes?: SaleType[];
+  allowedReportSaleTypes?: SaleType[];
 }
 
 export interface UpdateUserInput {
@@ -27,6 +35,9 @@ export interface UpdateUserInput {
   role?: Role;
   isActive?: boolean;
   password?: string;
+  isMasterAdmin?: boolean;
+  allowedBillingSaleTypes?: SaleType[];
+  allowedReportSaleTypes?: SaleType[];
 }
 
 export const UsersApi = {
