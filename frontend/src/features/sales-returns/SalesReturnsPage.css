@@ -11,8 +11,102 @@
 /* KPI Summary Cards Grid */
 .returns-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: var(--space-4);
+}
+
+.returns-kpis .kpi-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.returns-kpis .kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.returns-kpis .kpi-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.returns-kpis .kpi-icon-wrapper.primary {
+  background-color: rgba(63, 67, 143, 0.1);
+  color: var(--color-primary);
+}
+
+.returns-kpis .kpi-icon-wrapper.success {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: var(--color-success);
+}
+
+.returns-kpis .kpi-icon-wrapper.warning {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: var(--color-warning);
+}
+
+.returns-kpis .kpi-icon-wrapper.neutral {
+  background-color: rgba(107, 114, 128, 0.12);
+  color: var(--color-text-secondary);
+}
+
+.returns-kpis .kpi-icon-wrapper.error {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: var(--color-error);
+}
+
+.returns-kpis .kpi-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.returns-kpis .kpi-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.returns-kpis .kpi-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.returns-kpis .kpi-subtext {
+  font-size: 0.72rem;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Toolbar & Filters */
@@ -42,10 +136,11 @@
   font-weight: 600;
   color: var(--color-primary);
   background-color: rgba(63, 67, 143, 0.08);
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
   display: inline-block;
+  white-space: nowrap;
 }
 
 .original-bill-badge {
@@ -53,9 +148,11 @@
   font-weight: 500;
   color: var(--color-text-secondary);
   background-color: var(--color-surface-hover, #f3f4f6);
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .refund-amount-cell {
