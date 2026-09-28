@@ -30,6 +30,7 @@ async function runFinalVerification() {
   let cat: any = null;
   let subCat: any = null;
   let restrictedUser: any = null;
+  let masterAdminUser: any = null;
 
   // Setup HTTP test server
   const app = createApp();
@@ -439,9 +440,23 @@ async function runFinalVerification() {
     });
     const restrictedToken = restrictedAuth.tokens.accessToken;
 
+    masterAdminUser = await prisma.user.create({
+      data: {
+        username: `ca_admin_${ts}`,
+        email: `ca_admin_${ts}@example.com`,
+        passwordHash,
+        fullName: `CA Admin User ${ts}`,
+        role: 'ADMIN',
+        isMasterAdmin: true,
+        allowedBillingSaleTypes: [SaleType.RETAIL, SaleType.NRI, SaleType.WHOLESALE],
+        allowedReportSaleTypes: [SaleType.RETAIL, SaleType.NRI, SaleType.WHOLESALE],
+        isActive: true,
+      },
+    });
+
     const masterAdminAuth = await AuthService.login({
-      username: 'admin',
-      password: 'admin123',
+      username: masterAdminUser.username,
+      password: 'testpass123',
     });
     const masterAdminToken = masterAdminAuth.tokens.accessToken;
 
@@ -623,6 +638,9 @@ async function runFinalVerification() {
     }
     if (restrictedUser) {
       await prisma.user.delete({ where: { id: restrictedUser.id } }).catch(() => {});
+    }
+    if (masterAdminUser) {
+      await prisma.user.delete({ where: { id: masterAdminUser.id } }).catch(() => {});
     }
   }
 }

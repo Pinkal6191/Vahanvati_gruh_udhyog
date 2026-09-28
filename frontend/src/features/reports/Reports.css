@@ -291,3 +291,379 @@
     font-weight: 700 !important;
   }
 }
+
+/* ============================================================
+   Statutory & Compliance Reports Refined Styles
+   ============================================================ */
+
+.statutory-report-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.statutory-header-title-area {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statutory-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #202124;
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
+}
+
+.statutory-page-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.statutory-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.statutory-btn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.statutory-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Refresh: secondary / ghost style with subtle border */
+.statutory-btn-refresh {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+  min-width: 105px;
+}
+
+.statutory-btn-refresh:hover:not(:disabled) {
+  background: #f8f9fb;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.statutory-btn-refresh:active:not(:disabled) {
+  background: #e5e7eb;
+}
+
+/* Export CSV: secondary outlined button with Vahanvati blue border & text */
+.statutory-btn-export {
+  background: #ffffff;
+  border: 1px solid #3f438f;
+  color: #3f438f;
+  min-width: 125px;
+}
+
+.statutory-btn-export:hover:not(:disabled) {
+  background: #f0f1fa;
+  border-color: #292d68;
+  color: #292d68;
+}
+
+.statutory-btn-export:active:not(:disabled) {
+  background: #e2e4f5;
+}
+
+/* Print / PDF: PRIMARY action, filled Vahanvati Blue */
+.statutory-btn-print {
+  background: #3f438f;
+  border: 1px solid #3f438f;
+  color: #ffffff;
+  min-width: 125px;
+  box-shadow: 0 1px 2px rgba(63, 67, 143, 0.2);
+}
+
+.statutory-btn-print:hover:not(:disabled) {
+  background: #292d68;
+  border-color: #292d68;
+  color: #ffffff;
+}
+
+.statutory-btn-print:active:not(:disabled) {
+  background: #1e224f;
+  border-color: #1e224f;
+}
+
+.statutory-scope-banner {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #16803c;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.statutory-scope-banner.restricted {
+  border-left-color: #c47a00;
+}
+
+.statutory-tabs-nav {
+  display: flex;
+  background-color: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 16px;
+}
+
+.statutory-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.statutory-tab-btn:hover {
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.statutory-tab-btn.active {
+  background: #ffffff;
+  color: #3f438f;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.statutory-filter-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.statutory-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.statutory-filter-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statutory-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.statutory-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statutory-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.statutory-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statutory-loading-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.statutory-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #3f438f;
+  border-radius: 50%;
+  animation: statutory-spin 0.8s linear infinite;
+}
+
+@keyframes statutory-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.statutory-error-box {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.statutory-empty-box {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.badge-retail-statutory {
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.badge-nri-statutory {
+  background: #f5f3ff;
+  color: #5b21b6;
+  border: 1px solid #ddd6fe;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.badge-wholesale-statutory {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+@media (max-width: 1024px) {
+  .statutory-report-header {
+    gap: 16px;
+  }
+  .statutory-filter-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .statutory-report-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .statutory-header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .statutory-btn-refresh,
+  .statutory-btn-export {
+    width: 100%;
+    min-width: unset;
+  }
+  .statutory-btn-print {
+    grid-column: span 2;
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+@media (max-width: 640px) {
+  .statutory-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Print banner specifically for statutory reports */
+.statutory-print-header {
+  display: none;
+}
+
+@media print {
+  .statutory-print-header {
+    display: block !important;
+    margin-bottom: 16px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 2px solid #000000 !important;
+  }
+  .statutory-print-title {
+    font-size: 16pt !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+  }
+  .statutory-print-meta {
+    font-size: 9pt !important;
+    color: #333333 !important;
+    margin-top: 4px !important;
+  }
+}

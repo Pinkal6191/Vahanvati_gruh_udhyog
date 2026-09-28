@@ -102,47 +102,49 @@ export type BusinessSummaryQuery = z.infer<typeof businessSummaryQuerySchema>;
 // Phase 2F: Statutory / CA Compliance Queries
 // ==========================================
 
+const emptyToUndefined = (val: unknown) => (val === '' ? undefined : val);
+
 export const statutorySalesReportQuerySchema = z.object({
-  period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
-  saleType: z.nativeEnum(SaleType).optional(),
-  customerType: z.nativeEnum(CustomerType).optional(),
-  paymentMode: z.nativeEnum(PaymentMode).optional(),
-  gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean()).optional(),
-  status: z.enum(['ALL', 'COMPLETED', 'CANCELLED']).default('ALL'),
+  period: z.preprocess(emptyToUndefined, z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional()).optional(),
+  startDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional()).optional(),
+  endDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional()).optional(),
+  saleType: z.preprocess(emptyToUndefined, z.nativeEnum(SaleType).optional()).optional(),
+  customerType: z.preprocess(emptyToUndefined, z.nativeEnum(CustomerType).optional()).optional(),
+  paymentMode: z.preprocess(emptyToUndefined, z.nativeEnum(PaymentMode).optional()).optional(),
+  gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean().optional()).optional(),
+  status: z.preprocess(emptyToUndefined, z.enum(['ALL', 'COMPLETED', 'CANCELLED']).optional()).default('ALL'),
   format: z.enum(['json', 'csv']).default('json'),
 });
 
 export const statutoryItemizedReportQuerySchema = z.object({
-  period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
-  saleType: z.nativeEnum(SaleType).optional(),
-  customerType: z.nativeEnum(CustomerType).optional(),
-  gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean()).optional(),
-  status: z.enum(['ALL', 'COMPLETED', 'CANCELLED']).default('ALL'),
+  period: z.preprocess(emptyToUndefined, z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional()).optional(),
+  startDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional()).optional(),
+  endDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional()).optional(),
+  saleType: z.preprocess(emptyToUndefined, z.nativeEnum(SaleType).optional()).optional(),
+  customerType: z.preprocess(emptyToUndefined, z.nativeEnum(CustomerType).optional()).optional(),
+  gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean().optional()).optional(),
+  status: z.preprocess(emptyToUndefined, z.enum(['ALL', 'COMPLETED', 'CANCELLED']).optional()).default('ALL'),
   format: z.enum(['json', 'csv']).default('json'),
 });
 
 export const statutoryReturnsReportQuerySchema = z.object({
-  period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
-  saleType: z.nativeEnum(SaleType).optional(),
-  customerType: z.nativeEnum(CustomerType).optional(),
-  refundPaymentMode: z.nativeEnum(RefundPaymentMode).optional(),
-  status: z.nativeEnum(ReturnStatus).optional(),
+  period: z.preprocess(emptyToUndefined, z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional()).optional(),
+  startDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional()).optional(),
+  endDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional()).optional(),
+  saleType: z.preprocess(emptyToUndefined, z.nativeEnum(SaleType).optional()).optional(),
+  customerType: z.preprocess(emptyToUndefined, z.nativeEnum(CustomerType).optional()).optional(),
+  refundPaymentMode: z.preprocess(emptyToUndefined, z.nativeEnum(RefundPaymentMode).optional()).optional(),
+  status: z.preprocess((val) => (val === '' || val === 'ALL' ? undefined : val), z.nativeEnum(ReturnStatus).optional()).optional(),
   format: z.enum(['json', 'csv']).default('json'),
 });
 
 export const statutoryGstSummaryQuerySchema = z.object({
-  period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
-  saleType: z.nativeEnum(SaleType).optional(),
-  customerType: z.nativeEnum(CustomerType).optional(),
-  gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean()).optional(),
+  period: z.preprocess(emptyToUndefined, z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional()).optional(),
+  startDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional()).optional(),
+  endDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional()).optional(),
+  saleType: z.preprocess(emptyToUndefined, z.nativeEnum(SaleType).optional()).optional(),
+  customerType: z.preprocess(emptyToUndefined, z.nativeEnum(CustomerType).optional()).optional(),
+  gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean().optional()).optional(),
   format: z.enum(['json', 'csv']).default('json'),
 });
 

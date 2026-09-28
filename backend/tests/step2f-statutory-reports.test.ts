@@ -29,13 +29,26 @@ export async function runStep2fStatutoryReportsTests() {
   const port = (server.address() as any).port;
   const baseUrl = `http://localhost:${port}/api/v1`;
 
-  // 2. Fetch seed users & tokens
-  const adminAuth = await AuthService.login({ username: 'admin', password: 'admin123' });
-  const adminToken = adminAuth.tokens.accessToken;
-  const adminUser = adminAuth.user;
-
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash('testpass123', salt);
+
+  // 2. Fetch seed users & tokens
+  const adminUser = await prisma.user.create({
+    data: {
+      username: `ca_admin_${ts}`,
+      email: `ca_admin_${ts}@example.com`,
+      passwordHash,
+      fullName: `CA Admin User ${ts}`,
+      role: 'ADMIN',
+      isMasterAdmin: true,
+      allowedBillingSaleTypes: [SaleType.RETAIL, SaleType.NRI, SaleType.WHOLESALE],
+      allowedReportSaleTypes: [SaleType.RETAIL, SaleType.NRI, SaleType.WHOLESALE],
+      isActive: true,
+    },
+  });
+
+  const adminAuth = await AuthService.login({ username: adminUser.username, password: 'testpass123' });
+  const adminToken = adminAuth.tokens.accessToken;
 
   // Create restricted test user:
   // allowedBillingSaleTypes: [RETAIL, NRI, WHOLESALE]
@@ -933,7 +946,7 @@ export async function runStep2fStatutoryReportsTests() {
       where: { id: { in: [custB2B.id, custB2C.id, custNRI.id] } },
     });
     await prisma.user.deleteMany({
-      where: { id: restrictedUser.id },
+      where: { id: { in: [restrictedUser.id, adminUser.id] } },
     });
 
     server.close();
