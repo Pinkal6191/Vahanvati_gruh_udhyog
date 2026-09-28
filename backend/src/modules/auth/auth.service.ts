@@ -7,24 +7,20 @@ import { LoginInput } from './auth.validation.js';
 
 export class AuthService {
   static async login(input: LoginInput) {
-    const user = await prisma.user.findUnique({
-      where: { username: input.username },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: input.username },
+          { email: input.username },
+        ],
+      },
     });
 
     if (!user || !user.isActive) {
       throw new UnauthorizedError('Invalid credentials or account deactivated');
     }
 
-    let isMatch = await bcrypt.compare(input.password, user.passwordHash);
-    if (!isMatch) {
-      if (user.username === 'admin' && (input.password === 'Admin@123' || input.password === 'admin123')) {
-        isMatch = true;
-      } else if (user.username === 'outlet' && (input.password === 'Outlet@123' || input.password === 'outlet123')) {
-        isMatch = true;
-      } else if (user.username === 'production' && (input.password === 'Production@123' || input.password === 'Prod@123' || input.password === 'prod123')) {
-        isMatch = true;
-      }
-    }
+    const isMatch = await bcrypt.compare(input.password, user.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedError('Invalid credentials');
     }
