@@ -180,6 +180,7 @@ export const ProductsApi = {
         }
       } catch (err) {
         console.warn('Could not batch-set prices for product:', err);
+        throw err;
       }
     }
 
@@ -224,6 +225,7 @@ export const ProductsApi = {
         }
       } catch (err) {
         console.warn('Could not update prices for product:', err);
+        throw err;
       }
     }
 

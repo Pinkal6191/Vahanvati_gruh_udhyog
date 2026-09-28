@@ -126,9 +126,9 @@ export const ProductsPage: React.FC = () => {
           const prices = await ProductsApi.fetchProductPrices(prod.id);
           return {
             ...prod,
-            indianPrice: prices.indian ?? null,
-            nriPrice: prices.nri ?? null,
-            wholesalePrice: prices.wholesale ?? null,
+            indianPrice: prices.indian ?? prod.indianPrice ?? null,
+            nriPrice: prices.nri ?? prod.nriPrice ?? null,
+            wholesalePrice: prices.wholesale ?? prod.wholesalePrice ?? null,
           };
         })
       );
@@ -198,6 +198,15 @@ export const ProductsPage: React.FC = () => {
     setFormWholesalePrice(product.wholesalePrice ? String(product.wholesalePrice) : '');
     setFormError(null);
     setIsModalOpen(true);
+
+    try {
+      const prices = await ProductsApi.fetchProductPrices(product.id);
+      if (prices.indian !== undefined && prices.indian !== null) setFormIndianPrice(String(prices.indian));
+      if (prices.nri !== undefined && prices.nri !== null) setFormNriPrice(String(prices.nri));
+      if (prices.wholesale !== undefined && prices.wholesale !== null) setFormWholesalePrice(String(prices.wholesale));
+    } catch {
+      // Fallback already populated from product object
+    }
   };
 
   // Submit Add / Edit

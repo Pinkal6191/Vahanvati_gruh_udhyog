@@ -594,30 +594,58 @@ export class PricingService {
           item.pricingTier ??
           (item.customerType === CustomerType.NRI ? SaleType.NRI : SaleType.RETAIL);
 
-        // Overlap check
-        await this.checkDateOverlap(
-          tx,
-          item.productId,
-          item.packConfigId ?? null,
-          pricingTier,
-          effectiveFrom,
-          effectiveTo
-        );
-
-        const created = await tx.productPrice.create({
-          data: {
+        // Check if an existing active price record exists for this product + pack + tier
+        const existingActive = await tx.productPrice.findFirst({
+          where: {
             productId: item.productId,
             packConfigId: item.packConfigId ?? null,
             pricingTier,
-            rate: new Prisma.Decimal(item.rate),
-            effectiveFrom,
-            effectiveTo,
-            isActive: item.isActive ?? true,
-            createdById: userId ?? null,
+            isActive: true,
+            OR: [
+              { effectiveTo: null },
+              { effectiveTo: { gte: effectiveFrom } },
+            ],
           },
+          orderBy: { effectiveFrom: 'desc' },
         });
 
-        results.push(created);
+        if (existingActive && (!item.effectiveFrom || new Date(item.effectiveFrom).getTime() === new Date(existingActive.effectiveFrom).getTime())) {
+          // In-place update of current active price
+          const updated = await tx.productPrice.update({
+            where: { id: existingActive.id },
+            data: {
+              rate: new Prisma.Decimal(item.rate),
+              ...(item.isActive !== undefined ? { isActive: item.isActive } : {}),
+              ...(item.effectiveTo !== undefined ? { effectiveTo } : {}),
+            },
+          });
+          results.push(updated);
+        } else {
+          // Overlap check
+          await this.checkDateOverlap(
+            tx,
+            item.productId,
+            item.packConfigId ?? null,
+            pricingTier,
+            effectiveFrom,
+            effectiveTo
+          );
+
+          const created = await tx.productPrice.create({
+            data: {
+              productId: item.productId,
+              packConfigId: item.packConfigId ?? null,
+              pricingTier,
+              rate: new Prisma.Decimal(item.rate),
+              effectiveFrom,
+              effectiveTo,
+              isActive: item.isActive ?? true,
+              createdById: userId ?? null,
+            },
+          });
+
+          results.push(created);
+        }
       }
 
       // Audit batch operation
