@@ -561,7 +561,15 @@ export class ProductsService {
         ...updateData,
         ...(minimumStockThreshold !== undefined && {
           stock: {
-            update: { minimumThreshold: minimumStockThreshold },
+            upsert: {
+              create: {
+                currentBalance: 0.0,
+                minimumThreshold: minimumStockThreshold,
+              },
+              update: {
+                minimumThreshold: minimumStockThreshold,
+              },
+            },
           },
         }),
       },

@@ -116,7 +116,18 @@ echo "   File: ${BACKUP_FILE} (${BACKUP_SIZE})"
 # ----------------------------------------------------
 echo ""
 echo "[Step 3/8] Inspecting Production Database & Migrations (Read-Only)..."
-psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c "SELECT current_database(), current_user, inet_server_addr(), version();"
+export PAGER=cat
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" --no-align -c "SELECT current_database(), current_user, inet_server_addr(), version();"
+
+echo "📦 Ensuring all products have initialized stock records..."
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c "
+INSERT INTO stocks (id, product_id, current_balance, minimum_threshold, last_updated_at)
+SELECT gen_random_uuid(), p.id, 0.000, 0.000, NOW()
+FROM products p
+LEFT JOIN stocks s ON p.id = s.product_id
+WHERE s.id IS NULL
+ON CONFLICT (product_id) DO NOTHING;
+"
 
 echo "📊 Recording Pre-Deployment Record Counts:"
 psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -t -A -c "
