@@ -82,9 +82,9 @@ async function main() {
 
   // 4. Default Users
   const salt = await bcrypt.genSalt(10);
-  const defaultPassword = await bcrypt.hash('admin123', salt);
-  const outletPassword = await bcrypt.hash('outlet123', salt);
-  const prodPassword = await bcrypt.hash('prod123', salt);
+  const defaultPassword = await bcrypt.hash('Admin@123', salt);
+  const outletPassword = await bcrypt.hash('Outlet@123', salt);
+  const prodPassword = await bcrypt.hash('Production@123', salt);
 
   await prisma.user.upsert({
     where: { username: 'admin' },
