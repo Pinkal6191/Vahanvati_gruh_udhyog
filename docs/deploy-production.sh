@@ -129,6 +129,50 @@ WHERE s.id IS NULL
 ON CONFLICT (product_id) DO NOTHING;
 "
 
+echo "💰 Syncing all Wholesale prices to match Indian (Retail) prices..."
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c "
+INSERT INTO product_prices (
+  id, product_id, pack_config_id, pricing_tier, rate, effective_from, effective_to, is_active, created_at, updated_at
+)
+SELECT
+  gen_random_uuid(),
+  rp.product_id,
+  rp.pack_config_id,
+  'WHOLESALE'::\"SaleType\",
+  rp.rate,
+  rp.effective_from,
+  rp.effective_to,
+  rp.is_active,
+  NOW(),
+  NOW()
+FROM product_prices rp
+WHERE rp.pricing_tier = 'RETAIL'
+  AND rp.is_active = true
+  AND NOT EXISTS (
+    SELECT 1 FROM product_prices wp
+    WHERE wp.product_id = rp.product_id
+      AND (
+        (wp.pack_config_id IS NULL AND rp.pack_config_id IS NULL)
+        OR wp.pack_config_id = rp.pack_config_id
+      )
+      AND wp.pricing_tier = 'WHOLESALE'
+      AND wp.is_active = true
+  );
+
+UPDATE product_prices wp
+SET rate = rp.rate, updated_at = NOW()
+FROM product_prices rp
+WHERE rp.product_id = wp.product_id
+  AND (
+    (wp.pack_config_id IS NULL AND rp.pack_config_id IS NULL)
+    OR wp.pack_config_id = rp.pack_config_id
+  )
+  AND rp.pricing_tier = 'RETAIL'
+  AND wp.pricing_tier = 'WHOLESALE'
+  AND rp.is_active = true
+  AND wp.is_active = true;
+"
+
 echo "📊 Recording Pre-Deployment Record Counts:"
 psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -t -A -c "
 SELECT 'users: ' || count(*) FROM users

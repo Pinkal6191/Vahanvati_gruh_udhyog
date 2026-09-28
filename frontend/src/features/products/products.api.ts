@@ -167,11 +167,12 @@ export const ProductsApi = {
             isActive: true,
           });
         }
-        if (wholesalePrice !== undefined && wholesalePrice > 0) {
+        const effectiveWholesale = wholesalePrice !== undefined ? wholesalePrice : indianPrice;
+        if (effectiveWholesale !== undefined && effectiveWholesale > 0) {
           pricesToCreate.push({
             productId: createdProduct.id,
             pricingTier: 'WHOLESALE' as const,
-            rate: Number(wholesalePrice),
+            rate: Number(effectiveWholesale),
             isActive: true,
           });
         }
@@ -212,11 +213,12 @@ export const ProductsApi = {
             isActive: true,
           });
         }
-        if (wholesalePrice !== undefined && wholesalePrice > 0) {
+        const effectiveWholesale = wholesalePrice !== undefined ? wholesalePrice : indianPrice;
+        if (effectiveWholesale !== undefined && effectiveWholesale > 0) {
           pricesToSave.push({
             productId: id,
             pricingTier: 'WHOLESALE' as const,
-            rate: Number(wholesalePrice),
+            rate: Number(effectiveWholesale),
             isActive: true,
           });
         }

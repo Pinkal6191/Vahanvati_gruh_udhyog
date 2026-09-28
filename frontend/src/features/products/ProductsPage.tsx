@@ -195,7 +195,8 @@ export const ProductsPage: React.FC = () => {
     setFormIsLooseAllowed(product.isLooseWeightAllowed);
     setFormIndianPrice(product.indianPrice ? String(product.indianPrice) : '');
     setFormNriPrice(product.nriPrice ? String(product.nriPrice) : '');
-    setFormWholesalePrice(product.wholesalePrice ? String(product.wholesalePrice) : '');
+    const defaultWholesale = product.wholesalePrice ?? product.indianPrice;
+    setFormWholesalePrice(defaultWholesale ? String(defaultWholesale) : '');
     setFormError(null);
     setIsModalOpen(true);
 
@@ -203,7 +204,10 @@ export const ProductsPage: React.FC = () => {
       const prices = await ProductsApi.fetchProductPrices(product.id);
       if (prices.indian !== undefined && prices.indian !== null) setFormIndianPrice(String(prices.indian));
       if (prices.nri !== undefined && prices.nri !== null) setFormNriPrice(String(prices.nri));
-      if (prices.wholesale !== undefined && prices.wholesale !== null) setFormWholesalePrice(String(prices.wholesale));
+      const resolvedWholesale = prices.wholesale ?? prices.indian;
+      if (resolvedWholesale !== undefined && resolvedWholesale !== null) {
+        setFormWholesalePrice(String(resolvedWholesale));
+      }
     } catch {
       // Fallback already populated from product object
     }
@@ -233,7 +237,7 @@ export const ProductsPage: React.FC = () => {
 
     const indianRate = formIndianPrice ? parseFloat(formIndianPrice) : undefined;
     const nriRate = formNriPrice ? parseFloat(formNriPrice) : undefined;
-    const wholesaleRate = formWholesalePrice ? parseFloat(formWholesalePrice) : undefined;
+    const wholesaleRate = formWholesalePrice ? parseFloat(formWholesalePrice) : indianRate;
 
     if (indianRate !== undefined && (isNaN(indianRate) || indianRate <= 0)) {
       setFormError('Indian price must be a valid positive number.');
@@ -730,7 +734,13 @@ export const ProductsPage: React.FC = () => {
               type="number"
               step="0.01"
               value={formIndianPrice}
-              onChange={(e) => setFormIndianPrice(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!formWholesalePrice || formWholesalePrice === formIndianPrice) {
+                  setFormWholesalePrice(val);
+                }
+                setFormIndianPrice(val);
+              }}
               placeholder="e.g. 150.00"
               helperText="Base selling rate for Indian customers (Retail)"
             />
