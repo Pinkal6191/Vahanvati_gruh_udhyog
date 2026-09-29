@@ -20,6 +20,7 @@ import { CustomerType } from '../../../types/common.types';
 import { PaymentMode, SaleType } from '../billing.api';
 import { Badge } from '../../../components/ui/Badge/Badge';
 import { formatCurrency } from '../../../utils/formatters';
+import '../billing.css';
 
 export interface CartSummaryPaneProps {
   items: CartItem[];
@@ -325,7 +326,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
               className={`pos-pay-mode-btn ${paymentMode === 'CASH' ? 'active' : ''}`}
               onClick={() => onSetPaymentMode('CASH')}
             >
-              <Banknote size={15} />
+              <Banknote size={18} />
               <span>Cash</span>
             </button>
             <button
@@ -333,7 +334,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
               className={`pos-pay-mode-btn ${paymentMode === 'UPI' ? 'active' : ''}`}
               onClick={() => onSetPaymentMode('UPI')}
             >
-              <QrCode size={15} />
+              <QrCode size={18} />
               <span>UPI / QR</span>
             </button>
             <button
@@ -341,7 +342,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
               className={`pos-pay-mode-btn ${paymentMode === 'CARD' ? 'active' : ''}`}
               onClick={() => onSetPaymentMode('CARD')}
             >
-              <CreditCard size={15} />
+              <CreditCard size={18} />
               <span>Card</span>
             </button>
             <button
@@ -349,7 +350,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
               className={`pos-pay-mode-btn ${paymentMode === 'OTHER' ? 'active' : ''}`}
               onClick={() => onSetPaymentMode('OTHER')}
             >
-              <Layers size={15} />
+              <Layers size={18} />
               <span>Credit/Other</span>
             </button>
           </div>
