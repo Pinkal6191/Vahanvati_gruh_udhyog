@@ -7,23 +7,9 @@
   flex-wrap: wrap;
 }
 
-.report-filter-select-wrapper {
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
-.report-filter-select-wrapper .report-filter-icon {
-  position: absolute;
-  left: 12px;
-  color: #6b7280;
-  pointer-events: none;
-  z-index: 1;
-}
-
 .report-filter-select {
   height: 40px;
-  padding: 0 12px 0 34px;
+  padding: 0 32px 0 12px;
   font-size: 13.5px;
   font-weight: 500;
   color: #202124;
@@ -35,10 +21,6 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   font-family: inherit;
   box-sizing: border-box;
-}
-
-.report-filter-select.no-icon {
-  padding-left: 12px;
 }
 
 .report-filter-select:hover:not(:disabled) {
@@ -141,7 +123,6 @@
     width: 100%;
   }
 
-  .report-filter-select-wrapper,
   .report-filter-select {
     width: 100%;
   }

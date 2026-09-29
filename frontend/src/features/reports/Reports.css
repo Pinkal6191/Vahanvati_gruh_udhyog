@@ -23,7 +23,7 @@
 /* Standardized 40px Report Filter Select */
 .report-filter-select {
   height: 40px;
-  padding: 0 12px;
+  padding: 0 32px 0 12px;
   font-size: 13.5px;
   font-weight: 500;
   color: #202124;
@@ -44,6 +44,17 @@
 .report-filter-select:focus {
   border-color: #3f438f;
   box-shadow: 0 0 0 2px rgba(63, 67, 143, 0.12);
+}
+
+.report-export-btn {
+  height: 40px !important;
+  min-height: 40px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 0 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
 /* KPI Grids */

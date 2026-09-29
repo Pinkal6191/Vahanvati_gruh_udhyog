@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Filter, RotateCcw } from 'lucide-react';
+import { Filter, RotateCcw } from 'lucide-react';
 import { ReportDatePeriod } from '../reports.api';
 import { Button } from '../../../components/ui/Button/Button';
 import './ReportDateFilter.css';
@@ -71,23 +71,20 @@ export const ReportDateFilter: React.FC<ReportDateFilterProps> = ({
 
   return (
     <div className={`report-date-filter-bar ${className}`}>
-      <div className="report-filter-select-wrapper">
-        <Calendar size={15} className="report-filter-icon" />
-        <select
-          aria-label="Select report date period"
-          value={selectedPeriod}
-          onChange={handlePeriodChange}
-          className="report-filter-select"
-          disabled={isLoading}
-        >
-          <option value="today">Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="this_week">This Week</option>
-          <option value="this_month">This Month</option>
-          <option value="this_year">This Year</option>
-          <option value="custom">Custom Range</option>
-        </select>
-      </div>
+      <select
+        aria-label="Select report date period"
+        value={selectedPeriod}
+        onChange={handlePeriodChange}
+        className="report-filter-select"
+        disabled={isLoading}
+      >
+        <option value="today">Today</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="this_week">This Week</option>
+        <option value="this_month">This Month</option>
+        <option value="this_year">This Year</option>
+        <option value="custom">Custom Range</option>
+      </select>
 
       {selectedPeriod === 'custom' && (
         <div className="report-custom-dates">
