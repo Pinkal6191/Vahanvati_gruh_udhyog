@@ -11,6 +11,7 @@ import {
   ArrowLeftRight,
   ShieldCheck,
   FileSpreadsheet,
+  Banknote,
 } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 import { hasRole } from '../../../utils/rbac';
@@ -30,6 +31,12 @@ const REPORT_NAV_ITEMS: ReportNavItem[] = [
     label: 'Overview',
     path: '/reports',
     icon: <BarChart3 size={16} />,
+    allowedRoles: ['ADMIN'],
+  },
+  {
+    label: 'Cash Bills',
+    path: '/reports/cash-sales',
+    icon: <Banknote size={16} />,
     allowedRoles: ['ADMIN'],
   },
   {

@@ -329,3 +329,56 @@ export function statutoryGstSummaryToCsv(
 
   return buildCsv(headers, rows);
 }
+
+/**
+ * Formatter for Admin Cash Sales Report CSV
+ */
+export function cashSalesToCsv(sales: any[]): string {
+  const headers = [
+    'Cash Bill Number',
+    'Date',
+    'Time',
+    'Customer Name',
+    'Customer Mobile',
+    'Sale Type',
+    'Items Count',
+    'Total Quantity',
+    'Subtotal Amount (INR)',
+    'Discount Amount (INR)',
+    'Tax Amount (INR)',
+    'Final Total Amount (INR)',
+    'Paid Amount (INR)',
+    'Payment Mode',
+    'Sale Status',
+    'Biller',
+  ];
+
+  const rows = sales.map((s) => {
+    const d = new Date(s.createdAt);
+    const dateStr = d.toISOString().split('T')[0];
+    const timeStr = d.toTimeString().split(' ')[0];
+    const totalQty = s.items?.reduce((sum: number, it: any) => sum + Number(it.quantity), 0) ?? 0;
+    const paymentModes = s.payments?.map((p: any) => p.paymentMode).join('; ') || 'CASH';
+
+    return [
+      s.billNumber,
+      dateStr,
+      timeStr,
+      s.customerNameSnapshot || 'Walk-in Customer',
+      s.customerMobileSnapshot || '',
+      s.saleType,
+      s.totalItemsCount,
+      round2(totalQty),
+      round2(Number(s.subtotalAmount)),
+      round2(Number(s.discountAmount)),
+      round2(Number(s.taxAmount)),
+      round2(Number(s.finalTotalAmount)),
+      round2(Number(s.paidAmount)),
+      paymentModes,
+      s.saleStatus,
+      s.user?.fullName || s.user?.username || '',
+    ];
+  });
+
+  return buildCsv(headers, rows);
+}

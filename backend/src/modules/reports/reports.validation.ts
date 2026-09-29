@@ -152,3 +152,19 @@ export type StatutorySalesReportQuery = z.infer<typeof statutorySalesReportQuery
 export type StatutoryItemizedReportQuery = z.infer<typeof statutoryItemizedReportQuerySchema>;
 export type StatutoryReturnsReportQuery = z.infer<typeof statutoryReturnsReportQuerySchema>;
 export type StatutoryGstSummaryQuery = z.infer<typeof statutoryGstSummaryQuerySchema>;
+
+// ==========================================
+// Admin Cash Report Query Schema
+// ==========================================
+export const cashReportQuerySchema = z.object({
+  period: z.preprocess(emptyToUndefined, z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional()).optional(),
+  startDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional()).optional(),
+  endDate: z.preprocess(emptyToUndefined, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional()).optional(),
+  saleType: z.preprocess(emptyToUndefined, z.nativeEnum(SaleType).optional()).optional(),
+  customerId: z.preprocess(emptyToUndefined, z.string().uuid('Valid customer ID required').optional()).optional(),
+  limit: z.coerce.number().min(1).max(200).default(50),
+  page: z.coerce.number().min(1).default(1),
+  format: z.enum(['json', 'csv']).default('json'),
+});
+
+export type CashReportQuery = z.infer<typeof cashReportQuerySchema>;

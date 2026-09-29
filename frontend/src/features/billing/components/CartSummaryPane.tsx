@@ -354,6 +354,13 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
             </button>
           </div>
 
+          {paymentMode === 'CASH' && (
+            <div className="pos-cash-sequence-note">
+              <span className="pos-cash-dot"></span>
+              <span>Dedicated Cash Sequence: <strong>CASH-YYYYMMDD-XXXX</strong></span>
+            </div>
+          )}
+
           {/* Cash Tender & Quick Change Preset */}
           {paymentMode === 'CASH' ? (
             <div className="pos-cash-tender-box">

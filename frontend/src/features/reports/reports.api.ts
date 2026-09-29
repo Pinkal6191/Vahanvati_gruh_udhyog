@@ -550,6 +550,36 @@ export const reportsApi = {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   },
+
+  // 15. Operational Cash Bills Report (ADMIN ONLY)
+  async getCashSalesReport(query: CashReportQuery = {}): Promise<CashReportResponse> {
+    const qs = buildQueryString(query);
+    const res = await apiClient.get<CashReportResponse>(`/reports/cash-sales${qs}`);
+    return res as any;
+  },
+
+  // Download Cash Sales Report CSV
+  async downloadCashReportCsv(query: Record<string, any>, filename: string): Promise<void> {
+    const qs = buildQueryString({ ...query, format: 'csv' });
+    const token = storageService.getAccessToken();
+    const res = await fetch(`${apiClient.getBaseUrl()}/reports/cash-sales${qs}`, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to download Cash Report CSV: HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  },
 };
 
 // ==========================================
@@ -738,4 +768,74 @@ export interface StatutoryGstSummaryResponse {
   };
   bySaleType: Record<SaleType, GstSegmentSummary>;
   byGstClassification: Record<'B2B' | 'B2C', GstSegmentSummary>;
+}
+
+// ==========================================
+// Operational Cash Report Types
+// ==========================================
+
+export interface CashReportQuery {
+  period?: ReportDatePeriod;
+  startDate?: string;
+  endDate?: string;
+  saleType?: SaleType;
+  customerId?: string;
+  limit?: number;
+  page?: number;
+  format?: 'json' | 'csv';
+}
+
+export interface CashReportSummary {
+  period: string;
+  cashBillCount: number;
+  cashGrossSubtotal: number;
+  cashTotalDiscount: number;
+  cashTotalTax: number;
+  cashNetFinalTotal: number;
+  isScoped: boolean;
+  isMasterAdmin: boolean;
+  visibleSaleTypes: SaleType[];
+}
+
+export interface CashReportItem {
+  id: string;
+  billNumber: string;
+  createdAt: string;
+  saleType: SaleType;
+  customerName?: string | null;
+  customerMobile?: string | null;
+  totalItemsCount: number;
+  totalQuantity: number;
+  subtotalAmount: number;
+  discountAmount: number;
+  taxAmount: number;
+  finalTotalAmount: number;
+  paidAmount: number;
+  changeReturned: number;
+  paymentMode: string;
+  saleStatus: string;
+  billerName?: string;
+  items: Array<{
+    id: string;
+    productName: string;
+    variant: string;
+    unit?: string;
+    quantity: number;
+    unitRate: number;
+    subtotal: number;
+    discount: number;
+    total: number;
+  }>;
+}
+
+export interface CashReportResponse {
+  success: boolean;
+  summary: CashReportSummary;
+  items: CashReportItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }

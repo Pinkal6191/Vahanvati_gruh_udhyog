@@ -17,6 +17,7 @@ import {
   SaleStatus,
   SaleType,
   CustomerType,
+  PaymentMode,
   Prisma,
 } from '@prisma/client';
 import { resolveReportSaleTypeScope, assertCanViewSale } from '../reports/reports.auth.js';
@@ -126,7 +127,12 @@ export class SalesService {
 
     const changeReturned = Math.max(0, Math.round((input.paidAmount - finalTotalAmount) * 100) / 100);
 
-    // 4. Execute atomic transaction
+    // 4. Determine sequential prefix: CASH payments use dedicated 'CASH' sequence; all others use normal prefix
+    const isCashSale =
+      input.payments &&
+      input.payments.length > 0 &&
+      input.payments.every((p) => p.paymentMode === PaymentMode.CASH);
+
     return prisma.$transaction(async (tx) => {
       // 4.1 Acquire exclusive lock on CompanySettings to serialize sequential bill number assignment
       const settingsRows = await tx.$queryRaw<
@@ -134,10 +140,11 @@ export class SalesService {
       >`SELECT id, invoice_prefix, allow_negative_stock FROM company_settings LIMIT 1 FOR UPDATE`;
 
       const settings = settingsRows && settingsRows.length > 0 ? settingsRows[0] : null;
-      const prefix = settings?.invoice_prefix ?? 'VGU';
+      const normalPrefix = settings?.invoice_prefix ?? 'VGU';
+      const activePrefix = isCashSale ? 'CASH' : normalPrefix;
       const allowNegative = settings?.allow_negative_stock ?? false;
 
-      // 4.2 Generate Sequential Bill Number (e.g. VGU-YYYYMMDD-0001)
+      // 4.2 Generate Sequential Bill Number (e.g. CASH-YYYYMMDD-0001 or VGU-YYYYMMDD-0001)
       const now = new Date();
       const yyyy = now.getFullYear();
       const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -146,7 +153,7 @@ export class SalesService {
 
       const latestSaleToday = await tx.sale.findFirst({
         where: {
-          billNumber: { startsWith: `${prefix}-${datePart}-` },
+          billNumber: { startsWith: `${activePrefix}-${datePart}-` },
         },
         orderBy: { billNumber: 'desc' },
         select: { billNumber: true },
@@ -163,7 +170,7 @@ export class SalesService {
       }
 
       const sequenceNumber = String(nextSeq).padStart(4, '0');
-      const billNumber = `${prefix}-${datePart}-${sequenceNumber}`;
+      const billNumber = `${activePrefix}-${datePart}-${sequenceNumber}`;
 
       // 4.3 Create Sale Header with canonical SaleType and snapshots
       const sale = await tx.sale.create({
@@ -476,10 +483,14 @@ export class SalesService {
       },
       invoice: {
         billNumber: sale.billNumber,
+        saleType: sale.saleType,
         date: sale.createdAt,
         billerName: sale.user.fullName,
         customerName: sale.customerNameSnapshot,
         customerMobile: sale.customerMobileSnapshot,
+        customerAddress: sale.customer?.address ?? null,
+        customerCity: sale.customer?.city ?? null,
+        customerGstin: sale.customerGstinSnapshot ?? sale.customer?.gstin ?? null,
       },
       items: sale.items.map((i) => {
         const qty = Number(i.quantity);
@@ -488,14 +499,19 @@ export class SalesService {
         return {
           name: i.productNameSnapshot,
           variant: i.weightOrPackSnapshot,
+          unit: i.unitSymbolSnapshot,
           qty,
           rate: lineRate,
+          unitRate: Number(i.unitRate),
+          subtotal: Number(i.subtotal),
+          discount: Number(i.discount),
           amount: amt,
         };
       }),
       totals: {
         subtotal: Number(sale.subtotalAmount),
         discount: Number(sale.discountAmount),
+        tax: Number(sale.taxAmount),
         total: Number(sale.finalTotalAmount),
         paid: Number(sale.paidAmount),
         change: Number(sale.changeReturned),

@@ -1319,6 +1319,46 @@
   color: var(--color-white);
 }
 
+.pos-cash-sequence-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.pos-cash-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  flex-shrink: 0;
+}
+
+.pos-success-bill-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pos-cash-bill-tag {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
 /* CASH TENDER CARD */
 .pos-cash-tender-card {
   display: flex;
@@ -2034,8 +2074,378 @@
 }
 
 /* ------------------------------------------------------------
-   9. PRINT STYLES (@media print)
+   9. PRINT STYLES (@media print) & WHOLESALE A4 INVOICE
    ------------------------------------------------------------ */
+.pos-print-preview-container.preview-a4 {
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.pos-a4-invoice {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 24px;
+  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Gujarati", sans-serif;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.a4-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.a4-header-brand {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.a4-brand-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.a4-company-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.a4-company-tagline {
+  font-size: 11px;
+  color: #64748b;
+  margin: 1px 0 2px;
+}
+
+.a4-company-address {
+  font-size: 11px;
+  color: #475569;
+  margin: 1px 0 3px;
+  max-width: 320px;
+  line-height: 1.3;
+}
+
+.a4-company-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 10.5px;
+  color: #334155;
+}
+
+.a4-header-doc {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.a4-doc-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: #1e3a8a;
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.a4-doc-meta-table {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11.5px;
+}
+
+.a4-meta-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.a4-meta-lbl {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.a4-meta-val {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.a4-bill-no {
+  font-family: monospace;
+  font-size: 12.5px;
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.a4-saletype-pill {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.a4-divider {
+  border-top: 1.5px solid #cbd5e1;
+  margin: 12px 0 14px;
+}
+
+.a4-parties-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.a4-party-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 10px 12px;
+}
+
+.a4-card-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 3px;
+}
+
+.a4-card-body {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #334155;
+}
+
+.a4-buyer-name {
+  font-size: 13px;
+  color: #0f172a;
+  margin: 0 0 2px;
+}
+
+.a4-buyer-address {
+  color: #475569;
+  margin: 0 0 3px;
+  font-size: 11px;
+}
+
+.a4-buyer-meta {
+  margin: 2px 0;
+  font-size: 11px;
+}
+
+.a4-payment-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 0;
+  font-size: 11px;
+}
+
+.a4-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-size: 11px;
+}
+
+.a4-items-table th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 700;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  text-align: left;
+  font-size: 10.5px;
+}
+
+.a4-items-table td {
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.a4-items-table .th-sr,
+.a4-items-table .td-sr {
+  text-align: center;
+  width: 32px;
+}
+
+.a4-items-table .th-desc {
+  width: 38%;
+}
+
+.a4-items-table .th-unit,
+.a4-items-table .td-unit {
+  text-align: center;
+  width: 44px;
+}
+
+.a4-items-table .th-qty,
+.a4-items-table .td-qty {
+  text-align: right;
+  width: 56px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.a4-items-table .th-rate,
+.a4-items-table .td-rate {
+  text-align: right;
+  width: 75px;
+  font-variant-numeric: tabular-nums;
+}
+
+.a4-items-table .th-sub,
+.a4-items-table .td-sub {
+  text-align: right;
+  width: 75px;
+  font-variant-numeric: tabular-nums;
+}
+
+.a4-items-table .th-disc,
+.a4-items-table .td-disc {
+  text-align: right;
+  width: 68px;
+  font-variant-numeric: tabular-nums;
+  color: #dc2626;
+}
+
+.a4-items-table .th-total,
+.a4-items-table .td-total {
+  text-align: right;
+  width: 82px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.a4-item-title {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.a4-item-variant {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.a4-summary-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+  align-items: flex-start;
+  margin-top: 4px;
+}
+
+.a4-amount-in-words-box {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 5px;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+}
+
+.a4-words-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.a4-words-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e3a8a;
+  margin: 2px 0 0;
+  font-style: italic;
+}
+
+.a4-terms-box {
+  font-size: 10px;
+  color: #64748b;
+  margin-bottom: 12px;
+  line-height: 1.35;
+}
+
+.a4-terms-title {
+  font-weight: 700;
+  color: #475569;
+  display: block;
+  margin-bottom: 1px;
+}
+
+.a4-terms-text {
+  margin: 0;
+}
+
+.a4-signature-box {
+  margin-top: 20px;
+}
+
+.a4-sign-company {
+  font-size: 10.5px;
+  margin: 0 0 28px;
+  color: #334155;
+}
+
+.a4-sign-line {
+  display: inline-block;
+  border-top: 1px solid #475569;
+  padding-top: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #475569;
+  width: 160px;
+  text-align: center;
+}
+
+.a4-calc-table {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.a4-calc-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  border-bottom: 1px solid #f1f5f9;
+  font-variant-numeric: tabular-nums;
+}
+
+.a4-calc-row.a4-discount {
+  color: #dc2626;
+}
+
+.a4-calc-row.a4-grand-total {
+  background: #1e3a8a;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  border-bottom: none;
+  padding: 8px 10px;
+}
+
 @media print {
   body * {
     visibility: hidden;
@@ -2046,7 +2456,8 @@
     visibility: visible;
   }
 
-  #pos-printable-receipt {
+  /* Thermal 80mm format for Retail/NRI */
+  #pos-printable-receipt.pos-thermal-receipt {
     position: fixed;
     left: 0;
     top: 0;
@@ -2057,6 +2468,45 @@
     box-shadow: none;
     font-family: 'Shruti', 'Gujarati Sangam MN', 'Noto Sans Gujarati', 'Nirmala UI', system-ui, -apple-system, sans-serif;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Wholesale A4 portrait format */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+  }
+
+  #pos-printable-receipt.pos-a4-invoice {
+    position: static;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: none;
+    border: none;
+    font-size: 9.5pt;
+    line-height: 1.35;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Gujarati", sans-serif;
+  }
+
+  .pos-a4-invoice .a4-items-table {
+    page-break-inside: auto;
+  }
+
+  .pos-a4-invoice .a4-items-table thead {
+    display: table-header-group;
+  }
+
+  .pos-a4-invoice .a4-items-table tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .pos-a4-invoice .a4-summary-row {
+    page-break-inside: avoid;
   }
 
   .receipt-logo {

@@ -107,3 +107,35 @@ export function formatDateTime(date: string | Date | null | undefined): string {
     hour12: true,
   }).format(d);
 }
+
+/**
+ * Convert numeric amount into Indian Currency words (e.g. ₹ 1,500.00 -> Rupees One Thousand Five Hundred Only)
+ */
+export function formatAmountInWords(amount: number): string {
+  if (!amount || amount === 0) return 'Rupees Zero Only';
+
+  const a = [
+    '', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ',
+    'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '
+  ];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  function inWords(num: number): string {
+    if (num === 0) return '';
+    if (num < 20) return a[num];
+    if (num < 100) return b[Math.floor(num / 10)] + (num % 10 !== 0 ? ' ' + a[num % 10] : ' ');
+    if (num < 1000) return inWords(Math.floor(num / 100)) + 'Hundred ' + inWords(num % 100);
+    if (num < 100000) return inWords(Math.floor(num / 1000)) + 'Thousand ' + inWords(num % 1000);
+    if (num < 10000000) return inWords(Math.floor(num / 100000)) + 'Lakh ' + inWords(num % 100000);
+    return inWords(Math.floor(num / 10000000)) + 'Crore ' + inWords(num % 10000000);
+  }
+
+  const whole = Math.floor(Math.abs(amount));
+  const fraction = Math.round((Math.abs(amount) - whole) * 100);
+
+  let words = 'Rupees ' + inWords(whole).trim();
+  if (fraction > 0) {
+    words += ' and ' + inWords(fraction).trim() + 'Paise';
+  }
+  return words + ' Only';
+}

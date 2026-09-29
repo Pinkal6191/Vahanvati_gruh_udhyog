@@ -143,30 +143,39 @@ export interface SalesListResponse {
 export interface ThermalPrintPayload {
   company: {
     name: string;
-    tagline?: string;
-    address?: string;
-    phone?: string;
-    gstin?: string;
-    fssaiLicense?: string;
-    footerNotes?: string;
+    tagline?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    gstin?: string | null;
+    fssaiLicense?: string | null;
+    footerNotes?: string | null;
   };
   invoice: {
     billNumber: string;
+    saleType?: SaleType;
     date: string;
     billerName: string;
     customerName?: string | null;
     customerMobile?: string | null;
+    customerAddress?: string | null;
+    customerCity?: string | null;
+    customerGstin?: string | null;
   };
   items: Array<{
     name: string;
     variant: string;
+    unit?: string;
     qty: number;
     rate: number;
+    unitRate?: number;
+    subtotal?: number;
+    discount?: number;
     amount: number;
   }>;
   totals: {
     subtotal: number;
     discount: number;
+    tax?: number;
     total: number;
     paid: number;
     change: number;

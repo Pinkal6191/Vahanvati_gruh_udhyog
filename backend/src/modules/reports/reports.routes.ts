@@ -17,6 +17,7 @@ import {
   statutoryItemizedReportQuerySchema,
   statutoryReturnsReportQuerySchema,
   statutoryGstSummaryQuerySchema,
+  cashReportQuerySchema,
 } from './reports.validation.js';
 
 const router = Router();
@@ -141,6 +142,16 @@ router.get(
   authorize(['ADMIN', 'OUTLET']),
   validate({ query: statutoryGstSummaryQuerySchema }),
   ReportsController.getStatutoryGstSummary
+);
+
+// ============================================================
+// 7. OPERATIONAL CASH BILLS REPORT (ADMIN ONLY)
+// ============================================================
+router.get(
+  '/cash-sales',
+  authorize(['ADMIN']),
+  validate({ query: cashReportQuerySchema }),
+  ReportsController.getCashSalesReport
 );
 
 export default router;

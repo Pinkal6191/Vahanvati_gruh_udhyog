@@ -54,7 +54,12 @@ export const BillSuccessModal: React.FC<BillSuccessModalProps> = ({
           <CheckCircle2 size={54} className="text-success" />
         </div>
 
-        <h3 className="pos-success-bill-number">{sale.billNumber}</h3>
+        <div className="pos-success-bill-heading">
+          <h3 className="pos-success-bill-number">{sale.billNumber}</h3>
+          {sale.billNumber.startsWith('CASH-') && (
+            <span className="pos-cash-bill-tag">CASH BILL</span>
+          )}
+        </div>
         <p className="pos-success-timestamp">
           Recorded on {formatDateTime(sale.createdAt)}
         </p>

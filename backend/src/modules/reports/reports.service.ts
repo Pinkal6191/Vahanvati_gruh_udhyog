@@ -14,6 +14,7 @@ import {
   StatutoryItemizedReportQuery,
   StatutoryReturnsReportQuery,
   StatutoryGstSummaryQuery,
+  CashReportQuery,
 } from './reports.validation.js';
 import { resolveDateRange, formatPeriodKey, round2, GroupByInterval } from './reports.utils.js';
 import {
@@ -21,6 +22,7 @@ import {
   statutoryItemizedToCsv,
   statutoryReturnsToCsv,
   statutoryGstSummaryToCsv,
+  cashSalesToCsv,
 } from './reports.csv.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { NotFoundError, ForbiddenError } from '../../common/errors/app-error.js';
@@ -1913,6 +1915,167 @@ export class ReportsService {
       summary,
       bySaleType,
       byGstClassification,
+    };
+  }
+
+  /**
+   * Dedicated Operational Cash Sales / Cash Bills Report (ADMIN / MASTER ADMIN ONLY)
+   */
+  static async getCashSalesReport(query: CashReportQuery, user?: AuthenticatedUser) {
+    if (!user || (user.role !== 'ADMIN' && !user.isMasterAdmin)) {
+      throw new ForbiddenError('Access forbidden: Only administrators can view Cash reports');
+    }
+
+    const { period, startDate, endDate, saleType, customerId, page = 1, limit = 50, format = 'json' } = query;
+    const { start, end, periodDescription } = resolveDateRange(period, startDate, endDate);
+
+    const { effectiveSaleType, effectiveSaleTypes, isScoped, isMasterAdmin } = resolveReportSaleTypeScope(
+      user,
+      saleType
+    );
+
+    const whereSale: any = {
+      saleStatus: SaleStatus.COMPLETED,
+      payments: {
+        some: {
+          paymentMode: PaymentMode.CASH,
+        },
+      },
+      ...(effectiveSaleType
+        ? { saleType: effectiveSaleType }
+        : { saleType: { in: effectiveSaleTypes } }),
+    };
+
+    if (start || end) {
+      whereSale.createdAt = {};
+      if (start) whereSale.createdAt.gte = start;
+      if (end) whereSale.createdAt.lte = end;
+    }
+
+    if (customerId) {
+      whereSale.customerId = customerId;
+    }
+
+    // If CSV export requested, stream all matching records
+    if (format === 'csv') {
+      const allCashSales = await prisma.sale.findMany({
+        where: whereSale,
+        include: {
+          items: true,
+          payments: true,
+          customer: { select: { id: true, name: true, mobile: true } },
+          user: { select: { id: true, fullName: true, username: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return cashSalesToCsv(allCashSales);
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [totalCount, sales] = await Promise.all([
+      prisma.sale.count({ where: whereSale }),
+      prisma.sale.findMany({
+        where: whereSale,
+        skip,
+        take: limit,
+        include: {
+          items: true,
+          payments: true,
+          customer: { select: { id: true, name: true, mobile: true } },
+          user: { select: { id: true, fullName: true, username: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    // Calculate aggregated metrics for the filtered period
+    const allCashSalesPeriod = await prisma.sale.findMany({
+      where: whereSale,
+      select: {
+        subtotalAmount: true,
+        discountAmount: true,
+        taxAmount: true,
+        finalTotalAmount: true,
+        paidAmount: true,
+        changeReturned: true,
+        totalItemsCount: true,
+      },
+    });
+
+    const cashBillCount = allCashSalesPeriod.length;
+    const cashGrossSubtotal = round2(
+      allCashSalesPeriod.reduce((acc, s) => acc + Number(s.subtotalAmount), 0)
+    );
+    const cashTotalDiscount = round2(
+      allCashSalesPeriod.reduce((acc, s) => acc + Number(s.discountAmount), 0)
+    );
+    const cashTotalTax = round2(
+      allCashSalesPeriod.reduce((acc, s) => acc + Number(s.taxAmount), 0)
+    );
+    const cashNetFinalTotal = round2(
+      allCashSalesPeriod.reduce((acc, s) => acc + Number(s.finalTotalAmount), 0)
+    );
+
+    const summary = {
+      period: periodDescription,
+      cashBillCount,
+      cashGrossSubtotal,
+      cashTotalDiscount,
+      cashTotalTax,
+      cashNetFinalTotal,
+      isScoped,
+      isMasterAdmin,
+      visibleSaleTypes: effectiveSaleTypes,
+    };
+
+    const transformedItems = sales.map((sale) => {
+      const totalQuantity = round2(
+        sale.items.reduce((acc, it) => acc + Number(it.quantity), 0)
+      );
+
+      return {
+        id: sale.id,
+        billNumber: sale.billNumber,
+        createdAt: sale.createdAt,
+        saleType: sale.saleType,
+        customerName: sale.customerNameSnapshot,
+        customerMobile: sale.customerMobileSnapshot,
+        totalItemsCount: sale.totalItemsCount,
+        totalQuantity,
+        subtotalAmount: round2(Number(sale.subtotalAmount)),
+        discountAmount: round2(Number(sale.discountAmount)),
+        taxAmount: round2(Number(sale.taxAmount)),
+        finalTotalAmount: round2(Number(sale.finalTotalAmount)),
+        paidAmount: round2(Number(sale.paidAmount)),
+        changeReturned: round2(Number(sale.changeReturned)),
+        paymentMode: sale.payments.map((p) => p.paymentMode).join(', ') || 'CASH',
+        saleStatus: sale.saleStatus,
+        billerName: sale.user?.fullName || sale.user?.username,
+        items: sale.items.map((i) => ({
+          id: i.id,
+          productName: i.productNameSnapshot,
+          variant: i.weightOrPackSnapshot,
+          unit: i.unitSymbolSnapshot,
+          quantity: Number(i.quantity),
+          unitRate: Number(i.unitRate),
+          subtotal: Number(i.subtotal),
+          discount: Number(i.discount),
+          total: Number(i.total),
+        })),
+      };
+    });
+
+    return {
+      summary,
+      items: transformedItems,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit) || 1,
+      },
     };
   }
 }

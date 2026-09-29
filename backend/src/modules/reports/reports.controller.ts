@@ -251,4 +251,27 @@ export class ReportsController {
       next(err);
     }
   }
+
+  /**
+   * GET /api/v1/reports/cash-sales (ADMIN ONLY)
+   */
+  static async getCashSalesReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ReportsService.getCashSalesReport(
+        req.query as any,
+        req.user
+      );
+
+      if (req.query.format === 'csv') {
+        const filename = `cash-sales-report-${new Date().toISOString().slice(0, 10)}.csv`;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.status(200).send(result);
+      }
+
+      res.status(200).json({ success: true, ...(result as object) });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

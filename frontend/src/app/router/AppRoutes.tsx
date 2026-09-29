@@ -35,6 +35,7 @@ import { StockMovementsReportPage } from '../../features/reports/StockMovementsR
 import { StockReconciliationReportPage } from '../../features/reports/StockReconciliationReportPage';
 import { ReturnsReportPage } from '../../features/reports/ReturnsReportPage';
 import { StatutoryReportPage } from '../../features/reports/StatutoryReportPage';
+import { CashReportPage } from '../../features/reports/CashReportPage';
 import { UsersPage } from '../../features/users/UsersPage';
 import { WebsitePage } from '../../features/website/WebsitePage';
 import { SettingsPage } from '../../features/settings/SettingsPage';
@@ -296,6 +297,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN']}>
               <StockReconciliationReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/cash-sales"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <CashReportPage />
             </ProtectedRoute>
           }
         />
