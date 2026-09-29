@@ -2446,75 +2446,309 @@
   padding: 8px 10px;
 }
 
+/* Print portal container: completely hidden on screen, displayed only during POS receipt/invoice print */
+#pos-print-root {
+  display: none !important;
+}
+
 @media print {
-  body * {
-    visibility: hidden;
+  /* 1. Isolation: When POS print is active, remove app root, modals, backdrops entirely from print tree */
+  body.pos-print-active #root,
+  body.pos-print-active .modal-backdrop,
+  body.pos-print-active .modal-container {
+    display: none !important;
   }
 
-  #pos-printable-receipt,
-  #pos-printable-receipt * {
-    visibility: visible;
+  /* 2. Display the direct body portal */
+  body.pos-print-active #pos-print-root {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
   }
 
-  /* Thermal 80mm format for Retail/NRI */
-  #pos-printable-receipt.pos-thermal-receipt {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 80mm;
-    margin: 0;
-    padding: 2mm;
-    background: transparent;
-    box-shadow: none;
-    font-family: 'Shruti', 'Gujarati Sangam MN', 'Noto Sans Gujarati', 'Nirmala UI', system-ui, -apple-system, sans-serif;
-    font-variant-numeric: tabular-nums;
+  body.pos-print-active #pos-print-root * {
+    visibility: visible !important;
   }
 
-  /* Wholesale A4 portrait format */
-  @page {
-    size: A4 portrait;
-    margin: 12mm 10mm;
+  /* 3. Wholesale Professional A4 Invoice */
+  body.pos-print-wholesale #pos-print-root .pos-a4-invoice {
+    width: 190mm !important;
+    max-width: 190mm !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.35 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Gujarati", sans-serif !important;
   }
 
-  #pos-printable-receipt.pos-a4-invoice {
-    position: static;
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
-    background: #ffffff;
-    color: #0f172a;
-    box-shadow: none;
-    border: none;
-    font-size: 9.5pt;
-    line-height: 1.35;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Gujarati", sans-serif;
+  body.pos-print-wholesale #pos-print-root .a4-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+    margin-bottom: 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
-  .pos-a4-invoice .a4-items-table {
-    page-break-inside: auto;
+  body.pos-print-wholesale #pos-print-root .a4-header-brand {
+    display: flex !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
   }
 
-  .pos-a4-invoice .a4-items-table thead {
-    display: table-header-group;
+  body.pos-print-wholesale #pos-print-root .a4-brand-logo {
+    width: 48px !important;
+    height: 48px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
   }
 
-  .pos-a4-invoice .a4-items-table tr {
-    page-break-inside: avoid;
-    page-break-after: auto;
+  body.pos-print-wholesale #pos-print-root .a4-company-name {
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    margin: 0 0 1px !important;
+    letter-spacing: -0.01em !important;
   }
 
-  .pos-a4-invoice .a4-summary-row {
-    page-break-inside: avoid;
+  body.pos-print-wholesale #pos-print-root .a4-company-tagline {
+    font-size: 10px !important;
+    color: #475569 !important;
+    margin: 1px 0 !important;
   }
 
-  .receipt-logo {
-    max-width: 130px;
-    max-height: 48px;
-    filter: grayscale(100%) contrast(150%);
+  body.pos-print-wholesale #pos-print-root .a4-company-address {
+    font-size: 10px !important;
+    color: #475569 !important;
+    margin: 1px 0 2px !important;
+    max-width: 320px !important;
+    line-height: 1.25 !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-company-meta {
+    font-size: 9.5px !important;
+    color: #334155 !important;
+    gap: 8px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-header-doc {
+    text-align: right !important;
+    flex-shrink: 0 !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-doc-badge {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    padding: 3px 8px !important;
+    border-radius: 3px !important;
+    margin-bottom: 4px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-doc-meta-table {
+    gap: 2px !important;
+    font-size: 10.5px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-bill-no {
+    font-size: 11.5px !important;
+    color: #1e40af !important;
+    font-weight: 700 !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-saletype-pill {
+    background: #eff6ff !important;
+    color: #1e40af !important;
+    border: 1px solid #bfdbfe !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    padding: 1px 5px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-divider {
+    border-top: 1.5px solid #94a3b8 !important;
+    margin: 8px 0 10px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-parties-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-party-card {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    background: #f8fafc !important;
+    padding: 8px 10px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-card-title {
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+    margin-bottom: 3px !important;
+    padding-bottom: 2px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-buyer-name {
+    font-size: 12px !important;
+    color: #0f172a !important;
+    margin: 0 0 2px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-buyer-address,
+  body.pos-print-wholesale #pos-print-root .a4-buyer-meta {
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-payment-row {
+    font-size: 10px !important;
+    margin: 1.5px 0 !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-items-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 12px !important;
+    font-size: 9pt !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-items-table thead {
+    display: table-header-group !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-items-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-items-table th {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    padding: 5px 6px !important;
+    border: 1px solid #cbd5e1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-items-table td {
+    padding: 5px 6px !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-summary-row {
+    display: grid !important;
+    grid-template-columns: 1.25fr 0.75fr !important;
+    gap: 14px !important;
+    margin-top: 4px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-amount-in-words-box {
+    background: #f8fafc !important;
+    border: 1px dashed #cbd5e1 !important;
+    padding: 6px 8px !important;
+    margin-bottom: 8px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-words-label {
+    font-size: 8.5px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-words-text {
+    font-size: 10px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-terms-box {
+    font-size: 9px !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-signature-box {
+    margin-top: 14px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-sign-company {
+    font-size: 9.5px !important;
+    margin: 0 0 20px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-sign-line {
+    font-size: 9.5px !important;
+    width: 150px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-calc-table {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-calc-row {
+    padding: 5px 8px !important;
+    font-size: 9.5pt !important;
+  }
+
+  body.pos-print-wholesale #pos-print-root .a4-calc-row.a4-grand-total {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 4. Thermal 80mm format for Retail/NRI */
+  body.pos-print-thermal #pos-print-root .pos-thermal-receipt {
+    display: block !important;
+    width: 76mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 2mm !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-family: 'Shruti', 'Gujarati Sangam MN', 'Noto Sans Gujarati', 'Nirmala UI', system-ui, -apple-system, sans-serif !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+
+  body.pos-print-thermal #pos-print-root .receipt-logo {
+    max-width: 130px !important;
+    max-height: 48px !important;
+    filter: grayscale(100%) contrast(150%) !important;
   }
 }
+
 
 /* ------------------------------------------------------------
    10. BILL HISTORY & DRAWER STYLES
