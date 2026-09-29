@@ -17,6 +17,7 @@ export interface DataTableProps<T> {
   keyExtractor: (row: T, index: number) => string;
   isLoading?: boolean;
   emptyMessage?: string;
+  emptyState?: ReactNode;
   onRowClick?: (row: T) => void;
   className?: string;
   // Optional pagination
@@ -33,6 +34,7 @@ export function DataTable<T>({
   keyExtractor,
   isLoading = false,
   emptyMessage = 'No records found',
+  emptyState,
   onRowClick,
   className,
   page,
@@ -73,9 +75,13 @@ export function DataTable<T>({
             ) : data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="table-empty-cell">
-                  <div className="table-empty-container">
-                    <p className="table-empty-text">{emptyMessage}</p>
-                  </div>
+                  {emptyState ? (
+                    emptyState
+                  ) : (
+                    <div className="table-empty-container">
+                      <p className="table-empty-text">{emptyMessage}</p>
+                    </div>
+                  )}
                 </td>
               </tr>
             ) : (

@@ -8,10 +8,10 @@ import {
   Wallet,
   ShoppingBag,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { Card } from '../../components/ui/Card/Card';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button } from '../../components/ui/Button/Button';
@@ -36,7 +36,7 @@ export const CustomerReportDetailPage: React.FC = () => {
 
   const [history, setHistory] = useState<CustomerHistoryResponse | null>(null);
   const [page, setPage] = useState<number>(1);
-  const [limit] = useState<number>(10);
+  const limit = 10;
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,13 +68,13 @@ export const CustomerReportDetailPage: React.FC = () => {
   if (error || !history) {
     return (
       <div className="report-page-container">
-        <Breadcrumb
-          items={[
-            { label: 'Dashboard', path: '/dashboard' },
+        <ReportHeader
+          breadcrumbs={[
             { label: 'Reports', path: '/reports' },
             { label: 'Customers', path: '/reports/customers' },
             { label: 'Customer Detail' },
           ]}
+          title="Customer Not Found"
         />
         <ErrorState
           title="Customer Not Found"
@@ -89,23 +89,20 @@ export const CustomerReportDetailPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
           { label: 'Customers', path: '/reports/customers' },
           { label: customer.name },
         ]}
-      />
-
-      <PageHeader
         title={`Customer Audit: ${customer.name}`}
         subtitle={`Lifetime purchase history and transaction records for ${customer.name}.`}
         actions={
           <Button
             variant="outline"
-            leftIcon={<ArrowLeft size={16} />}
+            leftIcon={<ArrowLeft size={15} />}
             onClick={() => navigate('/reports/customers')}
+            style={{ height: '40px' }}
           >
             Back to Customers
           </Button>
@@ -119,9 +116,11 @@ export const CustomerReportDetailPage: React.FC = () => {
         <Card className="report-kpi-card">
           <div className="report-kpi-top">
             <span className="report-kpi-title">Profile</span>
-            <User size={18} color="#2563eb" />
+            <div className="report-kpi-icon-wrapper">
+              <User size={16} />
+            </div>
           </div>
-          <div style={{ fontWeight: 700, fontSize: '18px', color: '#0f172a' }}>
+          <div style={{ fontWeight: 700, fontSize: '18px', color: '#202124' }}>
             {customer.name}
           </div>
           <div style={{ display: 'flex', gap: 6, margin: '6px 0' }}>
@@ -132,7 +131,7 @@ export const CustomerReportDetailPage: React.FC = () => {
               {customer.customerType}
             </Badge>
           </div>
-          <span style={{ fontSize: '13px', color: '#64748b' }}>
+          <span style={{ fontSize: '12.5px', color: '#6b7280' }}>
             {formatIndianMobile(customer.mobile)}
           </span>
         </Card>
@@ -173,13 +172,15 @@ export const CustomerReportDetailPage: React.FC = () => {
         </div>
 
         {sales.length === 0 ? (
-          <div style={{ padding: '32px', textAlign: 'center', color: '#64748b' }}>
-            No purchase transactions found for this customer.
-          </div>
+          <ReportEmptyState
+            title="No purchase transactions found"
+            description="Completed bills for this customer will appear here once recorded."
+            minHeight={180}
+          />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px' }}>
             {sales.map((sale) => (
-              <Card key={sale.id} style={{ padding: '16px', border: '1px solid #e2e8f0' }}>
+              <Card key={sale.id} style={{ padding: '16px', border: '1px solid #e5e7eb' }}>
                 <div
                   style={{
                     display: 'flex',
@@ -193,8 +194,8 @@ export const CustomerReportDetailPage: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Receipt size={16} color="#2563eb" />
-                    <span style={{ fontWeight: 700, fontSize: '15px' }}>
+                    <Receipt size={16} color="#3f438f" />
+                    <span style={{ fontWeight: 700, fontSize: '15px', color: '#202124' }}>
                       {sale.billNumber}
                     </span>
                     <Badge variant="success" size="sm">
@@ -203,14 +204,14 @@ export const CustomerReportDetailPage: React.FC = () => {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>
                       {formatDateTime(sale.createdAt)}
                     </span>
                     <span
                       style={{
                         fontWeight: 700,
-                        fontSize: '16px',
-                        color: 'var(--color-primary-600, #2563eb)',
+                        fontSize: '15.5px',
+                        color: '#3f438f',
                       }}
                     >
                       {formatCurrency(sale.finalTotalAmount)}
@@ -249,14 +250,14 @@ export const CustomerReportDetailPage: React.FC = () => {
                     gap: 12,
                     marginTop: '10px',
                     paddingTop: '8px',
-                    borderTop: '1px dashed #e2e8f0',
+                    borderTop: '1px dashed #e5e7eb',
                     fontSize: '12px',
-                    color: '#64748b',
+                    color: '#6b7280',
                   }}
                 >
                   <span>Payments:</span>
                   {sale.payments.map((p) => (
-                    <span key={p.id} style={{ fontWeight: 600, color: '#0f172a' }}>
+                    <span key={p.id} style={{ fontWeight: 600, color: '#202124' }}>
                       {p.paymentMode}: {formatCurrency(p.amount)}
                     </span>
                   ))}
@@ -267,7 +268,7 @@ export const CustomerReportDetailPage: React.FC = () => {
         )}
 
         {pagination.totalPages > 1 && (
-          <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)' }}>
+          <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb' }}>
             <Pagination
               page={pagination.page}
               totalPages={pagination.totalPages}

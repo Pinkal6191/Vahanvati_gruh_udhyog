@@ -5,14 +5,12 @@ import {
   AlertTriangle,
   XCircle,
   Scale,
-  Filter,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
-import { Pagination } from '../../components/tables/Pagination/Pagination';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
 import {
@@ -59,10 +57,10 @@ export const StockReportPage: React.FC = () => {
       header: 'Product Details',
       cell: (row: StockReportRecord) => (
         <div>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+          <div style={{ fontWeight: 600, color: '#202124' }}>
             {row.productName}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: '11.5px', color: '#6b7280' }}>
             Code: {row.productCode}
           </div>
         </div>
@@ -73,8 +71,8 @@ export const StockReportPage: React.FC = () => {
       header: 'Category / Subcategory',
       cell: (row: StockReportRecord) => (
         <div>
-          <span style={{ fontSize: '13px', fontWeight: 500 }}>{row.categoryName}</span>
-          <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>
+          <span style={{ fontSize: '13px', fontWeight: 500, color: '#202124' }}>{row.categoryName}</span>
+          <span style={{ fontSize: '11.5px', color: '#6b7280', display: 'block' }}>
             {row.subcategoryName}
           </span>
         </div>
@@ -90,13 +88,7 @@ export const StockReportPage: React.FC = () => {
             textAlign: 'right',
             display: 'block',
             fontWeight: 700,
-            fontSize: '14px',
-            color:
-              row.stockStatus === 'OUT_OF_STOCK'
-                ? '#dc2626'
-                : row.stockStatus === 'LOW_STOCK'
-                ? '#d97706'
-                : '#059669',
+            color: row.stockStatus === 'OUT_OF_STOCK' ? '#C62828' : '#202124',
           }}
         >
           {row.currentBalance} {row.unitSymbol}
@@ -108,7 +100,7 @@ export const StockReportPage: React.FC = () => {
       header: 'Min Threshold',
       align: 'right' as const,
       cell: (row: StockReportRecord) => (
-        <span style={{ textAlign: 'right', display: 'block', color: '#64748b' }}>
+        <span style={{ textAlign: 'right', display: 'block', color: '#6b7280' }}>
           {row.minimumThreshold} {row.unitSymbol}
         </span>
       ),
@@ -130,7 +122,7 @@ export const StockReportPage: React.FC = () => {
       key: 'lastUpdatedAt',
       header: 'Last Balance Update',
       cell: (row: StockReportRecord) => (
-        <span style={{ fontSize: '12px', color: '#64748b' }}>
+        <span style={{ fontSize: '12px', color: '#6b7280' }}>
           {formatDate(row.lastUpdatedAt)}
         </span>
       ),
@@ -139,17 +131,31 @@ export const StockReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
-          { label: 'Stock Report' },
+          { label: 'Stock' },
         ]}
-      />
-
-      <PageHeader
         title="Stock & Inventory Balance Report"
         subtitle="Current physical balances, reorder threshold health, and category-level stock distribution."
+        actions={
+          <div className="report-header-actions">
+            <select
+              aria-label="Filter by stock status"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value as any);
+                setPage(1);
+              }}
+              className="report-filter-select"
+            >
+              <option value="ALL">All Stock Status</option>
+              <option value="LOW_STOCK">Low Stock Warnings</option>
+              <option value="OUT_OF_STOCK">Stockout Depleted</option>
+              <option value="IN_STOCK">Healthy In-Stock</option>
+            </select>
+          </div>
+        }
       />
 
       <ReportNav />
@@ -162,7 +168,7 @@ export const StockReportPage: React.FC = () => {
         />
       ) : (
         <>
-          {/* Stock KPIs */}
+          {/* Stock KPIs (5 cards on wide desktop) */}
           <div className="report-kpi-grid-5">
             <ReportKpiCard
               title="Total Products"
@@ -217,25 +223,6 @@ export const StockReportPage: React.FC = () => {
                   Real-time balances tracked in backend StockService
                 </span>
               </div>
-
-              <div className="report-table-controls">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Filter size={14} color="#64748b" />
-                  <select
-                    value={status}
-                    onChange={(e) => {
-                      setStatus(e.target.value as any);
-                      setPage(1);
-                    }}
-                    className="report-filter-select"
-                  >
-                    <option value="ALL">All Stock Statuses</option>
-                    <option value="IN_STOCK">In-Stock Only</option>
-                    <option value="LOW_STOCK">Low Stock Only</option>
-                    <option value="OUT_OF_STOCK">Out of Stock Only</option>
-                  </select>
-                </div>
-              </div>
             </div>
 
             <DataTable
@@ -243,7 +230,13 @@ export const StockReportPage: React.FC = () => {
               data={stockData?.data || []}
               keyExtractor={(row) => row.productId}
               isLoading={isLoading}
-              emptyMessage="No inventory items found matching this filter."
+              emptyState={
+                <ReportEmptyState
+                  title="No stock items found"
+                  description="Physical inventory balances will appear here once products are added to the catalog."
+                  minHeight={180}
+                />
+              }
               page={stockData?.pagination.page}
               totalPages={stockData?.pagination.totalPages}
               total={stockData?.pagination.total}

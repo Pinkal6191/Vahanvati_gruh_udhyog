@@ -8,12 +8,11 @@ import {
   TrendingDown,
   Layers,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportDateFilter } from './components/ReportDateFilter';
 import { ReportKpiCard } from './components/ReportKpiCard';
-import { Card } from '../../components/ui/Card/Card';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable, ColumnDef } from '../../components/tables/DataTable/DataTable';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
 import { Button } from '../../components/ui/Button/Button';
@@ -127,11 +126,11 @@ export const CashReportPage: React.FC = () => {
       header: 'Customer',
       cell: (row) => (
         <div>
-          <div style={{ fontWeight: 600, color: 'var(--color-gray-900)' }}>
+          <div style={{ fontWeight: 600, color: '#202124' }}>
             {row.customerName || 'Walk-in Customer'}
           </div>
           {row.customerMobile && (
-            <div style={{ fontSize: '11px', color: 'var(--color-gray-500)' }}>
+            <div style={{ fontSize: '11.5px', color: '#6b7280' }}>
               +91 {row.customerMobile}
             </div>
           )}
@@ -176,7 +175,7 @@ export const CashReportPage: React.FC = () => {
       align: 'right',
       cell: (row) =>
         row.discountAmount > 0 ? (
-          <span style={{ color: 'var(--color-danger-600)' }}>
+          <span style={{ color: '#C62828' }}>
             -{formatCurrency(row.discountAmount)}
           </span>
         ) : (
@@ -195,7 +194,7 @@ export const CashReportPage: React.FC = () => {
       header: 'Final Total',
       align: 'right',
       cell: (row) => (
-        <strong style={{ color: 'var(--color-primary-800)', fontSize: '13px' }}>
+        <strong style={{ color: '#3F438F', fontSize: '13.5px' }}>
           {formatCurrency(row.finalTotalAmount)}
         </strong>
       ),
@@ -207,7 +206,7 @@ export const CashReportPage: React.FC = () => {
       cell: (row) => (
         <button
           type="button"
-          className="pos-table-action-btn pos-action-btn-view"
+          className="pos-table-action-btn"
           onClick={() => handleReprint(row.id)}
           title="Print / View Invoice"
         >
@@ -223,34 +222,22 @@ export const CashReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
           { label: 'Cash Bills' },
         ]}
-      />
-
-      <PageHeader
         title="Admin Cash Bills Report"
-        subtitle="Dedicated Operational Ledger for Cash-settled Transactions"
+        subtitle="Dedicated operational ledger for cash-settled transactions"
         actions={
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="report-header-actions">
             <select
+              aria-label="Filter cash bills by sale type tier"
               className="report-filter-select"
               value={saleType || ''}
               onChange={(e) => {
                 setSaleType((e.target.value as SaleType) || undefined);
                 setPage(1);
-              }}
-              style={{
-                height: '38px',
-                padding: '0 12px',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                background: '#fff',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                color: '#374151',
               }}
             >
               <option value="">All Tiers</option>
@@ -269,9 +256,10 @@ export const CashReportPage: React.FC = () => {
 
             <Button
               variant="outline"
-              leftIcon={<Download size={16} />}
+              leftIcon={<Download size={15} />}
               onClick={handleDownloadCsv}
               disabled={isDownloading || isLoading || items.length === 0}
+              style={{ height: '40px' }}
             >
               {isDownloading ? 'Exporting...' : 'Export CSV'}
             </Button>
@@ -289,12 +277,12 @@ export const CashReportPage: React.FC = () => {
         />
       ) : (
         <>
-          {/* KPI CARDS */}
-          <div className="report-kpi-grid">
+          {/* KPI CARDS (5 cards balanced in one row on desktop) */}
+          <div className="report-kpi-grid-5">
             <ReportKpiCard
               title="Cash Bills Count"
               value={summary?.cashBillCount ?? 0}
-              subtitle="Total completed cash transactions"
+              subtitle="Completed cash bills"
               icon={<Receipt size={18} />}
               isLoading={isLoading}
             />
@@ -308,7 +296,7 @@ export const CashReportPage: React.FC = () => {
             <ReportKpiCard
               title="Cash Discounts"
               value={formatCurrency(summary?.cashTotalDiscount ?? 0)}
-              subtitle="Total discounts on cash bills"
+              subtitle="Total discounts given"
               icon={<TrendingDown size={18} />}
               badge={{ text: 'Discounts', variant: 'warning' }}
               isLoading={isLoading}
@@ -323,7 +311,7 @@ export const CashReportPage: React.FC = () => {
             <ReportKpiCard
               title="Net Cash Total"
               value={formatCurrency(summary?.cashNetFinalTotal ?? 0)}
-              subtitle="Net revenue collected in cash"
+              subtitle="Net revenue in cash"
               badge={{ text: 'Cash Revenue', variant: 'success' }}
               icon={<Banknote size={18} />}
               isLoading={isLoading}
@@ -331,7 +319,7 @@ export const CashReportPage: React.FC = () => {
           </div>
 
           {/* CASH BILLS DATA TABLE */}
-          <Card className="report-table-card">
+          <div className="report-table-card">
             <div className="report-table-header">
               <div>
                 <h3 className="report-table-title">Cash Transaction Ledger</h3>
@@ -347,14 +335,20 @@ export const CashReportPage: React.FC = () => {
               data={items}
               keyExtractor={(row) => row.id}
               isLoading={isLoading}
-              emptyMessage="No cash bills found for the selected period."
+              emptyState={
+                <ReportEmptyState
+                  title="No cash bills yet"
+                  description="Cash-settled completed transactions will appear here."
+                  minHeight={200}
+                />
+              }
               page={page}
               totalPages={pagination?.totalPages || 1}
               total={pagination?.total || 0}
               limit={limit}
               onPageChange={(newPage) => setPage(newPage)}
             />
-          </Card>
+          </div>
         </>
       )}
 

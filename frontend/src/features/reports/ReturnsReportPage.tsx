@@ -5,14 +5,13 @@ import {
   Wallet,
   Package,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportDateFilter } from './components/ReportDateFilter';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { PaymentBreakdownBar } from './components/ReportCharts';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
-import { Card } from '../../components/ui/Card/Card';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
 import {
   reportsApi,
@@ -78,7 +77,7 @@ export const ReturnsReportPage: React.FC = () => {
       key: 'productName',
       header: 'Returned Product',
       cell: (row: any) => (
-        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+        <span style={{ fontWeight: 600, color: '#202124' }}>
           {row.productName}
         </span>
       ),
@@ -103,7 +102,7 @@ export const ReturnsReportPage: React.FC = () => {
             textAlign: 'right',
             display: 'block',
             fontWeight: 700,
-            color: 'var(--color-primary-600, #2563eb)',
+            color: '#3F438F',
           }}
         >
           {formatCurrency(row.refundAmount)}
@@ -114,34 +113,21 @@ export const ReturnsReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
-          { label: 'Sales Returns' },
+          { label: 'Returns' },
         ]}
-      />
-
-      <PageHeader
         title="Sales Returns & Refund Audit"
         subtitle="Return frequencies, Return Rate percentage, tender refund methods, and returned product rankings."
         actions={
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="report-header-actions">
             {permittedSaleTypes.length > 1 && (
               <select
+                aria-label="Filter returns by sale type tier"
                 className="report-filter-select"
                 value={saleType || ''}
                 onChange={(e) => setSaleType((e.target.value as SaleType) || undefined)}
-                style={{
-                  height: '38px',
-                  padding: '0 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #d1d5db',
-                  background: '#fff',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#374151',
-                }}
               >
                 <option value="">All Permitted Tiers</option>
                 {permittedSaleTypes.includes('RETAIL') && <option value="RETAIL">Retail Only</option>}
@@ -196,7 +182,7 @@ export const ReturnsReportPage: React.FC = () => {
                   ? `${returnsData.summary.returnRate}%`
                   : '0%'
               }
-              subtitle={`Of ${returnsData ? formatCurrency(returnsData.summary.completedSalesAmount) : '₹0.00'} completed sales`}
+              subtitle={`Of ${returnsData ? formatCurrency(returnsData.summary.completedSalesAmount) : '₹0.00'} sales`}
               badge={{
                 text:
                   returnsData && returnsData.summary.returnRate > 5
@@ -227,29 +213,18 @@ export const ReturnsReportPage: React.FC = () => {
               title="Refund Tender Distribution"
             />
 
-            <Card style={{ padding: '20px' }}>
-              <h4 className="report-section-title" style={{ marginBottom: '8px' }}>
-                Return Rate Formula
-              </h4>
-              <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.5, margin: 0 }}>
-                Return Rate is defined by the authoritative Step 9 reporting engine as:
-                <br />
-                <code
-                  style={{
-                    display: 'block',
-                    margin: '8px 0',
-                    padding: '6px 10px',
-                    background: '#f1f5f9',
-                    borderRadius: '4px',
-                    color: '#0f172a',
-                    fontWeight: 600,
-                  }}
-                >
-                  (Completed Return Total / Completed Sales Total) × 100
-                </code>
-                Refunds strictly observe historical unit rates locked at original sale creation.
+            <div className="report-info-card">
+              <h4 className="report-info-card-title">Return Rate Formula</h4>
+              <p className="report-info-card-desc">
+                Calculated on completed returns against completed sales for the selected period:
               </p>
-            </Card>
+              <code className="report-formula-code">
+                (Completed Return Total / Completed Sales Total) × 100
+              </code>
+              <p className="report-info-card-desc" style={{ marginTop: '6px' }}>
+                All refund audits strictly observe historical unit rates locked at the original sale creation.
+              </p>
+            </div>
           </div>
 
           {/* Product Returns Breakdown Table */}
@@ -268,7 +243,13 @@ export const ReturnsReportPage: React.FC = () => {
               data={returnsData?.productBreakdown || []}
               keyExtractor={(row) => row.productId}
               isLoading={isLoading}
-              emptyMessage="No returns recorded for this period."
+              emptyState={
+                <ReportEmptyState
+                  title="No returns recorded"
+                  description="Completed sales returns for this period will appear here."
+                  minHeight={180}
+                />
+              }
             />
           </div>
         </>

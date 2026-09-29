@@ -7,10 +7,10 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button } from '../../components/ui/Button/Button';
@@ -51,10 +51,10 @@ export const StockReconciliationReportPage: React.FC = () => {
       header: 'Audited Product',
       cell: (row: StockReconciliationRecord) => (
         <div>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+          <div style={{ fontWeight: 600, color: '#202124' }}>
             {row.productName}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: '11.5px', color: '#6b7280' }}>
             Code: {row.productCode}
           </div>
         </div>
@@ -90,7 +90,7 @@ export const StockReconciliationReportPage: React.FC = () => {
             textAlign: 'right',
             display: 'block',
             fontWeight: 700,
-            color: row.difference === 0 ? '#059669' : '#dc2626',
+            color: row.difference === 0 ? '#16803C' : '#C62828',
           }}
         >
           {row.difference === 0 ? '0 g' : formatDeltaWeight(row.difference)}
@@ -111,23 +111,20 @@ export const StockReconciliationReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
           { label: 'Reconciliation' },
         ]}
-      />
-
-      <PageHeader
         title="Stock Parity & Reconciliation Audit"
         subtitle="Authoritative zero-drift mathematical verification: Cached balance vs. full movement ledger history."
         actions={
           <Button
             variant="outline"
-            leftIcon={<RefreshCw size={16} />}
+            leftIcon={<RefreshCw size={15} />}
             onClick={fetchReconciliation}
             isLoading={isLoading}
+            style={{ height: '40px' }}
           >
             Re-Audit Ledgers
           </Button>
@@ -206,9 +203,9 @@ export const StockReconciliationReportPage: React.FC = () => {
           <div className="report-table-card">
             <div className="report-table-toolbar">
               <div>
-                <h4 className="report-section-title">Itemized Reconciliation Audit</h4>
+                <h4 className="report-section-title">Physical Parity Audit Table</h4>
                 <span className="report-section-desc">
-                  Compares current cached stock table against real-time SUM(quantityDelta)
+                  Verification of cached database balance against movement ledger sum
                 </span>
               </div>
             </div>
@@ -218,7 +215,13 @@ export const StockReconciliationReportPage: React.FC = () => {
               data={reconciliation?.data || []}
               keyExtractor={(row) => row.productId}
               isLoading={isLoading}
-              emptyMessage="No inventory products found to audit."
+              emptyState={
+                <ReportEmptyState
+                  title="No items to reconcile"
+                  description="Products with physical inventory will appear here for mathematical parity verification."
+                  minHeight={180}
+                />
+              }
             />
           </div>
         </>

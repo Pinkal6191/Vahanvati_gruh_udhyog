@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { formatCurrency } from '../../../utils/formatters';
+import { ReportEmptyState } from './ReportEmptyState';
+import { BarChart3, CreditCard } from 'lucide-react';
 import './ReportCharts.css';
 
-// 1. Time Series Bar Chart (Pure SVG)
+// 1. Time Series Bar Chart (Pure SVG/HTML)
 export interface TimeSeriesBarItem {
   label: string; // e.g. "2026-09-01" or "Mon"
   value: number; // primary metric e.g. salesAmount
@@ -16,31 +18,37 @@ export interface TimeSeriesBarChartProps {
   height?: number;
   formatVal?: (v: number) => string;
   emptyMessage?: string;
+  emptyTitle?: string;
 }
 
 export const TimeSeriesBarChart: React.FC<TimeSeriesBarChartProps> = ({
   data,
   title,
-  height = 220,
+  height = 200,
   formatVal = formatCurrency,
-  emptyMessage = 'No trend data available for selected period',
+  emptyMessage = 'Revenue and transaction trends will appear once completed bills are recorded.',
+  emptyTitle = 'No trend data yet',
 }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   if (!data || data.length === 0) {
     return (
-      <div className="report-chart-empty" style={{ height }}>
-        <span>{emptyMessage}</span>
+      <div className="report-chart-empty-wrapper">
+        <ReportEmptyState
+          icon={<BarChart3 size={20} />}
+          title={emptyTitle}
+          description={emptyMessage}
+          minHeight={height}
+        />
       </div>
     );
   }
 
   const maxValue = Math.max(...data.map((d) => d.value), 1);
-  const chartHeight = height - 40; // reserve space for x-axis labels
-  const barWidthPercent = Math.min(100 / (data.length * 1.5), 12);
+  const barWidthPercent = Math.min(100 / (data.length * 1.5), 10);
 
   return (
-    <div className="report-bar-chart-container">
+    <div className="report-bar-chart-inner">
       {title && <h4 className="report-chart-title">{title}</h4>}
 
       <div className="report-bar-chart-body" style={{ height }}>
@@ -113,12 +121,12 @@ export interface PaymentBreakdownBarProps {
 }
 
 const PAYMENT_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  CASH: { bg: '#10b981', text: '#065f46', label: 'Cash' },
-  UPI: { bg: '#6366f1', text: '#3730a3', label: 'UPI' },
-  CARD: { bg: '#f59e0b', text: '#92400e', label: 'Card' },
-  OTHER: { bg: '#8b5cf6', text: '#5b21b6', label: 'Other' },
-  STORE_CREDIT: { bg: '#ec4899', text: '#9d174d', label: 'Store Credit' },
-  CREDIT_NOTE: { bg: '#ec4899', text: '#9d174d', label: 'Credit Note' },
+  CASH: { bg: '#16803C', text: '#ffffff', label: 'Cash' },
+  UPI: { bg: '#3F438F', text: '#ffffff', label: 'UPI' },
+  CARD: { bg: '#C47A00', text: '#ffffff', label: 'Card' },
+  OTHER: { bg: '#6B7280', text: '#ffffff', label: 'Other' },
+  STORE_CREDIT: { bg: '#8A3038', text: '#ffffff', label: 'Store Credit' },
+  CREDIT_NOTE: { bg: '#8A3038', text: '#ffffff', label: 'Credit Note' },
 };
 
 export const PaymentBreakdownBar: React.FC<PaymentBreakdownBarProps> = ({
@@ -133,7 +141,12 @@ export const PaymentBreakdownBar: React.FC<PaymentBreakdownBarProps> = ({
     return (
       <div className="report-payment-card">
         {title && <h4 className="report-chart-title">{title}</h4>}
-        <p className="report-chart-empty-text">No payment records in selected period</p>
+        <ReportEmptyState
+          icon={<CreditCard size={20} />}
+          title="No payment records yet"
+          description="Tender breakdown will be charted after completed transactions are recorded."
+          minHeight={150}
+        />
       </div>
     );
   }
@@ -147,8 +160,8 @@ export const PaymentBreakdownBar: React.FC<PaymentBreakdownBarProps> = ({
         {entries.map(([mode, amt]) => {
           const percent = ((amt / total) * 100).toFixed(1);
           const config = PAYMENT_COLORS[mode] || {
-            bg: '#64748b',
-            text: '#1e293b',
+            bg: '#6B7280',
+            text: '#ffffff',
             label: mode,
           };
 
@@ -171,8 +184,8 @@ export const PaymentBreakdownBar: React.FC<PaymentBreakdownBarProps> = ({
         {entries.map(([mode, amt]) => {
           const percent = ((amt / total) * 100).toFixed(1);
           const config = PAYMENT_COLORS[mode] || {
-            bg: '#64748b',
-            text: '#1e293b',
+            bg: '#6B7280',
+            text: '#ffffff',
             label: mode,
           };
 

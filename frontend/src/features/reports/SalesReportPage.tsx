@@ -4,16 +4,14 @@ import {
   Receipt,
   RotateCcw,
   Scale,
-  Calendar,
   Layers,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportDateFilter } from './components/ReportDateFilter';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { TimeSeriesBarChart, PaymentBreakdownBar } from './components/ReportCharts';
-import { Card } from '../../components/ui/Card/Card';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
 import {
@@ -90,7 +88,7 @@ export const SalesReportPage: React.FC = () => {
       key: 'periodKey',
       header: 'Date / Period',
       cell: (row: any) => (
-        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+        <span style={{ fontWeight: 600, color: '#202124' }}>
           {row.periodKey}
         </span>
       ),
@@ -100,7 +98,7 @@ export const SalesReportPage: React.FC = () => {
       header: 'Completed Bills',
       align: 'right' as const,
       cell: (row: any) => (
-        <span style={{ textAlign: 'right', display: 'block' }}>{row.billsCount}</span>
+        <span style={{ textAlign: 'right', display: 'block', fontWeight: 500 }}>{row.billsCount}</span>
       ),
     },
     {
@@ -121,7 +119,7 @@ export const SalesReportPage: React.FC = () => {
             textAlign: 'right',
             display: 'block',
             fontWeight: 700,
-            color: 'var(--color-primary-600, #2563eb)',
+            color: '#3F438F',
           }}
         >
           {formatCurrency(row.salesAmount)}
@@ -132,34 +130,21 @@ export const SalesReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
-          { label: 'Sales Report' },
+          { label: 'Sales' },
         ]}
-      />
-
-      <PageHeader
-        title="Sales Performance Report"
-        subtitle="Detailed revenue insights, completed transaction counts, average bill value, and tender breakdown."
+        title="Sales Performance"
+        subtitle="Revenue, completed bills and transaction trends."
         actions={
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="report-header-actions">
             {permittedSaleTypes.length > 1 && (
               <select
+                aria-label="Filter by sale type tier"
                 className="report-filter-select"
                 value={saleType || ''}
                 onChange={(e) => setSaleType((e.target.value as SaleType) || undefined)}
-                style={{
-                  height: '38px',
-                  padding: '0 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #d1d5db',
-                  background: '#fff',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#374151',
-                }}
               >
                 <option value="">All Permitted Tiers</option>
                 {permittedSaleTypes.includes('RETAIL') && <option value="RETAIL">Retail Only</option>}
@@ -193,7 +178,7 @@ export const SalesReportPage: React.FC = () => {
             <ReportKpiCard
               title={permittedSaleTypes.length === 3 && !saleType ? 'Total Sales Amount' : 'Authorized Sales (Scoped)'}
               value={salesData ? formatCurrency(salesData.summary.totalSalesAmount) : '₹0.00'}
-              subtitle={salesData?.summary.period || 'Period'}
+              subtitle={salesData?.summary.period || 'Selected Period'}
               badge={{ text: 'Completed', variant: 'success' }}
               icon={<TrendingUp size={18} />}
               isLoading={isLoading}
@@ -204,8 +189,8 @@ export const SalesReportPage: React.FC = () => {
               value={salesData ? salesData.summary.completedBillsCount : 0}
               subtitle={
                 salesData
-                  ? `ABV: ${formatCurrency(salesData.summary.averageBillValue)}`
-                  : '0 bills'
+                  ? `Avg Bill: ${formatCurrency(salesData.summary.averageBillValue)}`
+                  : '0 bills recorded'
               }
               icon={<Receipt size={18} />}
               isLoading={isLoading}
@@ -247,38 +232,38 @@ export const SalesReportPage: React.FC = () => {
 
           {/* SaleType Breakdown Cards */}
           {salesData?.salesByType && !saleType && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+            <div className="report-saletype-summary-grid">
               {permittedSaleTypes.includes('RETAIL') && (
-                <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>RETAIL SALES</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+                <div className="report-saletype-summary-card">
+                  <span className="report-saletype-summary-label">Retail Sales</span>
+                  <span className="report-saletype-summary-val">
                     {formatCurrency(salesData.salesByType.RETAIL?.totalSalesAmount || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    {salesData.salesByType.RETAIL?.completedBillsCount || 0} bills
-                  </div>
+                  </span>
+                  <span className="report-saletype-summary-sub">
+                    {salesData.salesByType.RETAIL?.completedBillsCount || 0} completed bills
+                  </span>
                 </div>
               )}
               {permittedSaleTypes.includes('NRI') && (
-                <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>NRI SALES</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+                <div className="report-saletype-summary-card">
+                  <span className="report-saletype-summary-label">NRI Sales</span>
+                  <span className="report-saletype-summary-val">
                     {formatCurrency(salesData.salesByType.NRI?.totalSalesAmount || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    {salesData.salesByType.NRI?.completedBillsCount || 0} bills
-                  </div>
+                  </span>
+                  <span className="report-saletype-summary-sub">
+                    {salesData.salesByType.NRI?.completedBillsCount || 0} completed bills
+                  </span>
                 </div>
               )}
               {permittedSaleTypes.includes('WHOLESALE') && (
-                <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>WHOLESALE SALES</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+                <div className="report-saletype-summary-card">
+                  <span className="report-saletype-summary-label">Wholesale Sales</span>
+                  <span className="report-saletype-summary-val">
                     {formatCurrency(salesData.salesByType.WHOLESALE?.totalSalesAmount || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    {salesData.salesByType.WHOLESALE?.completedBillsCount || 0} bills
-                  </div>
+                  </span>
+                  <span className="report-saletype-summary-sub">
+                    {salesData.salesByType.WHOLESALE?.completedBillsCount || 0} completed bills
+                  </span>
                 </div>
               )}
             </div>
@@ -288,16 +273,15 @@ export const SalesReportPage: React.FC = () => {
           <div className="report-bar-chart-container">
             <div className="report-section-header">
               <div>
-                <h4 className="report-chart-title" style={{ margin: 0 }}>
-                  Sales Revenue Trend
-                </h4>
+                <h4 className="report-section-title">Sales Revenue Trend</h4>
                 <span className="report-section-desc">
-                  Periodic distribution of completed retail sales
+                  Periodic distribution of completed sales revenue
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Layers size={14} color="#64748b" />
                 <select
+                  aria-label="Group revenue trends by interval"
                   value={groupBy}
                   onChange={(e) => setGroupBy(e.target.value as GroupByInterval)}
                   className="report-filter-select"
@@ -311,31 +295,28 @@ export const SalesReportPage: React.FC = () => {
 
             <TimeSeriesBarChart
               data={chartData}
-              height={220}
+              height={200}
               formatVal={formatCurrency}
-              emptyMessage="No completed sales found in this period."
+              emptyTitle="No sales recorded yet"
+              emptyMessage="Completed sales for the selected period will appear here."
             />
           </div>
 
-          {/* Tender distribution & Date-wise breakdown table */}
+          {/* Tender distribution & Invariant rule card */}
           <div className="report-two-col">
-            {/* Payment Mode Breakdown */}
             <PaymentBreakdownBar
               breakdown={salesData?.paymentBreakdown || {}}
               title="Tender Payment Breakdown"
             />
 
-            {/* Invariant Note Card */}
-            <Card style={{ padding: '20px' }}>
-              <h4 className="report-section-title" style={{ marginBottom: '8px' }}>
-                Reporting Invariance Rule
-              </h4>
-              <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.5, margin: 0 }}>
+            <div className="report-info-card">
+              <h4 className="report-info-card-title">Reporting Invariance Rule</h4>
+              <p className="report-info-card-desc">
                 Sales metrics are strictly compiled from completed invoices. Cancelled
                 invoices are segregated into audit metrics and excluded from turnover.
                 All calculations preserve original unit rates at the time of sale.
               </p>
-            </Card>
+            </div>
           </div>
 
           {/* Detailed Period-Wise Table */}
@@ -354,7 +335,13 @@ export const SalesReportPage: React.FC = () => {
               data={salesData?.timeSeries || []}
               keyExtractor={(row) => row.periodKey}
               isLoading={isLoading}
-              emptyMessage="No sales recorded for this timeframe."
+              emptyState={
+                <ReportEmptyState
+                  title="No sales recorded yet"
+                  description="Completed sales for the selected period will appear here."
+                  minHeight={180}
+                />
+              }
             />
           </div>
         </>

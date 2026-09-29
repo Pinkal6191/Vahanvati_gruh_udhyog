@@ -1,0 +1,51 @@
+/* Reusable Report Empty State Component */
+
+.report-empty-state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 28px 24px;
+  background-color: transparent;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.report-empty-state-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: #F8F9FB;
+  border: 1px solid #E5E7EB;
+  color: #6B7280;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.report-empty-state-default-icon {
+  color: #6B7280;
+}
+
+.report-empty-state-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #202124;
+  margin: 0 0 6px 0;
+  line-height: 1.3;
+}
+
+.report-empty-state-desc {
+  font-size: 13.5px;
+  color: #6B7280;
+  margin: 0;
+  max-width: 420px;
+  line-height: 1.45;
+}
+
+.report-empty-state-action {
+  margin-top: 14px;
+}

@@ -10,11 +10,11 @@ import {
   ArrowRight,
   ShieldAlert,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportDateFilter } from './components/ReportDateFilter';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { PaymentBreakdownBar } from './components/ReportCharts';
 import { Card } from '../../components/ui/Card/Card';
 import { Button } from '../../components/ui/Button/Button';
@@ -94,7 +94,7 @@ export const ReportsPage: React.FC = () => {
         <ReportNav />
         <Card>
           <div style={{ textAlign: 'center', padding: '32px' }}>
-            <ShieldAlert size={40} color="#f59e0b" style={{ margin: '0 auto 12px' }} />
+            <ShieldAlert size={40} color="#c47a00" style={{ margin: '0 auto 12px' }} />
             <h3>Redirecting to your authorized reports...</h3>
           </div>
         </Card>
@@ -104,14 +104,11 @@ export const ReportsPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Reports & Analytics' },
+      <ReportHeader
+        breadcrumbs={[
+          { label: 'Reports', path: '/reports' },
+          { label: 'Overview' },
         ]}
-      />
-
-      <PageHeader
         title="Reports & Analytics"
         subtitle="Authoritative executive overview: Consolidated sales, returns, production yields, inventory health, and cash flow."
         actions={
@@ -152,7 +149,7 @@ export const ReportsPage: React.FC = () => {
               subtitle={
                 summary
                   ? `${summary.sales.billCount} bills | ABV: ${formatCurrency(summary.sales.averageBillValue)}`
-                  : '0 bills'
+                  : '0 bills recorded'
               }
               badge={
                 summary?.scope?.isScoped
@@ -169,7 +166,7 @@ export const ReportsPage: React.FC = () => {
               subtitle={
                 summary
                   ? `${summary.returns.returnsCount} returns processed`
-                  : '0 returns'
+                  : '0 returns recorded'
               }
               badge={{ text: 'Refunded', variant: 'warning' }}
               icon={<RotateCcw size={18} />}
@@ -188,48 +185,49 @@ export const ReportsPage: React.FC = () => {
               isLoading={isLoading}
             />
           </div>
+
           {/* SaleType Segmentation Breakdown */}
           {summary?.salesByType && (
-            <div className="report-card" style={{ marginBottom: '24px', padding: '16px 20px' }}>
+            <div className="report-info-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>
+                <h4 className="report-info-card-title" style={{ margin: 0 }}>
                   {summary.scope?.scopeLabel || (user?.isMasterAdmin ? 'Company Total Sales by Tier' : 'Authorized Sales by Tier')}
                 </h4>
                 {summary.scope?.isScoped && (
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '2px 8px', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '11.5px', color: '#c47a00', backgroundColor: '#fef3c7', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                     Scoped Access
                   </span>
                 )}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Retail Sales</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>
+              <div className="report-saletype-summary-grid">
+                <div className="report-saletype-summary-card">
+                  <span className="report-saletype-summary-label">Retail Sales</span>
+                  <span className="report-saletype-summary-val">
                     {formatCurrency(summary.salesByType.RETAIL?.totalSales || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                    {summary.salesByType.RETAIL?.billCount || 0} bills
-                  </div>
+                  </span>
+                  <span className="report-saletype-summary-sub">
+                    {summary.salesByType.RETAIL?.billCount || 0} completed bills
+                  </span>
                 </div>
 
-                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>NRI Sales</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>
+                <div className="report-saletype-summary-card">
+                  <span className="report-saletype-summary-label">NRI Sales</span>
+                  <span className="report-saletype-summary-val">
                     {formatCurrency(summary.salesByType.NRI?.totalSales || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                    {summary.salesByType.NRI?.billCount || 0} bills
-                  </div>
+                  </span>
+                  <span className="report-saletype-summary-sub">
+                    {summary.salesByType.NRI?.billCount || 0} completed bills
+                  </span>
                 </div>
 
-                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Wholesale Sales</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>
+                <div className="report-saletype-summary-card">
+                  <span className="report-saletype-summary-label">Wholesale Sales</span>
+                  <span className="report-saletype-summary-val">
                     {formatCurrency(summary.salesByType.WHOLESALE?.totalSales || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                    {summary.salesByType.WHOLESALE?.billCount || 0} bills
-                  </div>
+                  </span>
+                  <span className="report-saletype-summary-sub">
+                    {summary.salesByType.WHOLESALE?.billCount || 0} completed bills
+                  </span>
                 </div>
               </div>
             </div>
@@ -341,9 +339,11 @@ export const ReportsPage: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <p className="report-chart-empty-text">
-                    No sales recorded for this period.
-                  </p>
+                  <ReportEmptyState
+                    title="No top products yet"
+                    description="Leading products by revenue will appear once sales are recorded."
+                    minHeight={150}
+                  />
                 )}
               </div>
             </div>
@@ -362,7 +362,9 @@ export const ReportsPage: React.FC = () => {
             >
               <div className="report-kpi-top">
                 <span className="report-kpi-title">Sales Performance</span>
-                <TrendingUp size={18} color="#2563eb" />
+                <div className="report-kpi-icon-wrapper">
+                  <TrendingUp size={16} />
+                </div>
               </div>
               <div className="report-kpi-value" style={{ fontSize: '18px' }}>
                 Sales & Invoices
@@ -379,7 +381,9 @@ export const ReportsPage: React.FC = () => {
             >
               <div className="report-kpi-top">
                 <span className="report-kpi-title">Product Analytics</span>
-                <Boxes size={18} color="#2563eb" />
+                <div className="report-kpi-icon-wrapper">
+                  <Boxes size={16} />
+                </div>
               </div>
               <div className="report-kpi-value" style={{ fontSize: '18px' }}>
                 Product Sales
@@ -396,7 +400,9 @@ export const ReportsPage: React.FC = () => {
             >
               <div className="report-kpi-top">
                 <span className="report-kpi-title">Customer Analytics</span>
-                <Receipt size={18} color="#2563eb" />
+                <div className="report-kpi-icon-wrapper">
+                  <Receipt size={16} />
+                </div>
               </div>
               <div className="report-kpi-value" style={{ fontSize: '18px' }}>
                 Customer Sales
@@ -413,7 +419,9 @@ export const ReportsPage: React.FC = () => {
             >
               <div className="report-kpi-top">
                 <span className="report-kpi-title">Returns Audit</span>
-                <RotateCcw size={18} color="#2563eb" />
+                <div className="report-kpi-icon-wrapper">
+                  <RotateCcw size={16} />
+                </div>
               </div>
               <div className="report-kpi-value" style={{ fontSize: '18px' }}>
                 Sales Returns

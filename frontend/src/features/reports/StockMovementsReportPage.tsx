@@ -3,15 +3,13 @@ import {
   ArrowLeftRight,
   ArrowDownLeft,
   ArrowUpRight,
-  Filter,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportDateFilter } from './components/ReportDateFilter';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
-import { Pagination } from '../../components/tables/Pagination/Pagination';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
 import {
@@ -30,7 +28,7 @@ export const StockMovementsReportPage: React.FC = () => {
   const [endDate, setEndDate] = useState<string | undefined>();
   const [movementType, setMovementType] = useState<MovementType | undefined>();
   const [page, setPage] = useState<number>(1);
-  const [limit] = useState<number>(25);
+  const limit = 25;
 
   const [movementsData, setMovementsData] = useState<StockMovementsReportResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -93,7 +91,7 @@ export const StockMovementsReportPage: React.FC = () => {
       key: 'createdAt',
       header: 'Timestamp',
       cell: (row: StockMovementRecord) => (
-        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <span style={{ fontSize: '12px', color: '#6b7280' }}>
           {formatDateTime(row.createdAt)}
         </span>
       ),
@@ -103,10 +101,10 @@ export const StockMovementsReportPage: React.FC = () => {
       header: 'Product',
       cell: (row: StockMovementRecord) => (
         <div>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+          <div style={{ fontWeight: 600, color: '#202124' }}>
             {row.product.name}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: '11.5px', color: '#6b7280' }}>
             Code: {row.product.code}
           </div>
         </div>
@@ -134,7 +132,7 @@ export const StockMovementsReportPage: React.FC = () => {
               textAlign: 'right',
               display: 'block',
               fontWeight: 700,
-              color: isPositive ? '#059669' : '#dc2626',
+              color: isPositive ? '#16803C' : '#C62828',
             }}
           >
             {formatDeltaWeight(num)}
@@ -157,9 +155,9 @@ export const StockMovementsReportPage: React.FC = () => {
       header: 'Reference',
       cell: (row: StockMovementRecord) => (
         <div>
-          <span style={{ fontSize: '12px', fontWeight: 500 }}>{row.referenceType}</span>
+          <span style={{ fontSize: '12px', fontWeight: 500, color: '#202124' }}>{row.referenceType}</span>
           {row.notes && (
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>
+            <span style={{ fontSize: '11.5px', color: '#6b7280', display: 'block' }}>
               {row.notes}
             </span>
           )}
@@ -170,7 +168,7 @@ export const StockMovementsReportPage: React.FC = () => {
       key: 'operator',
       header: 'Operator',
       cell: (row: StockMovementRecord) => (
-        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <span style={{ fontSize: '12px', color: '#6b7280' }}>
           {row.user ? row.user.fullName || row.user.username : 'System'}
         </span>
       ),
@@ -179,25 +177,41 @@ export const StockMovementsReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
-          { label: 'Stock Movements' },
+          { label: 'Movements' },
         ]}
-      />
-
-      <PageHeader
-        title="Stock Movements Audit Ledger"
-        subtitle="Chronological, double-entry inventory transaction ledger tracking all inflows and outflows."
+        title="Stock Movement Audit Ledger"
+        subtitle="Physical inventory flow tracking across production additions, sales deductions, returns, and write-offs."
         actions={
-          <ReportDateFilter
-            period={period}
-            startDate={startDate}
-            endDate={endDate}
-            onFilterChange={handleFilterChange}
-            isLoading={isLoading}
-          />
+          <div className="report-header-actions">
+            <select
+              aria-label="Filter by movement type"
+              value={movementType || ''}
+              onChange={(e) => {
+                setMovementType((e.target.value as MovementType) || undefined);
+                setPage(1);
+              }}
+              className="report-filter-select"
+            >
+              <option value="">All Movement Types</option>
+              <option value="PRODUCTION_IN">Production Output (In)</option>
+              <option value="SALE_OUT">Completed Sale (Out)</option>
+              <option value="SALES_RETURN_IN">Sales Return (In)</option>
+              <option value="ADJUSTMENT_IN">Audit Adjustment (In)</option>
+              <option value="ADJUSTMENT_OUT">Audit Adjustment (Out)</option>
+              <option value="SCRAP_OUT">Scrap / Damage (Out)</option>
+            </select>
+
+            <ReportDateFilter
+              period={period}
+              startDate={startDate}
+              endDate={endDate}
+              onFilterChange={handleFilterChange}
+              isLoading={isLoading}
+            />
+          </div>
         }
       />
 
@@ -205,13 +219,13 @@ export const StockMovementsReportPage: React.FC = () => {
 
       {error ? (
         <ErrorState
-          title="Error Loading Movements Ledger"
+          title="Error Loading Stock Movements"
           message={error}
           onRetry={fetchMovements}
         />
       ) : (
         <>
-          {/* Movement summary cards */}
+          {/* Movement Summary KPIs */}
           <div className="report-kpi-grid">
             <ReportKpiCard
               title="Total Movements"
@@ -261,35 +275,14 @@ export const StockMovementsReportPage: React.FC = () => {
             />
           </div>
 
-          {/* Table Card */}
+          {/* Ledger Table Card */}
           <div className="report-table-card">
             <div className="report-table-toolbar">
               <div>
-                <h4 className="report-section-title">Audit Ledger Entries</h4>
+                <h4 className="report-section-title">Stock Ledger Audit Trail</h4>
                 <span className="report-section-desc">
-                  Immutable movement log entries
+                  Chronological material journal entries for {movementsData?.summary.period || 'the period'}
                 </span>
-              </div>
-
-              <div className="report-table-controls">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Filter size={14} color="#64748b" />
-                  <select
-                    value={movementType || ''}
-                    onChange={(e) => {
-                      setMovementType(e.target.value ? (e.target.value as MovementType) : undefined);
-                      setPage(1);
-                    }}
-                    className="report-filter-select"
-                  >
-                    <option value="">All Movement Types</option>
-                    <option value="PRODUCTION_IN">Production In</option>
-                    <option value="SALE_OUT">Sale Out</option>
-                    <option value="SALES_RETURN_IN">Sales Return In</option>
-                    <option value="ADJUSTMENT_IN">Adjustment In</option>
-                    <option value="ADJUSTMENT_OUT">Adjustment Out</option>
-                  </select>
-                </div>
               </div>
             </div>
 
@@ -298,7 +291,13 @@ export const StockMovementsReportPage: React.FC = () => {
               data={movementsData?.data || []}
               keyExtractor={(row) => row.id}
               isLoading={isLoading}
-              emptyMessage="No stock movements recorded for this period."
+              emptyState={
+                <ReportEmptyState
+                  title="No stock movements recorded"
+                  description="Stock audit trail will populate automatically when items are produced, sold, or adjusted."
+                  minHeight={180}
+                />
+              }
               page={movementsData?.pagination.page}
               totalPages={movementsData?.pagination.totalPages}
               total={movementsData?.pagination.total}

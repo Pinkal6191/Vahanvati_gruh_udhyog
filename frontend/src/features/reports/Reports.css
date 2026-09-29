@@ -1,49 +1,82 @@
-/* Reports Feature Global Styling */
+/* ============================================================
+   Reports Feature Global Styling
+   Unified Professional Business Management / POS Reporting System
+   ============================================================ */
 
 .report-page-container {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-6, 24px);
-  padding-bottom: var(--spacing-8, 32px);
+  gap: 16px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding-bottom: 32px;
 }
 
 .report-header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Standardized 40px Report Filter Select */
+.report-filter-select {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #202124;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #ffffff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.report-filter-select:hover:not(:disabled) {
+  border-color: #d1d5db;
+}
+
+.report-filter-select:focus {
+  border-color: #3f438f;
+  box-shadow: 0 0 0 2px rgba(63, 67, 143, 0.12);
 }
 
 /* KPI Grids */
 .report-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-4, 16px);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .report-kpi-grid-3 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-4, 16px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .report-kpi-grid-5 {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: var(--spacing-4, 16px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
 }
 
 /* Two-column layout for charts and side summaries */
 .report-two-col {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: var(--spacing-6, 24px);
+  gap: 16px;
   align-items: start;
 }
 
 .report-two-col-equal {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-6, 24px);
+  gap: 16px;
   align-items: start;
 }
 
@@ -52,35 +85,116 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--spacing-4, 16px);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .report-section-title {
-  font-size: var(--font-size-lg, 18px);
+  font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary, #0f172a);
+  color: #202124;
   margin: 0;
 }
 
 .report-section-desc {
-  font-size: var(--font-size-sm, 14px);
-  color: var(--text-secondary, #64748b);
+  font-size: 13px;
+  color: #6b7280;
   margin-top: 2px;
+  display: block;
+}
+
+/* SaleType Mini Summary Cards (Sales Report) */
+.report-saletype-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.report-saletype-summary-card {
+  background: #ffffff;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.report-saletype-summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.report-saletype-summary-val {
+  font-size: 18px;
+  font-weight: 750;
+  color: #202124;
+  margin-top: 2px;
+  letter-spacing: -0.01em;
+}
+
+.report-saletype-summary-sub {
+  font-size: 11.5px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* Professional Information & Formula Card */
+.report-info-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
+}
+
+.report-info-card-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #202124;
+  margin: 0 0 8px 0;
+}
+
+.report-info-card-desc {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.report-formula-code {
+  display: block;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: #f8f9fb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #202124;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: monospace;
 }
 
 /* Top Products / Mini List Card */
 .report-mini-list-card {
-  background: var(--surface-primary, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
-  padding: var(--spacing-5, 20px);
-  margin-bottom: var(--spacing-6, 24px);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .report-mini-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .report-mini-item {
@@ -88,8 +202,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  background-color: var(--surface-hover, #f8fafc);
-  border-radius: var(--radius-md, 8px);
+  background-color: #f8f9fb;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
   transition: background-color 0.15s ease;
 }
 
@@ -117,14 +232,14 @@
 }
 
 .report-mini-item-name {
-  font-size: var(--font-size-sm, 14px);
+  font-size: 13.5px;
   font-weight: 600;
-  color: var(--text-primary, #0f172a);
+  color: #202124;
 }
 
 .report-mini-item-sub {
   font-size: 11px;
-  color: var(--text-secondary, #64748b);
+  color: #6b7280;
 }
 
 .report-mini-item-right {
@@ -132,26 +247,45 @@
 }
 
 .report-mini-item-val {
-  font-size: var(--font-size-sm, 14px);
+  font-size: 13.5px;
   font-weight: 700;
-  color: var(--text-primary, #0f172a);
+  color: #202124;
 }
 
 /* Data Table Card Wrapper */
 .report-table-card {
-  background: var(--surface-primary, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.report-table-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
+}
+
+.report-table-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #202124;
+  margin: 0;
+}
+
+.report-table-subtitle {
+  font-size: 12.5px;
+  color: #6b7280;
+  margin: 3px 0 0 0;
 }
 
 .report-table-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-4, 16px) var(--spacing-5, 20px);
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  padding: 14px 20px;
+  border-bottom: 1px solid #e5e7eb;
   background-color: #ffffff;
   flex-wrap: wrap;
   gap: 12px;
@@ -160,27 +294,71 @@
 .report-table-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* POS Action Buttons (e.g. Cash Report) */
+.pos-bill-number-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #3f438f;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.pos-bill-number-btn:hover {
+  background-color: rgba(63, 67, 143, 0.08);
+}
+
+.pos-table-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pos-table-action-btn:hover {
+  color: #3f438f;
+  border-color: #3f438f;
+  background: #f8f9fb;
 }
 
 /* Responsive Breakpoints */
-@media (max-width: 1280px) {
-  .report-kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+@media (max-width: 1400px) {
   .report-kpi-grid-5 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 1024px) {
+  .report-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .report-kpi-grid-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .report-two-col,
   .report-two-col-equal {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .report-kpi-grid,
   .report-kpi-grid-3,
   .report-kpi-grid-5 {
@@ -199,7 +377,7 @@
 }
 
 /* ============================================================
-   Phase 2F: Statutory Print Layout (@media print)
+   Statutory Print Layout (@media print)
    ============================================================ */
 @media print {
   @page {
@@ -223,6 +401,7 @@
   .app-header,
   .report-nav-container,
   .report-header-actions,
+  .report-header-root,
   .report-table-toolbar,
   .no-print,
   button {
@@ -301,26 +480,26 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .statutory-header-title-area {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .statutory-page-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 750;
   color: #202124;
   margin: 0;
   line-height: 1.25;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.01em;
 }
 
 .statutory-page-subtitle {
-  font-size: 13px;
+  font-size: 13.5px;
   color: #6b7280;
   margin: 0;
   line-height: 1.4;
@@ -337,7 +516,7 @@
   height: 40px;
   padding: 0 14px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -470,7 +649,7 @@
 
 .statutory-filter-panel {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e7eb;
   border-radius: 10px;
   padding: 16px 20px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -523,7 +702,7 @@
 
 .statutory-loading-box {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e7eb;
   border-radius: 10px;
   padding: 48px 24px;
   display: flex;
@@ -537,7 +716,7 @@
 .statutory-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #e2e8f0;
+  border: 3px solid #e5e7eb;
   border-top-color: #3f438f;
   border-radius: 50%;
   animation: statutory-spin 0.8s linear infinite;
@@ -621,7 +800,6 @@
     gap: 16px;
   }
   .statutory-header-actions {
-    display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
     width: 100%;

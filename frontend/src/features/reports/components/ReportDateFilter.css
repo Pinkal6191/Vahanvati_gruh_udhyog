@@ -1,45 +1,53 @@
-.report-date-filter-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-bottom: var(--spacing-4, 16px);
-}
+/* Standardized Report Date Filter Bar */
 
-.report-date-filter-group {
+.report-date-filter-bar {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  background: var(--surface-primary, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  padding: 6px 12px;
-  border-radius: var(--radius-md, 8px);
 }
 
 .report-filter-select-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
   position: relative;
 }
 
-.report-filter-icon {
-  color: var(--text-secondary, #64748b);
+.report-filter-select-wrapper .report-filter-icon {
+  position: absolute;
+  left: 12px;
+  color: #6b7280;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .report-filter-select {
-  padding: 6px 12px;
-  font-size: var(--font-size-sm, 14px);
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: var(--radius-sm, 6px);
-  background-color: #fff;
-  color: var(--text-primary, #1e293b);
+  height: 40px;
+  padding: 0 12px 0 34px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #202124;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #ffffff;
   cursor: pointer;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.report-filter-select.no-icon {
+  padding-left: 12px;
+}
+
+.report-filter-select:hover:not(:disabled) {
+  border-color: #d1d5db;
 }
 
 .report-filter-select:focus {
-  border-color: var(--color-primary-600, #2563eb);
+  border-color: #3f438f;
+  box-shadow: 0 0 0 2px rgba(63, 67, 143, 0.12);
 }
 
 .report-custom-dates {
@@ -49,33 +57,104 @@
 }
 
 .report-date-input {
-  padding: 5px 8px;
-  font-size: var(--font-size-sm, 14px);
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: var(--radius-sm, 6px);
+  height: 40px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: #202124;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #ffffff;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  box-sizing: border-box;
 }
 
 .report-date-input:focus {
-  border-color: var(--color-primary-600, #2563eb);
+  border-color: #3f438f;
+  box-shadow: 0 0 0 2px rgba(63, 67, 143, 0.12);
 }
 
 .report-date-separator {
-  font-size: var(--font-size-xs, 12px);
-  color: var(--text-secondary, #64748b);
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.report-btn-apply {
+  height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #3f438f;
+  border: 1px solid #3f438f;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.report-btn-apply:hover:not(:disabled) {
+  background-color: #292d68;
+  border-color: #292d68;
+}
+
+.report-btn-reset {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.report-btn-reset:hover:not(:disabled) {
+  color: #202124;
+  background-color: #f8f9fb;
+  border-color: #d1d5db;
+}
+
+.report-btn-reset:disabled,
+.report-btn-apply:disabled,
+.report-filter-select:disabled,
+.report-date-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 640px) {
   .report-date-filter-bar {
-    justify-content: stretch;
+    width: 100%;
   }
-  .report-date-filter-group {
+
+  .report-filter-select-wrapper,
+  .report-filter-select {
+    width: 100%;
+  }
+
+  .report-custom-dates {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
   }
-  .report-custom-dates {
-    flex-direction: column;
-    align-items: stretch;
+
+  .report-btn-reset,
+  .report-btn-apply {
+    width: 100%;
+    justify-content: center;
   }
 }

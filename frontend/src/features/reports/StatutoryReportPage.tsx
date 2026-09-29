@@ -17,7 +17,9 @@ import {
   RotateCcw as ResetIcon,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
 import { ReportNav } from './components/ReportNav';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import {
   reportsApi,
   StatutoryReportQuery,
@@ -211,10 +213,6 @@ export const StatutoryReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <div className="no-print">
-        <ReportNav />
-      </div>
-
       {/* Print-Only Header */}
       <div className="statutory-print-header">
         <h1 className="statutory-print-title">Vahanvati Gruh Udhyog</h1>
@@ -222,6 +220,15 @@ export const StatutoryReportPage: React.FC = () => {
         <div className="statutory-print-meta">
           Scope: {isMasterAdmin ? 'Company Total (Retail, NRI, Wholesale)' : `Restricted (${allowedSaleTypes.join(', ')})`} | Filter: {period} | Printed: {new Date().toLocaleString('en-IN')}
         </div>
+      </div>
+
+      <div className="no-print">
+        <Breadcrumb
+          items={[
+            { label: 'Reports', path: '/reports' },
+            { label: 'Statutory / CA' },
+          ]}
+        />
       </div>
 
       {/* Header and Actions */}
@@ -266,6 +273,10 @@ export const StatutoryReportPage: React.FC = () => {
             <span>Print / PDF</span>
           </button>
         </div>
+      </div>
+
+      <div className="no-print">
+        <ReportNav />
       </div>
 
       {/* Access Scope Banner */}
@@ -543,24 +554,18 @@ export const StatutoryReportPage: React.FC = () => {
 
       {/* Empty State */}
       {!loading && !error && !hasData() && (
-        <div className="statutory-empty-box">
-          <FileText size={36} color="#94a3b8" />
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: '#334155' }}>
-              No transactions found
-            </div>
-            <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
-              No transactions match the selected filters. Try adjusting your date range or filters.
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={handleResetFilters}
-            style={{ fontSize: 12, height: 32, padding: '0 14px', marginTop: 4 }}
-          >
-            Reset Filters
-          </button>
+        <div className="report-table-card" style={{ padding: '24px' }}>
+          <ReportEmptyState
+            icon={<FileSpreadsheet size={22} />}
+            title="No statutory records yet"
+            description="Auditable sales, itemized transactions, returns and GST records will appear here once completed bills are recorded."
+            action={{
+              label: 'Reset Filters',
+              onClick: handleResetFilters,
+              icon: <ResetIcon size={14} />,
+            }}
+            minHeight={200}
+          />
         </div>
       )}
 

@@ -5,13 +5,12 @@ import {
   Boxes,
   ArrowUpDown,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportDateFilter } from './components/ReportDateFilter';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
-import { Pagination } from '../../components/tables/Pagination/Pagination';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
 import {
@@ -90,10 +89,10 @@ export const ProductSalesReportPage: React.FC = () => {
       header: 'Product Details',
       cell: (row: ProductSaleRecord) => (
         <div>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+          <div style={{ fontWeight: 600, color: '#202124' }}>
             {row.productName}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: '11.5px', color: '#6b7280' }}>
             Code: {row.productCode}
           </div>
         </div>
@@ -104,8 +103,8 @@ export const ProductSalesReportPage: React.FC = () => {
       header: 'Category / Subcategory',
       cell: (row: ProductSaleRecord) => (
         <div>
-          <span style={{ fontSize: '13px', fontWeight: 500 }}>{row.categoryName}</span>
-          <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>
+          <span style={{ fontSize: '13px', fontWeight: 500, color: '#202124' }}>{row.categoryName}</span>
+          <span style={{ fontSize: '11.5px', color: '#6b7280', display: 'block' }}>
             {row.subcategoryName}
           </span>
         </div>
@@ -146,7 +145,7 @@ export const ProductSalesReportPage: React.FC = () => {
       header: 'Avg Rate',
       align: 'right' as const,
       cell: (row: ProductSaleRecord) => (
-        <span style={{ textAlign: 'right', display: 'block', color: 'var(--text-secondary)' }}>
+        <span style={{ textAlign: 'right', display: 'block', color: '#6b7280' }}>
           {formatCurrency(row.averageSellingRate)}
         </span>
       ),
@@ -161,7 +160,7 @@ export const ProductSalesReportPage: React.FC = () => {
             textAlign: 'right',
             display: 'block',
             fontWeight: 700,
-            color: 'var(--color-primary-600, #2563eb)',
+            color: '#3F438F',
           }}
         >
           {formatCurrency(row.salesAmount)}
@@ -172,36 +171,23 @@ export const ProductSalesReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
-          { label: 'Product Sales' },
+          { label: 'Products' },
         ]}
-      />
-
-      <PageHeader
         title="Product-Wise Sales & Ranking"
         subtitle="Catalog sales distribution, revenue contribution, weights sold, and transaction frequencies."
         actions={
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="report-header-actions">
             {permittedSaleTypes.length > 1 && (
               <select
+                aria-label="Filter products by sale type tier"
                 className="report-filter-select"
                 value={saleType || ''}
                 onChange={(e) => {
                   setSaleType((e.target.value as SaleType) || undefined);
                   setPage(1);
-                }}
-                style={{
-                  height: '38px',
-                  padding: '0 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #d1d5db',
-                  background: '#fff',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#374151',
                 }}
               >
                 <option value="">All Permitted Tiers</option>
@@ -231,7 +217,7 @@ export const ProductSalesReportPage: React.FC = () => {
         />
       ) : (
         <>
-          {/* Summary Cards */}
+          {/* Summary KPIs */}
           <div className="report-kpi-grid">
             <ReportKpiCard
               title="Total Revenue"
@@ -271,7 +257,7 @@ export const ProductSalesReportPage: React.FC = () => {
               subtitle={
                 productData && productData.data.length > 0
                   ? productData.data[0].productName
-                  : 'No records'
+                  : 'No sales recorded yet'
               }
               badge={{ text: '#1 Rank', variant: 'success' }}
               icon={<TrendingUp size={18} />}
@@ -294,6 +280,7 @@ export const ProductSalesReportPage: React.FC = () => {
                   <ArrowUpDown size={14} color="#64748b" />
                   <span style={{ fontSize: '13px', color: '#64748b' }}>Sort by:</span>
                   <select
+                    aria-label="Sort products by metric"
                     value={sortBy}
                     onChange={(e) => {
                       setSortBy(e.target.value as any);
@@ -308,6 +295,7 @@ export const ProductSalesReportPage: React.FC = () => {
                 </div>
 
                 <select
+                  aria-label="Sort direction order"
                   value={order}
                   onChange={(e) => {
                     setOrder(e.target.value as any);
@@ -326,7 +314,13 @@ export const ProductSalesReportPage: React.FC = () => {
               data={productData?.data || []}
               keyExtractor={(row) => row.productId}
               isLoading={isLoading}
-              emptyMessage="No product sales recorded for this period."
+              emptyState={
+                <ReportEmptyState
+                  title="No product sales yet"
+                  description="Product performance will appear after completed bills are recorded."
+                  minHeight={200}
+                />
+              }
               page={productData?.pagination.page}
               totalPages={productData?.pagination.totalPages}
               total={productData?.pagination.total}

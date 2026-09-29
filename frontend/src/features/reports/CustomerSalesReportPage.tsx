@@ -8,13 +8,12 @@ import {
   ArrowUpDown,
   Eye,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportDateFilter } from './components/ReportDateFilter';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
-import { Pagination } from '../../components/tables/Pagination/Pagination';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { Button } from '../../components/ui/Button/Button';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
@@ -107,10 +106,10 @@ export const CustomerSalesReportPage: React.FC = () => {
       header: 'Customer',
       cell: (row: CustomerSaleRecord) => (
         <div>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+          <div style={{ fontWeight: 600, color: '#202124' }}>
             {row.customerName}
           </div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+          <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
             <Badge
               variant={row.customerType === 'NRI' ? 'warning' : 'info'}
               size="sm"
@@ -128,7 +127,7 @@ export const CustomerSalesReportPage: React.FC = () => {
       key: 'mobile',
       header: 'Mobile',
       cell: (row: CustomerSaleRecord) => (
-        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+        <span style={{ fontSize: '13px', color: '#6b7280' }}>
           {formatIndianMobile(row.mobile)}
         </span>
       ),
@@ -158,7 +157,7 @@ export const CustomerSalesReportPage: React.FC = () => {
       header: 'Avg Bill',
       align: 'right' as const,
       cell: (row: CustomerSaleRecord) => (
-        <span style={{ textAlign: 'right', display: 'block', color: 'var(--text-secondary)' }}>
+        <span style={{ textAlign: 'right', display: 'block', color: '#6b7280' }}>
           {formatCurrency(row.averageBillValue)}
         </span>
       ),
@@ -173,7 +172,7 @@ export const CustomerSalesReportPage: React.FC = () => {
             textAlign: 'right',
             display: 'block',
             fontWeight: 700,
-            color: 'var(--color-primary-600, #2563eb)',
+            color: '#3F438F',
           }}
         >
           {formatCurrency(row.totalPurchases)}
@@ -184,7 +183,7 @@ export const CustomerSalesReportPage: React.FC = () => {
       key: 'lastPurchaseDate',
       header: 'Last Active',
       cell: (row: CustomerSaleRecord) => (
-        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <span style={{ fontSize: '12px', color: '#6b7280' }}>
           {formatDate(row.lastPurchaseDate)}
         </span>
       ),
@@ -192,11 +191,12 @@ export const CustomerSalesReportPage: React.FC = () => {
     {
       key: 'actions',
       header: 'History',
+      align: 'center' as const,
       cell: (row: CustomerSaleRecord) => (
         <Button
           size="sm"
           variant="outline"
-          leftIcon={<Eye size={14} />}
+          leftIcon={<Eye size={13} />}
           onClick={() => navigate(`/reports/customers/${row.customerId}`)}
         >
           View
@@ -207,35 +207,22 @@ export const CustomerSalesReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
-          { label: 'Customer Analytics' },
+          { label: 'Customers' },
         ]}
-      />
-
-      <PageHeader
         title="Customer Sales & Loyalty Analytics"
         subtitle="Customer purchase values, frequency, repeat rates, and historical patronage."
         actions={
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="report-header-actions">
             <select
+              aria-label="Filter by customer demographic"
               className="report-filter-select"
               value={customerType || ''}
               onChange={(e) => {
                 setCustomerType((e.target.value as CustomerType) || undefined);
                 setPage(1);
-              }}
-              style={{
-                height: '38px',
-                padding: '0 12px',
-                borderRadius: '6px',
-                border: '1px solid #d1d5db',
-                background: '#fff',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                color: '#374151',
               }}
             >
               <option value="">All Customer Demographics</option>
@@ -245,21 +232,12 @@ export const CustomerSalesReportPage: React.FC = () => {
 
             {permittedSaleTypes.length > 1 && (
               <select
+                aria-label="Filter by sale type tier"
                 className="report-filter-select"
                 value={saleType || ''}
                 onChange={(e) => {
                   setSaleType((e.target.value as SaleType) || undefined);
                   setPage(1);
-                }}
-                style={{
-                  height: '38px',
-                  padding: '0 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #d1d5db',
-                  background: '#fff',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#374151',
                 }}
               >
                 <option value="">All Permitted Tiers</option>
@@ -344,6 +322,7 @@ export const CustomerSalesReportPage: React.FC = () => {
               <div className="report-table-controls">
                 {/* Repeat Filter Toggle */}
                 <select
+                  aria-label="Filter customer visit frequency"
                   value={minBills || ''}
                   onChange={(e) => {
                     setMinBills(e.target.value ? Number(e.target.value) : undefined);
@@ -359,6 +338,7 @@ export const CustomerSalesReportPage: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <ArrowUpDown size={14} color="#64748b" />
                   <select
+                    aria-label="Sort customer ledger"
                     value={sortBy}
                     onChange={(e) => {
                       setSortBy(e.target.value as any);
@@ -373,6 +353,7 @@ export const CustomerSalesReportPage: React.FC = () => {
                 </div>
 
                 <select
+                  aria-label="Sort direction order"
                   value={order}
                   onChange={(e) => {
                     setOrder(e.target.value as any);
@@ -391,7 +372,13 @@ export const CustomerSalesReportPage: React.FC = () => {
               data={customerData?.data || []}
               keyExtractor={(row) => row.customerId}
               isLoading={isLoading}
-              emptyMessage="No customer transactions found for this period."
+              emptyState={
+                <ReportEmptyState
+                  title="No customer activity yet"
+                  description="Customer purchase history will appear here once sales are recorded."
+                  minHeight={200}
+                />
+              }
               page={customerData?.pagination.page}
               totalPages={customerData?.pagination.totalPages}
               total={customerData?.pagination.total}

@@ -4,14 +4,13 @@ import {
   Scale,
   CheckCircle2,
   FileClock,
-  Ban,
   Layers,
 } from 'lucide-react';
-import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb';
-import { PageHeader } from '../../components/common/PageHeader/PageHeader';
+import { ReportHeader } from './components/ReportHeader';
 import { ReportNav } from './components/ReportNav';
 import { ReportDateFilter } from './components/ReportDateFilter';
 import { ReportKpiCard } from './components/ReportKpiCard';
+import { ReportEmptyState } from './components/ReportEmptyState';
 import { TimeSeriesBarChart } from './components/ReportCharts';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
@@ -75,17 +74,12 @@ export const ProductionReportPage: React.FC = () => {
 
   const columns = [
     {
-      key: 'productName',
-      header: 'Product',
+      key: 'periodKey',
+      header: 'Date / Period',
       cell: (row: any) => (
-        <div>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-            {row.productName}
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-            Code: {row.productCode}
-          </div>
-        </div>
+        <span style={{ fontWeight: 600, color: '#202124' }}>
+          {row.periodKey}
+        </span>
       ),
     },
     {
@@ -93,21 +87,19 @@ export const ProductionReportPage: React.FC = () => {
       header: 'Completed Batches',
       align: 'right' as const,
       cell: (row: any) => (
-        <span style={{ textAlign: 'right', display: 'block' }}>{row.entriesCount}</span>
+        <span style={{ textAlign: 'right', display: 'block', fontWeight: 500 }}>{row.entriesCount}</span>
       ),
     },
     {
-      key: 'completedQuantity',
-      header: 'Output Quantity',
+      key: 'quantityProduced',
+      header: 'Packs / Pieces',
       align: 'right' as const,
       cell: (row: any) => (
-        <span style={{ textAlign: 'right', display: 'block', fontWeight: 600 }}>
-          {row.completedQuantity}
-        </span>
+        <span style={{ textAlign: 'right', display: 'block' }}>{row.quantityProduced}</span>
       ),
     },
     {
-      key: 'completedBaseWeight',
+      key: 'baseWeightAdded',
       header: 'Total Base Weight Added',
       align: 'right' as const,
       cell: (row: any) => (
@@ -116,10 +108,10 @@ export const ProductionReportPage: React.FC = () => {
             textAlign: 'right',
             display: 'block',
             fontWeight: 700,
-            color: 'var(--color-primary-600, #2563eb)',
+            color: '#3F438F',
           }}
         >
-          {formatWeight(row.completedBaseWeight)}
+          {formatWeight(row.baseWeightAdded)}
         </span>
       ),
     },
@@ -127,15 +119,11 @@ export const ProductionReportPage: React.FC = () => {
 
   return (
     <div className="report-page-container">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
+      <ReportHeader
+        breadcrumbs={[
           { label: 'Reports', path: '/reports' },
-          { label: 'Production Report' },
+          { label: 'Production' },
         ]}
-      />
-
-      <PageHeader
         title="Production Yield & Batch Analytics"
         subtitle="Operational kitchen yields, batch completions, finished weights, and production timelines."
         actions={
@@ -177,7 +165,7 @@ export const ProductionReportPage: React.FC = () => {
             <ReportKpiCard
               title="Completed Batches"
               value={productionData ? productionData.summary.completedEntriesCount : 0}
-              subtitle={`Out of ${productionData?.summary.totalEntries || 0} total logs`}
+              subtitle={`Out of ${productionData?.summary.totalEntries || 0} total batches`}
               icon={<CheckCircle2 size={18} />}
               isLoading={isLoading}
             />
@@ -216,9 +204,7 @@ export const ProductionReportPage: React.FC = () => {
           <div className="report-bar-chart-container">
             <div className="report-section-header">
               <div>
-                <h4 className="report-chart-title" style={{ margin: 0 }}>
-                  Kitchen Yield Output Trend
-                </h4>
+                <h4 className="report-section-title">Kitchen Yield Output Trend</h4>
                 <span className="report-section-desc">
                   Weight added to stock by completed production runs
                 </span>
@@ -226,6 +212,7 @@ export const ProductionReportPage: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Layers size={14} color="#64748b" />
                 <select
+                  aria-label="Group production trend by interval"
                   value={groupBy}
                   onChange={(e) => setGroupBy(e.target.value as GroupByInterval)}
                   className="report-filter-select"
@@ -239,29 +226,36 @@ export const ProductionReportPage: React.FC = () => {
 
             <TimeSeriesBarChart
               data={chartData}
-              height={220}
+              height={200}
               formatVal={formatWeight}
-              emptyMessage="No completed production batches in this period."
+              emptyTitle="No production yield data yet"
+              emptyMessage="Kitchen yield output will appear once completed production batches are recorded."
             />
           </div>
 
-          {/* Product-wise Production Breakdown Table */}
+          {/* Period Breakdown Table */}
           <div className="report-table-card">
             <div className="report-table-toolbar">
               <div>
-                <h4 className="report-section-title">Product Production Breakdown</h4>
+                <h4 className="report-section-title">Production Period Log</h4>
                 <span className="report-section-desc">
-                  Completed batches and manufactured weights by item
+                  Batch yields and finished quantities for {productionData?.summary.period || 'the period'}
                 </span>
               </div>
             </div>
 
             <DataTable
               columns={columns}
-              data={productionData?.productBreakdown || []}
-              keyExtractor={(row) => row.productId}
+              data={productionData?.timeSeries || []}
+              keyExtractor={(row) => row.periodKey}
               isLoading={isLoading}
-              emptyMessage="No production output logged for this period."
+              emptyState={
+                <ReportEmptyState
+                  title="No production batches yet"
+                  description="Production logs will appear here once completed batches are recorded."
+                  minHeight={180}
+                />
+              }
             />
           </div>
         </>
