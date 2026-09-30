@@ -457,7 +457,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
         <div id="pos-print-root" aria-hidden="true">
           <style>{`
             @page {
-              size: ${isWholesale ? 'A4 portrait' : '80mm auto'};
+              size: ${isWholesale ? 'A4 portrait' : 'portrait'};
               margin: ${isWholesale ? '8mm 10mm' : '0'};
             }
           `}</style>

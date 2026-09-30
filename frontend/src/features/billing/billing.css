@@ -2807,15 +2807,18 @@
   /* 4. Thermal 80mm format for Retail/NRI */
   body.pos-print-thermal #pos-print-root .pos-thermal-receipt {
     display: block !important;
-    width: 76mm !important;
-    max-width: 80mm !important;
-    margin: 0 auto !important;
-    padding: 2mm !important;
+    width: 72mm !important;
+    max-width: 72mm !important;
+    margin: 0 !important;
+    padding: 0 1mm 2mm !important;
     background: transparent !important;
     box-shadow: none !important;
     border: none !important;
     font-family: 'Shruti', 'Gujarati Sangam MN', 'Noto Sans Gujarati', 'Nirmala UI', system-ui, -apple-system, sans-serif !important;
     font-variant-numeric: tabular-nums !important;
+    box-sizing: border-box !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   body.pos-print-thermal #pos-print-root .receipt-logo {
