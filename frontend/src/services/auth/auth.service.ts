@@ -22,6 +22,29 @@ export class AuthService {
   }
 
   /**
+   * Proactively or reactively refresh access token
+   */
+  static async refreshToken(): Promise<string> {
+    const rawRefreshToken = storageService.getRefreshToken();
+    if (!rawRefreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const res = await apiClient.post<{ accessToken: string }>(
+      '/auth/refresh',
+      { refreshToken: rawRefreshToken },
+      { skipAuth: true, _isRetry: true }
+    );
+
+    if (!res.data?.accessToken) {
+      throw new Error('Invalid refresh token response');
+    }
+
+    storageService.setAccessToken(res.data.accessToken);
+    return res.data.accessToken;
+  }
+
+  /**
    * Log out user and clear storage
    */
   static async logout(): Promise<void> {

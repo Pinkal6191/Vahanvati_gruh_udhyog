@@ -13,6 +13,7 @@ import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
+import { ReportExportToolbar } from './components/ReportExportToolbar';
 import {
   reportsApi,
   ProductReportResponse,
@@ -45,6 +46,27 @@ export const ProductSalesReportPage: React.FC = () => {
   const [productData, setProductData] = useState<ProductReportResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    if (format === 'xlsx') setIsExportingExcel(true);
+    if (format === 'pdf') setIsExportingPdf(true);
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      await reportsApi.downloadReportFile(
+        '/reports/sales/products',
+        { period, startDate, endDate, saleType, sortBy, order },
+        format,
+        `product-sales-report-${dateStr}.${format}`
+      );
+    } catch (err: any) {
+      alert(err?.message || `Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setIsExportingExcel(false);
+      setIsExportingPdf(false);
+    }
+  };
 
   const fetchProductReport = async () => {
     setIsLoading(true);
@@ -202,6 +224,15 @@ export const ProductSalesReportPage: React.FC = () => {
               endDate={endDate}
               onFilterChange={handleFilterChange}
               isLoading={isLoading}
+            />
+            <ReportExportToolbar
+              onRefresh={fetchProductReport}
+              onExportExcel={() => handleExport('xlsx')}
+              onExportPdf={() => handleExport('pdf')}
+              isLoading={isLoading}
+              isExportingExcel={isExportingExcel}
+              isExportingPdf={isExportingPdf}
+              disabled={isLoading || !productData}
             />
           </div>
         }

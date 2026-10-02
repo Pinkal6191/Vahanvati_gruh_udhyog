@@ -12,6 +12,7 @@ import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
 import { Badge } from '../../components/ui/Badge/Badge';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
+import { ReportExportToolbar } from './components/ReportExportToolbar';
 import {
   reportsApi,
   StockMovementsReportResponse,
@@ -33,6 +34,27 @@ export const StockMovementsReportPage: React.FC = () => {
   const [movementsData, setMovementsData] = useState<StockMovementsReportResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    if (format === 'xlsx') setIsExportingExcel(true);
+    if (format === 'pdf') setIsExportingPdf(true);
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      await reportsApi.downloadReportFile(
+        '/reports/stock/movements',
+        { period, startDate, endDate, movementType },
+        format,
+        `stock-movements-${dateStr}.${format}`
+      );
+    } catch (err: any) {
+      alert(err?.message || `Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setIsExportingExcel(false);
+      setIsExportingPdf(false);
+    }
+  };
 
   const fetchMovements = async () => {
     setIsLoading(true);
@@ -210,6 +232,15 @@ export const StockMovementsReportPage: React.FC = () => {
               endDate={endDate}
               onFilterChange={handleFilterChange}
               isLoading={isLoading}
+            />
+            <ReportExportToolbar
+              onRefresh={fetchMovements}
+              onExportExcel={() => handleExport('xlsx')}
+              onExportPdf={() => handleExport('pdf')}
+              isLoading={isLoading}
+              isExportingExcel={isExportingExcel}
+              isExportingPdf={isExportingPdf}
+              disabled={isLoading || !movementsData}
             />
           </div>
         }

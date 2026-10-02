@@ -13,6 +13,7 @@ import { ReportEmptyState } from './components/ReportEmptyState';
 import { PaymentBreakdownBar } from './components/ReportCharts';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
+import { ReportExportToolbar } from './components/ReportExportToolbar';
 import {
   reportsApi,
   ReturnsReportData,
@@ -39,6 +40,27 @@ export const ReturnsReportPage: React.FC = () => {
   const [returnsData, setReturnsData] = useState<ReturnsReportData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    if (format === 'xlsx') setIsExportingExcel(true);
+    if (format === 'pdf') setIsExportingPdf(true);
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      await reportsApi.downloadReportFile(
+        '/reports/returns',
+        { period, startDate, endDate, saleType },
+        format,
+        `sales-returns-report-${dateStr}.${format}`
+      );
+    } catch (err: any) {
+      alert(err?.message || `Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setIsExportingExcel(false);
+      setIsExportingPdf(false);
+    }
+  };
 
   const fetchReturnsReport = async () => {
     setIsLoading(true);
@@ -141,6 +163,15 @@ export const ReturnsReportPage: React.FC = () => {
               endDate={endDate}
               onFilterChange={handleFilterChange}
               isLoading={isLoading}
+            />
+            <ReportExportToolbar
+              onRefresh={fetchReturnsReport}
+              onExportExcel={() => handleExport('xlsx')}
+              onExportPdf={() => handleExport('pdf')}
+              isLoading={isLoading}
+              isExportingExcel={isExportingExcel}
+              isExportingPdf={isExportingPdf}
+              disabled={isLoading || !returnsData}
             />
           </div>
         }

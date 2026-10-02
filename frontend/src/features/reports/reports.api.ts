@@ -528,27 +528,25 @@ export const reportsApi = {
     return res as any;
   },
 
+  // Generic download helper with token refresh and error handling
+  async downloadReportFile(
+    path: string,
+    query: Record<string, any>,
+    format: 'xlsx' | 'pdf' | 'csv',
+    defaultFilename: string
+  ): Promise<void> {
+    const qs = buildQueryString({ ...query, format });
+    await apiClient.downloadFile(`${path}${qs}`, defaultFilename);
+  },
+
+  // Download Wholesale Invoice PDF
+  async downloadInvoicePdf(saleId: string, billNumber: string): Promise<void> {
+    await apiClient.downloadFile(`/sales/${saleId}/pdf`, `Invoice-${billNumber}.pdf`);
+  },
+
   // Download Statutory Report CSV
   async downloadStatutoryCsv(path: string, query: Record<string, any>, filename: string): Promise<void> {
-    const qs = buildQueryString({ ...query, format: 'csv' });
-    const token = storageService.getAccessToken();
-    const res = await fetch(`${apiClient.getBaseUrl()}${path}${qs}`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-      },
-    });
-    if (!res.ok) {
-      throw new Error(`Failed to download CSV: HTTP ${res.status}`);
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    return this.downloadReportFile(path, query, 'csv', filename);
   },
 
   // 15. Operational Cash Bills Report (ADMIN ONLY)
@@ -560,25 +558,7 @@ export const reportsApi = {
 
   // Download Cash Sales Report CSV
   async downloadCashReportCsv(query: Record<string, any>, filename: string): Promise<void> {
-    const qs = buildQueryString({ ...query, format: 'csv' });
-    const token = storageService.getAccessToken();
-    const res = await fetch(`${apiClient.getBaseUrl()}/reports/cash-sales${qs}`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-      },
-    });
-    if (!res.ok) {
-      throw new Error(`Failed to download Cash Report CSV: HTTP ${res.status}`);
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    return this.downloadReportFile('/reports/cash-sales', query, 'csv', filename);
   },
 };
 

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { SalesService } from './sales.service.js';
+import { generateWholesaleInvoicePdf } from './invoice.pdf.js';
 
 export class SalesController {
   static async createSale(req: Request, res: Response, next: NextFunction) {
@@ -67,4 +68,18 @@ export class SalesController {
       next(err);
     }
   }
+
+  static async getSalePdf(req: Request, res: Response, next: NextFunction) {
+    try {
+      const payload = await SalesService.getPrintPayload(req.params.id, (req as any).user);
+      const pdfBuffer = await generateWholesaleInvoicePdf(payload);
+      const filename = `invoice-${payload.invoice.billNumber}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.status(200).send(pdfBuffer);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
+

@@ -11,6 +11,7 @@ import {
   productionReportQuerySchema,
   stockReportQuerySchema,
   stockMovementsReportQuerySchema,
+  stockReconciliationReportQuerySchema,
   returnsReportQuerySchema,
   businessSummaryQuerySchema,
   statutorySalesReportQuerySchema,
@@ -89,6 +90,7 @@ router.get(
 router.get(
   '/stock/reconciliation',
   authorize(['ADMIN']),
+  validate({ query: stockReconciliationReportQuerySchema }),
   ReportsController.getStockReconciliationReport
 );
 
@@ -103,11 +105,12 @@ router.get(
 );
 
 // ============================================================
-// 5. BUSINESS SUMMARY DASHBOARD (ADMIN only)
+// 5. BUSINESS SUMMARY DASHBOARD (ADMIN, OUTLET)
+// Scoped strictly by user's allowedReportSaleTypes / isMasterAdmin
 // ============================================================
 router.get(
   '/business-summary',
-  authorize(['ADMIN']),
+  authorize(['ADMIN', 'OUTLET']),
   validate({ query: businessSummaryQuerySchema }),
   ReportsController.getBusinessSummary
 );

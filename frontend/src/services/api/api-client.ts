@@ -49,6 +49,47 @@ class ApiClient {
     }
   }
 
+  private refreshPromise: Promise<string | null> | null = null;
+
+  async executeTokenRefresh(): Promise<string | null> {
+    const rawRefreshToken = storageService.getRefreshToken();
+    if (!rawRefreshToken) {
+      this.triggerUnauthorized();
+      return null;
+    }
+
+    try {
+      const url = `${this.baseUrl}/auth/refresh`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ refreshToken: rawRefreshToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Token refresh rejected with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const newAccessToken = data?.data?.accessToken;
+      if (!newAccessToken) {
+        throw new Error('No access token in refresh response');
+      }
+
+      storageService.setAccessToken(newAccessToken);
+      return newAccessToken;
+    } catch (err) {
+      console.warn('Authentication token renewal failed:', err);
+      this.triggerUnauthorized();
+      return null;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
   getHeaders(customHeaders: Record<string, string> = {}): Record<string, string> {
     const requestHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -91,12 +132,28 @@ class ApiClient {
 
       clearTimeout(timeoutId);
 
-      // Handle 401 Unauthorized globally
+      // Handle 401 Unauthorized with token refresh and single retry
       if (response.status === 401) {
-        storageService.clearAuthSession();
-        if (this.onUnauthorizedCallback) {
-          this.onUnauthorizedCallback();
+        const isAuthEndpoint =
+          cleanEndpoint.startsWith('/auth/login') ||
+          cleanEndpoint.startsWith('/auth/refresh');
+
+        if (!options._isRetry && !skipAuth && !isAuthEndpoint) {
+          if (!this.refreshPromise) {
+            this.refreshPromise = this.executeTokenRefresh();
+          }
+          const newToken = await this.refreshPromise;
+          if (newToken) {
+            // Retry the original request exactly once with new token
+            return this.request<T>(endpoint, {
+              ...options,
+              _isRetry: true,
+            });
+          }
         }
+
+        // If refresh failed, was already a retry, or was an auth endpoint
+        this.triggerUnauthorized();
       }
 
       let data: any;
@@ -177,6 +234,59 @@ class ApiClient {
       method: 'POST',
       body: formData,
     });
+  }
+
+  async downloadFile(endpoint: string, defaultFilename: string, options: RequestOptions = {}): Promise<void> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const token = storageService.getAccessToken();
+    const headers: Record<string, string> = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers as Record<string, string> || {}),
+    };
+
+    let response = await fetch(url, {
+      method: 'GET',
+      headers,
+      signal: options.signal,
+    });
+
+    if (response.status === 401 && !options._isRetry && !endpoint.includes('/auth/')) {
+      const newToken = await this.executeTokenRefresh();
+      if (newToken) {
+        return this.downloadFile(endpoint, defaultFilename, {
+          ...options,
+          _isRetry: true,
+        });
+      }
+      this.triggerUnauthorized();
+    }
+
+    if (!response.ok) {
+      let errMsg = `Download failed with HTTP ${response.status}`;
+      try {
+        const errJson = await response.json();
+        if (errJson?.message) errMsg = errJson.message;
+      } catch {}
+      throw new ApiError(errMsg, response.status);
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+
+    const disposition = response.headers.get('content-disposition');
+    let filename = defaultFilename;
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      if (match?.[1]) filename = match[1];
+    }
+
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
   }
 }
 

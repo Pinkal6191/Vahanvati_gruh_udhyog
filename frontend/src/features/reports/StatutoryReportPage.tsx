@@ -166,21 +166,36 @@ export const StatutoryReportPage: React.FC = () => {
     setStatus('ALL');
   };
 
-  const handleExportCsv = async () => {
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [isExportingCsv, setIsExportingCsv] = useState<boolean>(false);
+
+  const handleExportFile = async (format: 'xlsx' | 'pdf' | 'csv') => {
+    if (format === 'xlsx') setIsExportingExcel(true);
+    if (format === 'pdf') setIsExportingPdf(true);
+    if (format === 'csv') setIsExportingCsv(true);
     try {
       const q = buildQuery();
       const dateTag = new Date().toISOString().slice(0, 10);
-      if (activeTab === 'sales') {
-        await reportsApi.downloadStatutoryCsv('/reports/statutory/sales', q, `sales-register-${dateTag}.csv`);
-      } else if (activeTab === 'itemized') {
-        await reportsApi.downloadStatutoryCsv('/reports/statutory/sales/itemized', q, `itemized-sales-${dateTag}.csv`);
+      let path = '/reports/statutory/sales';
+      let baseFilename = 'statutory-sales-register';
+      if (activeTab === 'itemized') {
+        path = '/reports/statutory/sales/itemized';
+        baseFilename = 'statutory-itemized-sales';
       } else if (activeTab === 'returns') {
-        await reportsApi.downloadStatutoryCsv('/reports/statutory/returns', q, `sales-returns-${dateTag}.csv`);
+        path = '/reports/statutory/returns';
+        baseFilename = 'statutory-sales-returns';
       } else if (activeTab === 'gst') {
-        await reportsApi.downloadStatutoryCsv('/reports/statutory/gst-summary', q, `gst-summary-${dateTag}.csv`);
+        path = '/reports/statutory/gst-summary';
+        baseFilename = 'statutory-gst-summary';
       }
+      await reportsApi.downloadReportFile(path, q, format, `${baseFilename}-${dateTag}.${format}`);
     } catch (err: any) {
-      alert(`Export failed: ${err?.message || 'Error downloading CSV'}`);
+      alert(`Export failed: ${err?.message || `Error downloading ${format.toUpperCase()}`}`);
+    } finally {
+      setIsExportingExcel(false);
+      setIsExportingPdf(false);
+      setIsExportingCsv(false);
     }
   };
 
@@ -255,22 +270,44 @@ export const StatutoryReportPage: React.FC = () => {
           <button
             type="button"
             className="statutory-btn statutory-btn-export"
-            onClick={handleExportCsv}
-            disabled={loading}
+            onClick={() => handleExportFile('xlsx')}
+            disabled={loading || isExportingExcel}
+            title="Export Excel (.xlsx)"
+            style={{ color: '#16a34a' }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>{isExportingExcel ? 'Exporting...' : 'Export Excel'}</span>
+          </button>
+          <button
+            type="button"
+            className="statutory-btn statutory-btn-export"
+            onClick={() => handleExportFile('pdf')}
+            disabled={loading || isExportingPdf}
+            title="Download PDF (.pdf)"
+            style={{ color: '#dc2626' }}
+          >
+            <FileText size={16} />
+            <span>{isExportingPdf ? 'Exporting...' : 'Download PDF'}</span>
+          </button>
+          <button
+            type="button"
+            className="statutory-btn statutory-btn-export"
+            onClick={() => handleExportFile('csv')}
+            disabled={loading || isExportingCsv}
             title="Export CSV"
           >
             <Download size={16} />
-            <span>Export CSV</span>
+            <span>{isExportingCsv ? 'Exporting...' : 'Export CSV'}</span>
           </button>
           <button
             type="button"
             className="statutory-btn statutory-btn-print"
             onClick={handlePrint}
             disabled={loading}
-            title="Print / PDF"
+            title="Print"
           >
             <Printer size={16} />
-            <span>Print / PDF</span>
+            <span>Print</span>
           </button>
         </div>
       </div>

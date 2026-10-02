@@ -18,6 +18,7 @@ import { Button } from '../../components/ui/Button/Button';
 import { Pagination } from '../../components/tables/Pagination/Pagination';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
 import { LoadingState } from '../../components/common/LoadingState/LoadingState';
+import { ReportExportToolbar } from './components/ReportExportToolbar';
 import {
   reportsApi,
   CustomerHistoryResponse,
@@ -39,6 +40,28 @@ export const CustomerReportDetailPage: React.FC = () => {
   const limit = 10;
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    if (!customerId) return;
+    if (format === 'xlsx') setIsExportingExcel(true);
+    if (format === 'pdf') setIsExportingPdf(true);
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      await reportsApi.downloadReportFile(
+        `/reports/customers/${customerId}`,
+        {},
+        format,
+        `customer-history-${customerId}-${dateStr}.${format}`
+      );
+    } catch (err: any) {
+      alert(err?.message || `Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setIsExportingExcel(false);
+      setIsExportingPdf(false);
+    }
+  };
 
   const fetchHistory = async () => {
     if (!customerId) return;
@@ -98,14 +121,25 @@ export const CustomerReportDetailPage: React.FC = () => {
         title={`Customer Audit: ${customer.name}`}
         subtitle={`Lifetime purchase history and transaction records for ${customer.name}.`}
         actions={
-          <Button
-            variant="outline"
-            leftIcon={<ArrowLeft size={15} />}
-            onClick={() => navigate('/reports/customers')}
-            style={{ height: '40px' }}
-          >
-            Back to Customers
-          </Button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<ArrowLeft size={14} />}
+              onClick={() => navigate('/reports/customers')}
+            >
+              Back
+            </Button>
+            <ReportExportToolbar
+              onRefresh={fetchHistory}
+              onExportExcel={() => handleExport('xlsx')}
+              onExportPdf={() => handleExport('pdf')}
+              isLoading={isLoading}
+              isExportingExcel={isExportingExcel}
+              isExportingPdf={isExportingPdf}
+              disabled={isLoading || !history}
+            />
+          </div>
         }
       />
 

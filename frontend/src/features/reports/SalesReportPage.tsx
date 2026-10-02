@@ -14,6 +14,8 @@ import { ReportEmptyState } from './components/ReportEmptyState';
 import { TimeSeriesBarChart, PaymentBreakdownBar } from './components/ReportCharts';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
+import { ReportExportToolbar } from './components/ReportExportToolbar';
+import { DailySalesPrintModal } from './components/DailySalesPrintModal';
 import {
   reportsApi,
   SalesReportData,
@@ -42,6 +44,29 @@ export const SalesReportPage: React.FC = () => {
   const [salesData, setSalesData] = useState<SalesReportData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    if (format === 'xlsx') setIsExportingExcel(true);
+    if (format === 'pdf') setIsExportingPdf(true);
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      await reportsApi.downloadReportFile(
+        '/reports/sales',
+        { period, startDate, endDate, groupBy, saleType },
+        format,
+        `sales-report-${dateStr}.${format}`
+      );
+    } catch (err: any) {
+      alert(err?.message || `Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setIsExportingExcel(false);
+      setIsExportingPdf(false);
+    }
+  };
 
   const fetchSalesReport = async () => {
     setIsLoading(true);
@@ -158,6 +183,16 @@ export const SalesReportPage: React.FC = () => {
               endDate={endDate}
               onFilterChange={handleFilterChange}
               isLoading={isLoading}
+            />
+            <ReportExportToolbar
+              onRefresh={fetchSalesReport}
+              onExportExcel={() => handleExport('xlsx')}
+              onExportPdf={() => handleExport('pdf')}
+              onPrintThermal={() => setIsPrintModalOpen(true)}
+              isLoading={isLoading}
+              isExportingExcel={isExportingExcel}
+              isExportingPdf={isExportingPdf}
+              disabled={isLoading || !salesData}
             />
           </div>
         }
@@ -346,6 +381,13 @@ export const SalesReportPage: React.FC = () => {
           </div>
         </>
       )}
+
+      <DailySalesPrintModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        salesData={salesData}
+        saleTypeScope={saleType}
+      />
     </div>
   );
 };

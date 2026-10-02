@@ -44,6 +44,13 @@ router.get(
   SalesController.getPrintPayload
 );
 
+// Download A4 Wholesale Tax Invoice PDF
+router.get(
+  '/:id/pdf',
+  authorize(['ADMIN', 'OUTLET']),
+  SalesController.getSalePdf
+);
+
 // Cancel sale and reverse stock (Admin only)
 router.post(
   '/:id/cancel',

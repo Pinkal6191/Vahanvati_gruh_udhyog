@@ -46,10 +46,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const profile = await AuthService.getProfile();
         setUser(profile);
-      } catch (err) {
-        console.warn('Session verification failed, logging out:', err);
-        storageService.clearAuthSession();
-        setUser(null);
+      } catch (err: any) {
+        console.warn('Session verification encountered non-fatal error:', err);
+        const storedUser = storageService.getUser();
+        // If error is transient (network failure, 5xx, timeout), retain stored session
+        if (storedUser && err?.status !== 401) {
+          setUser(storedUser);
+        } else if (!storedUser || err?.status === 401) {
+          storageService.clearAuthSession();
+          setUser(null);
+        }
       } finally {
         setIsLoading(false);
       }

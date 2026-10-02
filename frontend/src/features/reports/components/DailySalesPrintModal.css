@@ -1,0 +1,223 @@
+/* Modal Layout and Paper Preview */
+.daily-thermal-preview-wrap {
+  display: flex;
+  justify-content: center;
+  background: #f1f5f9;
+  padding: 20px 10px;
+  max-height: 70vh;
+  overflow-y: auto;
+  border-radius: 8px;
+}
+
+.daily-preview-paper {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 16px 14px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.daily-thermal-content.thermal-80mm {
+  width: 72mm;
+  font-size: 11px;
+}
+
+.daily-thermal-content.thermal-58mm {
+  width: 48mm;
+  font-size: 9.5px;
+}
+
+.daily-thermal-header {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.daily-company-title {
+  font-size: 14px;
+  font-weight: 800;
+  margin: 0;
+  color: #0f172a;
+}
+
+.daily-company-subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  margin: 1px 0 6px;
+  color: #334155;
+}
+
+.daily-doc-badge {
+  display: inline-block;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.daily-meta-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #475569;
+  margin: 2px 0;
+}
+
+.daily-divider-dashed {
+  border-top: 1px dashed #64748b;
+  margin: 8px 0;
+}
+
+.daily-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #0f172a;
+  text-transform: uppercase;
+  margin: 6px 0 4px;
+  letter-spacing: 0.02em;
+}
+
+.daily-data-table {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.daily-data-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: #1e293b;
+}
+
+.daily-data-row.highlight-net {
+  background: #f8fafc;
+  padding: 3px 0;
+  font-weight: 700;
+  border-top: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cbd5e1;
+  margin: 3px 0;
+}
+
+.daily-text-muted {
+  color: #64748b;
+  font-size: 9.5px;
+}
+
+.daily-thermal-footer {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.daily-footer-note {
+  font-size: 10px;
+  font-weight: 600;
+  color: #334155;
+  margin: 2px 0;
+}
+
+.daily-system-tag {
+  font-size: 8.5px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.daily-print-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.daily-width-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.daily-width-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.daily-toggle-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.daily-toggle-btn.active {
+  background: #1e40af;
+  color: #ffffff;
+  border-color: #1e40af;
+}
+
+.daily-footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ==========================================================
+   PRINT MEDIA RULES
+   ========================================================== */
+#daily-sales-print-root {
+  display: none !important;
+}
+
+@media print {
+  body.daily-sales-print-active #root,
+  body.daily-sales-print-active .modal-backdrop,
+  body.daily-sales-print-active .modal-container {
+    display: none !important;
+  }
+
+  body.daily-sales-print-active #daily-sales-print-root {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  body.daily-sales-print-active #daily-sales-print-root * {
+    visibility: visible !important;
+  }
+
+  body.daily-sales-print-active #daily-sales-print-root .daily-thermal-content {
+    margin: 0 !important;
+    padding: 0 1mm 2mm !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-family: 'Shruti', 'Gujarati Sangam MN', 'Noto Sans Gujarati', 'Nirmala UI', system-ui, -apple-system, sans-serif !important;
+    font-variant-numeric: tabular-nums !important;
+    box-sizing: border-box !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.daily-sales-print-active #daily-sales-print-root .daily-thermal-content.thermal-80mm {
+    width: 72mm !important;
+    max-width: 72mm !important;
+  }
+
+  body.daily-sales-print-active.daily-sales-print-58mm #daily-sales-print-root .daily-thermal-content.thermal-58mm {
+    width: 48mm !important;
+    max-width: 48mm !important;
+    font-size: 8pt !important;
+  }
+}

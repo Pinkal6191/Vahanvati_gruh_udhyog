@@ -13,8 +13,8 @@ import { ReportKpiCard } from './components/ReportKpiCard';
 import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable } from '../../components/tables/DataTable/DataTable';
 import { Badge } from '../../components/ui/Badge/Badge';
-import { Button } from '../../components/ui/Button/Button';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
+import { ReportExportToolbar } from './components/ReportExportToolbar';
 import {
   reportsApi,
   StockReconciliationResponse,
@@ -27,6 +27,27 @@ export const StockReconciliationReportPage: React.FC = () => {
   const [reconciliation, setReconciliation] = useState<StockReconciliationResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    if (format === 'xlsx') setIsExportingExcel(true);
+    if (format === 'pdf') setIsExportingPdf(true);
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      await reportsApi.downloadReportFile(
+        '/reports/stock/reconciliation',
+        {},
+        format,
+        `stock-reconciliation-${dateStr}.${format}`
+      );
+    } catch (err: any) {
+      alert(err?.message || `Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setIsExportingExcel(false);
+      setIsExportingPdf(false);
+    }
+  };
 
   const fetchReconciliation = async () => {
     setIsLoading(true);
@@ -119,15 +140,15 @@ export const StockReconciliationReportPage: React.FC = () => {
         title="Stock Parity & Reconciliation Audit"
         subtitle="Authoritative zero-drift mathematical verification: Cached balance vs. full movement ledger history."
         actions={
-          <Button
-            variant="outline"
-            leftIcon={<RefreshCw size={15} />}
-            onClick={fetchReconciliation}
+          <ReportExportToolbar
+            onRefresh={fetchReconciliation}
+            onExportExcel={() => handleExport('xlsx')}
+            onExportPdf={() => handleExport('pdf')}
             isLoading={isLoading}
-            style={{ height: '40px' }}
-          >
-            Re-Audit Ledgers
-          </Button>
+            isExportingExcel={isExportingExcel}
+            isExportingPdf={isExportingPdf}
+            disabled={isLoading || !reconciliation}
+          />
         }
       />
 

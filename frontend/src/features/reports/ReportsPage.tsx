@@ -19,6 +19,7 @@ import { PaymentBreakdownBar } from './components/ReportCharts';
 import { Card } from '../../components/ui/Card/Card';
 import { Button } from '../../components/ui/Button/Button';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
+import { ReportExportToolbar } from './components/ReportExportToolbar';
 import { useAuth } from '../../hooks/useAuth';
 import { hasRole } from '../../utils/rbac';
 import {
@@ -40,6 +41,27 @@ export const ReportsPage: React.FC = () => {
   const [summary, setSummary] = useState<BusinessSummaryResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    if (format === 'xlsx') setIsExportingExcel(true);
+    if (format === 'pdf') setIsExportingPdf(true);
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      await reportsApi.downloadReportFile(
+        '/reports/business-summary',
+        { period, startDate, endDate },
+        format,
+        `business-summary-${dateStr}.${format}`
+      );
+    } catch (err: any) {
+      alert(err?.message || `Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setIsExportingExcel(false);
+      setIsExportingPdf(false);
+    }
+  };
 
   const isAdmin = hasRole(user, ['ADMIN']);
   const isOutlet = hasRole(user, ['OUTLET']);
@@ -112,13 +134,24 @@ export const ReportsPage: React.FC = () => {
         title="Reports & Analytics"
         subtitle="Authoritative executive overview: Consolidated sales, returns, production yields, inventory health, and cash flow."
         actions={
-          <ReportDateFilter
-            period={period}
-            startDate={startDate}
-            endDate={endDate}
-            onFilterChange={handleFilterChange}
-            isLoading={isLoading}
-          />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <ReportDateFilter
+              period={period}
+              startDate={startDate}
+              endDate={endDate}
+              onFilterChange={handleFilterChange}
+              isLoading={isLoading}
+            />
+            <ReportExportToolbar
+              onRefresh={fetchSummary}
+              onExportExcel={() => handleExport('xlsx')}
+              onExportPdf={() => handleExport('pdf')}
+              isLoading={isLoading}
+              isExportingExcel={isExportingExcel}
+              isExportingPdf={isExportingPdf}
+              disabled={isLoading || !summary}
+            />
+          </div>
         }
       />
 

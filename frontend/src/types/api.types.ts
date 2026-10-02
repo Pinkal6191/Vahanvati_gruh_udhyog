@@ -23,4 +23,5 @@ export interface PaginationMeta {
 export interface RequestOptions extends RequestInit {
   timeout?: number;
   skipAuth?: boolean;
+  _isRetry?: boolean;
 }

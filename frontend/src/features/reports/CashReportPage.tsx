@@ -15,6 +15,7 @@ import { ReportKpiCard } from './components/ReportKpiCard';
 import { ReportEmptyState } from './components/ReportEmptyState';
 import { DataTable, ColumnDef } from '../../components/tables/DataTable/DataTable';
 import { ErrorState } from '../../components/common/ErrorState/ErrorState';
+import { ReportExportToolbar } from './components/ReportExportToolbar';
 import { Button } from '../../components/ui/Button/Button';
 import { Badge } from '../../components/ui/Badge/Badge';
 import {
@@ -38,7 +39,9 @@ export const CashReportPage: React.FC = () => {
 
   const [data, setData] = useState<CashReportResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [isExportingCsv, setIsExportingCsv] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Print modal state for reprint
@@ -80,18 +83,24 @@ export const CashReportPage: React.FC = () => {
     setPage(1);
   };
 
-  const handleDownloadCsv = async () => {
+  const handleExportFile = async (format: 'xlsx' | 'pdf' | 'csv') => {
+    if (format === 'xlsx') setIsExportingExcel(true);
+    if (format === 'pdf') setIsExportingPdf(true);
+    if (format === 'csv') setIsExportingCsv(true);
     try {
-      setIsDownloading(true);
       const dateTag = new Date().toISOString().slice(0, 10);
-      await reportsApi.downloadCashReportCsv(
+      await reportsApi.downloadReportFile(
+        '/reports/cash-sales',
         { period, startDate, endDate, saleType },
-        `cash-bills-report-${dateTag}.csv`
+        format,
+        `cash-bills-report-${dateTag}.${format}`
       );
     } catch (err: any) {
-      alert(`CSV export failed: ${err.message || 'Unknown error'}`);
+      alert(`Export failed: ${err.message || 'Unknown error'}`);
     } finally {
-      setIsDownloading(false);
+      setIsExportingExcel(false);
+      setIsExportingPdf(false);
+      setIsExportingCsv(false);
     }
   };
 
@@ -254,15 +263,17 @@ export const CashReportPage: React.FC = () => {
               isLoading={isLoading}
             />
 
-            <Button
-              variant="outline"
-              leftIcon={<Download size={15} />}
-              onClick={handleDownloadCsv}
-              disabled={isDownloading || isLoading || items.length === 0}
-              style={{ height: '40px' }}
-            >
-              {isDownloading ? 'Exporting...' : 'Export CSV'}
-            </Button>
+            <ReportExportToolbar
+              onRefresh={fetchCashReport}
+              onExportExcel={() => handleExportFile('xlsx')}
+              onExportPdf={() => handleExportFile('pdf')}
+              onExportCsv={() => handleExportFile('csv')}
+              isLoading={isLoading}
+              isExportingExcel={isExportingExcel}
+              isExportingPdf={isExportingPdf}
+              isExportingCsv={isExportingCsv}
+              disabled={isLoading || items.length === 0}
+            />
           </div>
         }
       />

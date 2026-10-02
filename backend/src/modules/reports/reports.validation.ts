@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { PaymentMode, ProductionStatus, ReturnStatus, RefundPaymentMode, MovementType, SaleType, CustomerType } from '@prisma/client';
 
+const formatSchema = z.enum(['json', 'csv', 'xlsx', 'pdf']).default('json');
+
 export const salesReportQuerySchema = z.object({
   period: z.enum(['today', 'yesterday', 'this_week', 'this_month', 'this_year', 'custom']).optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
@@ -9,6 +11,7 @@ export const salesReportQuerySchema = z.object({
   paymentMode: z.nativeEnum(PaymentMode).optional(),
   customerId: z.string().uuid('Valid customer ID required').optional(),
   saleType: z.nativeEnum(SaleType).optional(),
+  format: formatSchema,
 });
 
 export const productReportQuerySchema = z.object({
@@ -22,6 +25,7 @@ export const productReportQuerySchema = z.object({
   order: z.enum(['asc', 'desc']).default('desc'),
   limit: z.coerce.number().min(1).max(100).default(50),
   page: z.coerce.number().min(1).default(1),
+  format: formatSchema,
 });
 
 export const customerReportQuerySchema = z.object({
@@ -35,12 +39,14 @@ export const customerReportQuerySchema = z.object({
   order: z.enum(['asc', 'desc']).default('desc'),
   limit: z.coerce.number().min(1).max(100).default(50),
   page: z.coerce.number().min(1).default(1),
+  format: formatSchema,
 });
 
 export const customerHistoryQuerySchema = z.object({
   saleType: z.nativeEnum(SaleType).optional(),
   limit: z.coerce.number().min(1).max(100).default(20),
   page: z.coerce.number().min(1).default(1),
+  format: formatSchema,
 });
 
 export const productionReportQuerySchema = z.object({
@@ -50,6 +56,7 @@ export const productionReportQuerySchema = z.object({
   productId: z.string().uuid('Valid product ID required').optional(),
   status: z.nativeEnum(ProductionStatus).optional(),
   groupBy: z.enum(['DAY', 'WEEK', 'MONTH']).default('DAY'),
+  format: formatSchema,
 });
 
 export const stockReportQuerySchema = z.object({
@@ -58,6 +65,7 @@ export const stockReportQuerySchema = z.object({
   subcategoryId: z.string().uuid('Valid subcategory ID required').optional(),
   limit: z.coerce.number().min(1).max(100).default(50),
   page: z.coerce.number().min(1).default(1),
+  format: formatSchema,
 });
 
 export const stockMovementsReportQuerySchema = z.object({
@@ -68,6 +76,11 @@ export const stockMovementsReportQuerySchema = z.object({
   movementType: z.nativeEnum(MovementType).optional(),
   limit: z.coerce.number().min(1).max(100).default(50),
   page: z.coerce.number().min(1).default(1),
+  format: formatSchema,
+});
+
+export const stockReconciliationReportQuerySchema = z.object({
+  format: formatSchema,
 });
 
 export const returnsReportQuerySchema = z.object({
@@ -78,6 +91,7 @@ export const returnsReportQuerySchema = z.object({
   status: z.nativeEnum(ReturnStatus).optional(),
   refundPaymentMode: z.nativeEnum(RefundPaymentMode).optional(),
   saleType: z.nativeEnum(SaleType).optional(),
+  format: formatSchema,
 });
 
 export const businessSummaryQuerySchema = z.object({
@@ -86,6 +100,7 @@ export const businessSummaryQuerySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional(),
   saleType: z.nativeEnum(SaleType).optional(),
+  format: formatSchema,
 });
 
 export type SalesReportQuery = z.infer<typeof salesReportQuerySchema>;
@@ -95,6 +110,7 @@ export type CustomerHistoryQuery = z.infer<typeof customerHistoryQuerySchema>;
 export type ProductionReportQuery = z.infer<typeof productionReportQuerySchema>;
 export type StockReportQuery = z.infer<typeof stockReportQuerySchema>;
 export type StockMovementsReportQuery = z.infer<typeof stockMovementsReportQuerySchema>;
+export type StockReconciliationReportQuery = z.infer<typeof stockReconciliationReportQuerySchema>;
 export type ReturnsReportQuery = z.infer<typeof returnsReportQuerySchema>;
 export type BusinessSummaryQuery = z.infer<typeof businessSummaryQuerySchema>;
 
@@ -113,7 +129,7 @@ export const statutorySalesReportQuerySchema = z.object({
   paymentMode: z.preprocess(emptyToUndefined, z.nativeEnum(PaymentMode).optional()).optional(),
   gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean().optional()).optional(),
   status: z.preprocess(emptyToUndefined, z.enum(['ALL', 'COMPLETED', 'CANCELLED']).optional()).default('ALL'),
-  format: z.enum(['json', 'csv']).default('json'),
+  format: formatSchema,
 });
 
 export const statutoryItemizedReportQuerySchema = z.object({
@@ -124,7 +140,7 @@ export const statutoryItemizedReportQuerySchema = z.object({
   customerType: z.preprocess(emptyToUndefined, z.nativeEnum(CustomerType).optional()).optional(),
   gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean().optional()).optional(),
   status: z.preprocess(emptyToUndefined, z.enum(['ALL', 'COMPLETED', 'CANCELLED']).optional()).default('ALL'),
-  format: z.enum(['json', 'csv']).default('json'),
+  format: formatSchema,
 });
 
 export const statutoryReturnsReportQuerySchema = z.object({
@@ -135,7 +151,7 @@ export const statutoryReturnsReportQuerySchema = z.object({
   customerType: z.preprocess(emptyToUndefined, z.nativeEnum(CustomerType).optional()).optional(),
   refundPaymentMode: z.preprocess(emptyToUndefined, z.nativeEnum(RefundPaymentMode).optional()).optional(),
   status: z.preprocess((val) => (val === '' || val === 'ALL' ? undefined : val), z.nativeEnum(ReturnStatus).optional()).optional(),
-  format: z.enum(['json', 'csv']).default('json'),
+  format: formatSchema,
 });
 
 export const statutoryGstSummaryQuerySchema = z.object({
@@ -145,7 +161,7 @@ export const statutoryGstSummaryQuerySchema = z.object({
   saleType: z.preprocess(emptyToUndefined, z.nativeEnum(SaleType).optional()).optional(),
   customerType: z.preprocess(emptyToUndefined, z.nativeEnum(CustomerType).optional()).optional(),
   gstinOnly: z.preprocess((val) => val === 'true' || val === true, z.boolean().optional()).optional(),
-  format: z.enum(['json', 'csv']).default('json'),
+  format: formatSchema,
 });
 
 export type StatutorySalesReportQuery = z.infer<typeof statutorySalesReportQuerySchema>;
@@ -164,7 +180,7 @@ export const cashReportQuerySchema = z.object({
   customerId: z.preprocess(emptyToUndefined, z.string().uuid('Valid customer ID required').optional()).optional(),
   limit: z.coerce.number().min(1).max(200).default(50),
   page: z.coerce.number().min(1).default(1),
-  format: z.enum(['json', 'csv']).default('json'),
+  format: formatSchema,
 });
 
 export type CashReportQuery = z.infer<typeof cashReportQuerySchema>;

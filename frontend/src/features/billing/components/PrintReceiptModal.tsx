@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, Loader2 } from 'lucide-react';
+import { Printer, Loader2, Download } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal/Modal';
 import { Button } from '../../../components/ui/Button/Button';
 import { BillingApi, ThermalPrintPayload } from '../billing.api';
+import { reportsApi } from '../../reports/reports.api';
 import { formatCurrency, formatDateTime, formatAmountInWords } from '../../../utils/formatters';
 
 export interface PrintReceiptModalProps {
@@ -20,11 +21,18 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
   const [payload, setPayload] = useState<ThermalPrintPayload | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [wholesalePrintMode, setWholesalePrintMode] = useState<'a4' | 'thermal'>('a4');
+  const [thermalWidth, setThermalWidth] = useState<'80mm' | '58mm'>('80mm');
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const isWholesale = payload?.invoice?.saleType === 'WHOLESALE';
 
   useEffect(() => {
     if (!isOpen || !saleId) {
       setPayload(null);
+      setWholesalePrintMode('a4');
+      setThermalWidth('80mm');
       return;
     }
 
@@ -54,27 +62,43 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
   useEffect(() => {
     if (isOpen && payload) {
       document.body.classList.add('pos-print-active');
-      if (payload.invoice.saleType === 'WHOLESALE') {
-        document.body.classList.add('pos-print-wholesale');
-        document.body.classList.remove('pos-print-thermal');
-      } else {
+      const isThermal = !isWholesale || wholesalePrintMode === 'thermal';
+      if (isThermal) {
         document.body.classList.add('pos-print-thermal');
         document.body.classList.remove('pos-print-wholesale');
+        if (thermalWidth === '58mm') {
+          document.body.classList.add('pos-print-58mm');
+        } else {
+          document.body.classList.remove('pos-print-58mm');
+        }
+      } else {
+        document.body.classList.add('pos-print-wholesale');
+        document.body.classList.remove('pos-print-thermal', 'pos-print-58mm');
       }
     } else {
-      document.body.classList.remove('pos-print-active', 'pos-print-wholesale', 'pos-print-thermal');
+      document.body.classList.remove('pos-print-active', 'pos-print-wholesale', 'pos-print-thermal', 'pos-print-58mm');
     }
 
     return () => {
-      document.body.classList.remove('pos-print-active', 'pos-print-wholesale', 'pos-print-thermal');
+      document.body.classList.remove('pos-print-active', 'pos-print-wholesale', 'pos-print-thermal', 'pos-print-58mm');
     };
-  }, [isOpen, payload]);
+  }, [isOpen, payload, isWholesale, wholesalePrintMode, thermalWidth]);
 
   const handleTriggerPrint = () => {
     window.print();
   };
 
-  const isWholesale = payload?.invoice?.saleType === 'WHOLESALE';
+  const handleDownloadPdf = async () => {
+    if (!saleId || !payload) return;
+    setIsDownloadingPdf(true);
+    try {
+      await reportsApi.downloadInvoicePdf(saleId, payload.invoice.billNumber);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to download invoice PDF.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
 
   const renderWholesaleContent = () => {
@@ -410,25 +434,128 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={isWholesale ? 'Print Wholesale Tax Invoice (A4)' : 'Print Invoice Receipt'}
-        size={isWholesale ? 'lg' : 'md'}
+        title={isWholesale ? 'Wholesale Tax Invoice & Receipt' : 'Print Invoice Receipt'}
+        size={isWholesale && wholesalePrintMode === 'a4' ? 'lg' : 'md'}
         footer={
           <div className="pos-print-modal-footer">
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
+            {isWholesale && (
+              <Button
+                variant="secondary"
+                leftIcon={<Download size={16} />}
+                onClick={handleDownloadPdf}
+                disabled={!payload || isLoading || isDownloadingPdf}
+              >
+                {isDownloadingPdf ? 'Downloading...' : 'Download A4 PDF'}
+              </Button>
+            )}
             <Button
               variant="primary"
               leftIcon={<Printer size={16} />}
               onClick={handleTriggerPrint}
               disabled={!payload || isLoading}
             >
-              {isWholesale ? 'Print A4 Invoice (Ctrl+P)' : 'Print Receipt (Ctrl+P)'}
+              {isWholesale
+                ? wholesalePrintMode === 'a4'
+                  ? 'Print A4 Invoice (Ctrl+P)'
+                  : `Print Thermal (${thermalWidth})`
+                : 'Print Receipt (Ctrl+P)'}
             </Button>
           </div>
         }
       >
-        <div ref={containerRef} className={`pos-print-preview-container ${isWholesale ? 'preview-a4' : ''}`}>
+        <div ref={containerRef} className={`pos-print-preview-container ${isWholesale && wholesalePrintMode === 'a4' ? 'preview-a4' : ''}`}>
+          {isWholesale && (
+            <div
+              className="wholesale-format-selector"
+              style={{
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '14px',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                borderBottom: '1px solid #e2e8f0',
+                paddingBottom: '10px',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  type="button"
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '4px',
+                    border: '1px solid #cbd5e1',
+                    background: wholesalePrintMode === 'a4' ? '#1e40af' : '#ffffff',
+                    color: wholesalePrintMode === 'a4' ? '#ffffff' : '#334155',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setWholesalePrintMode('a4')}
+                >
+                  A4 Corporate Invoice
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '4px',
+                    border: '1px solid #cbd5e1',
+                    background: wholesalePrintMode === 'thermal' ? '#1e40af' : '#ffffff',
+                    color: wholesalePrintMode === 'thermal' ? '#ffffff' : '#334155',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setWholesalePrintMode('thermal')}
+                >
+                  Compact Thermal Slip
+                </button>
+              </div>
+
+              {wholesalePrintMode === 'thermal' && (
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: '#475569', fontWeight: 500 }}>Width:</span>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid #cbd5e1',
+                      background: thermalWidth === '80mm' ? '#1e40af' : '#ffffff',
+                      color: thermalWidth === '80mm' ? '#ffffff' : '#334155',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => setThermalWidth('80mm')}
+                  >
+                    80mm
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid #cbd5e1',
+                      background: thermalWidth === '58mm' ? '#1e40af' : '#ffffff',
+                      color: thermalWidth === '58mm' ? '#ffffff' : '#334155',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => setThermalWidth('58mm')}
+                  >
+                    58mm
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {isLoading ? (
             <div className="pos-print-loading">
               <Loader2 size={32} className="animate-spin" />
@@ -439,12 +566,12 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
               <p>{error}</p>
             </div>
           ) : payload ? (
-            isWholesale ? (
+            isWholesale && wholesalePrintMode === 'a4' ? (
               <div className="pos-a4-invoice pos-screen-invoice">
                 {renderWholesaleContent()}
               </div>
             ) : (
-              <div className="pos-thermal-receipt pos-screen-receipt">
+              <div className={`pos-thermal-receipt pos-screen-receipt ${thermalWidth === '58mm' ? 'thermal-58mm' : ''}`}>
                 {renderThermalContent()}
               </div>
             )
@@ -457,16 +584,16 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({
         <div id="pos-print-root" aria-hidden="true">
           <style>{`
             @page {
-              size: ${isWholesale ? 'A4 portrait' : 'portrait'};
-              margin: ${isWholesale ? '8mm 10mm' : '0'};
+              size: ${isWholesale && wholesalePrintMode === 'a4' ? 'A4 portrait' : 'portrait'};
+              margin: ${isWholesale && wholesalePrintMode === 'a4' ? '8mm 10mm' : '0'};
             }
           `}</style>
-          {isWholesale ? (
+          {isWholesale && wholesalePrintMode === 'a4' ? (
             <div className="pos-a4-invoice" id="pos-printable-receipt">
               {renderWholesaleContent()}
             </div>
           ) : (
-            <div className="pos-thermal-receipt" id="pos-printable-receipt">
+            <div className={`pos-thermal-receipt ${thermalWidth === '58mm' ? 'thermal-58mm' : ''}`} id="pos-printable-receipt">
               {renderThermalContent()}
             </div>
           )}

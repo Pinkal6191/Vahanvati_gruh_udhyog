@@ -28,9 +28,9 @@ async function runStep8SalesReturnsTests() {
   const baseUrl = `http://localhost:${port}/api/v1`;
 
   // 2. Fetch seed users & tokens
-  const adminAuth = await AuthService.login({ username: 'admin', password: 'admin123' });
-  const outletAuth = await AuthService.login({ username: 'outlet', password: 'outlet123' });
-  const prodAuth = await AuthService.login({ username: 'production', password: 'prod123' });
+  const adminAuth = await AuthService.login({ username: 'admin', password: 'admin123' }).catch(() => AuthService.login({ username: 'admin', password: 'Admin@123' }));
+  const outletAuth = await AuthService.login({ username: 'outlet', password: 'outlet123' }).catch(() => AuthService.login({ username: 'outlet', password: 'Outlet@123' }));
+  const prodAuth = await AuthService.login({ username: 'production', password: 'prod123' }).catch(() => AuthService.login({ username: 'production', password: 'Production@123' }));
 
   const adminToken = adminAuth.tokens.accessToken;
   const outletToken = outletAuth.tokens.accessToken;
