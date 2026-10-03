@@ -32,7 +32,7 @@ export interface CartSummaryPaneProps {
   grandTotal: number;
   paidAmount: number;
   changeAmount: number;
-  paymentMode: PaymentMode;
+  paymentMode: PaymentMode | null;
   transactionRef: string;
   isSubmitting: boolean;
   isResolvingPrices: boolean;
@@ -293,6 +293,9 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
                   placeholder="0"
                   value={discountAmount || ''}
                   onChange={(e) => onSetDiscountAmount(Number(e.target.value))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.preventDefault();
+                  }}
                 />
               </div>
               <span className="pos-num-val text-success">
@@ -319,12 +322,15 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
 
         {/* 4. PAYMENT METHOD TOGGLE & TENDER */}
         <div className="pos-payment-block">
-          <label className="pos-payment-label">Payment Mode</label>
+          <label className="pos-payment-label">Payment Mode *</label>
           <div className="pos-payment-methods-grid">
             <button
               type="button"
               className={`pos-pay-mode-btn ${paymentMode === 'CASH' ? 'active' : ''}`}
-              onClick={() => onSetPaymentMode('CASH')}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSetPaymentMode('CASH');
+              }}
             >
               <Banknote size={18} />
               <span>Cash</span>
@@ -332,7 +338,10 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
             <button
               type="button"
               className={`pos-pay-mode-btn ${paymentMode === 'UPI' ? 'active' : ''}`}
-              onClick={() => onSetPaymentMode('UPI')}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSetPaymentMode('UPI');
+              }}
             >
               <QrCode size={18} />
               <span>UPI / QR</span>
@@ -340,7 +349,10 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
             <button
               type="button"
               className={`pos-pay-mode-btn ${paymentMode === 'CARD' ? 'active' : ''}`}
-              onClick={() => onSetPaymentMode('CARD')}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSetPaymentMode('CARD');
+              }}
             >
               <CreditCard size={18} />
               <span>Card</span>
@@ -348,7 +360,10 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
             <button
               type="button"
               className={`pos-pay-mode-btn ${paymentMode === 'OTHER' ? 'active' : ''}`}
-              onClick={() => onSetPaymentMode('OTHER')}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSetPaymentMode('OTHER');
+              }}
             >
               <Layers size={18} />
               <span>Credit/Other</span>
@@ -375,6 +390,9 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
                     placeholder={String(grandTotal)}
                     value={paidAmount || ''}
                     onChange={(e) => onSetPaidAmount(Number(e.target.value))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.preventDefault();
+                    }}
                     min={grandTotal}
                   />
                 </div>
@@ -418,7 +436,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
                 </div>
               )}
             </div>
-          ) : (
+          ) : paymentMode ? (
             <div className="pos-non-cash-row">
               <input
                 type="text"
@@ -426,9 +444,12 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
                 placeholder="Transaction Ref / UTR (Optional)"
                 value={transactionRef}
                 onChange={(e) => onSetTransactionRef(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.preventDefault();
+                }}
               />
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* 5. COMPLETE BILL ACTION BUTTON */}
@@ -444,7 +465,11 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
           type="button"
           className="pos-complete-bill-btn"
           disabled={items.length === 0 || isSubmitting || hasUnpricedItems}
-          onClick={onSubmitSale}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onSubmitSale();
+          }}
         >
           {isSubmitting ? (
             <>
@@ -453,7 +478,7 @@ export const CartSummaryPane: React.FC<CartSummaryPaneProps> = ({
             </>
           ) : (
             <>
-              <span>Complete Bill • {formatCurrency(grandTotal)}</span>
+              <span>Generate Bill • {formatCurrency(grandTotal)}</span>
               <kbd className="pos-btn-kbd">Ctrl+↵</kbd>
             </>
           )}

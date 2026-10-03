@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { CustomerType } from '../../../types/common.types';
 import { Customer } from '../../customers/customers.api';
 import { Product } from '../../products/products.api';
@@ -35,7 +35,7 @@ export interface UseBillingCartReturn {
   saleType: SaleType;
   discountAmount: number;
   paidAmount: number;
-  paymentMode: PaymentMode;
+  paymentMode: PaymentMode | null;
   transactionRef: string;
   isSubmitting: boolean;
   isResolvingPrices: boolean;
@@ -52,7 +52,7 @@ export interface UseBillingCartReturn {
   setSaleType: (type: SaleType) => void;
   setDiscountAmount: (val: number) => void;
   setPaidAmount: (val: number) => void;
-  setPaymentMode: (mode: PaymentMode) => void;
+  setPaymentMode: (mode: PaymentMode | null) => void;
   setTransactionRef: (ref: string) => void;
   addToCart: (
     product: Product,
@@ -78,9 +78,10 @@ export function useBillingCart(): UseBillingCartReturn {
   const [saleType, setSaleTypeState] = useState<SaleType>('RETAIL'); // Authoritative transaction selector
   const [discountAmount, setDiscountAmountState] = useState<number>(0);
   const [paidAmount, setPaidAmountState] = useState<number>(0);
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('CASH');
+  const [paymentMode, setPaymentMode] = useState<PaymentMode | null>(null);
   const [transactionRef, setTransactionRef] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const submittingLockRef = useRef<boolean>(false);
   const [isResolvingPrices, setIsResolvingPrices] = useState<boolean>(false);
 
   // Missing price indicators
@@ -393,18 +394,23 @@ export function useBillingCart(): UseBillingCartReturn {
     setItems([]);
     setDiscountAmountState(0);
     setPaidAmountState(0);
+    setPaymentMode(null);
     setTransactionRef('');
     setServerSubtotal(0);
   }, []);
 
   // Complete Bill Checkout with Duplicate Submission Guard
   const submitSale = useCallback(async (): Promise<SaleRecord> => {
-    if (isSubmitting) {
+    if (submittingLockRef.current || isSubmitting) {
       throw new Error('Transaction is already being processed. Please wait...');
     }
 
     if (items.length === 0) {
       throw new Error('Cart is empty. Please select products before completing the bill.');
+    }
+
+    if (!paymentMode) {
+      throw new Error('Please select a payment mode before generating the bill.');
     }
 
     // Missing price validation: prevent checkout while unpriced
@@ -423,6 +429,7 @@ export function useBillingCart(): UseBillingCartReturn {
       );
     }
 
+    submittingLockRef.current = true;
     setIsSubmitting(true);
     try {
       // Sends ONLY business inputs: no unitRate, no lineAmount, no subtotalAmount, no taxAmount, no finalTotalAmount
@@ -450,6 +457,7 @@ export function useBillingCart(): UseBillingCartReturn {
       const completedSale = await BillingApi.createSale(payload);
       return completedSale;
     } finally {
+      submittingLockRef.current = false;
       setIsSubmitting(false);
     }
   }, [

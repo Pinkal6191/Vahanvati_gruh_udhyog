@@ -37,6 +37,9 @@ export const BillingPage: React.FC = () => {
   // Mobile cart drawer toggle
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
 
+  // Synchronous submission lock to prevent duplicate clicks/taps/keypresses
+  const isSubmittingRef = useRef<boolean>(false);
+
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -50,7 +53,7 @@ export const BillingPage: React.FC = () => {
       // Ctrl/Cmd + Enter -> Complete Bill
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        if (cart.items.length > 0 && !cart.isSubmitting) {
+        if (cart.items.length > 0 && !cart.isSubmitting && !isSubmittingRef.current) {
           handleCompleteSale();
         }
         return;
@@ -96,6 +99,32 @@ export const BillingPage: React.FC = () => {
 
   // Submit Sale Handler
   const handleCompleteSale = async () => {
+    // 1. Guard against duplicate submission (double-click, double-tap, rapid key presses)
+    if (isSubmittingRef.current || cart.isSubmitting) {
+      return;
+    }
+
+    // 2. Validate Cart is not empty
+    if (cart.items.length === 0) {
+      addToast({
+        title: 'Cart is Empty',
+        message: 'Cart is empty. Please select products before completing the bill.',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    // 3. MANDATORY VALIDATION: Operator MUST explicitly select a payment mode
+    if (!cart.paymentMode) {
+      addToast({
+        title: 'Payment Mode Required',
+        message: 'Please select a payment mode before generating the bill.',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    isSubmittingRef.current = true;
     try {
       const sale = await cart.submitSale();
       setCompletedSale(sale);
@@ -112,6 +141,8 @@ export const BillingPage: React.FC = () => {
         message: err.message || 'Could not complete sale transaction.',
         variant: 'error',
       });
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 

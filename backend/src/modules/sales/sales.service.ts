@@ -117,7 +117,17 @@ export class SalesService {
     const discountAmount = Math.round(Number(input.discountAmount || 0) * 100) / 100;
     const finalTotalAmount = Math.max(0, Math.round(resolvedCart.finalTotalAmount - discountAmount));
 
-    // 3. Validate Payments Sum against authoritative server-calculated total
+    // 3. Mandatory Payment Mode Validation: payments array must exist and every entry must have a valid PaymentMode
+    if (
+      !input.payments ||
+      !Array.isArray(input.payments) ||
+      input.payments.length === 0 ||
+      input.payments.some((p) => !p.paymentMode || !Object.values(PaymentMode).includes(p.paymentMode))
+    ) {
+      throw new BadRequestError('Payment mode is required and must be CASH, UPI, CARD, or OTHER');
+    }
+
+    // Validate Payments Sum against authoritative server-calculated total
     const totalPaymentsReceived = Math.round(input.payments.reduce((acc, p) => acc + p.amount, 0) * 100) / 100;
     if (totalPaymentsReceived < finalTotalAmount) {
       throw new BadRequestError(
