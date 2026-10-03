@@ -435,6 +435,17 @@
     background: transparent !important;
   }
 
+  /* Isolate daily sales thermal print from statutory report layout */
+  body.daily-sales-print-active .app-layout,
+  body.daily-sales-print-active .app-main,
+  body.daily-sales-print-active .app-content,
+  body.daily-sales-print-active .report-page-container,
+  body.daily-sales-print-active .report-table-card,
+  body.daily-sales-print-active .report-kpi-grid,
+  body.daily-sales-print-active .report-kpi-grid-5 {
+    display: none !important;
+  }
+
   /* Preserve KPI cards in print */
   .report-kpi-grid,
   .report-kpi-grid-5,

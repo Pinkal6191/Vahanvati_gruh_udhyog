@@ -31,12 +31,12 @@ interface ReportHeaderOptions {
 export function addStandardHeader(ws: ExcelJS.Worksheet, options: ReportHeaderOptions, colSpan: number = 6) {
   // Title 1: Company Name
   const row1 = ws.addRow(['VAHANVATI GRUH UDHYOG']);
-  row1.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF1E3A8A' } };
+  row1.font = { name: 'Nirmala UI', size: 16, bold: true, color: { argb: 'FF1E3A8A' } };
   ws.mergeCells(1, 1, 1, Math.max(colSpan, 4));
 
   // Title 2: Report Title
   const row2 = ws.addRow([options.title.toUpperCase()]);
-  row2.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF334155' } };
+  row2.font = { name: 'Nirmala UI', size: 12, bold: true, color: { argb: 'FF334155' } };
   ws.mergeCells(2, 1, 2, Math.max(colSpan, 4));
 
   // Title 3: Metadata / Date Range / Scope
@@ -51,7 +51,7 @@ export function addStandardHeader(ws: ExcelJS.Worksheet, options: ReportHeaderOp
   }
 
   const row3 = ws.addRow([metaParts.join('  |  ')]);
-  row3.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF64748B' } };
+  row3.font = { name: 'Nirmala UI', size: 9, italic: true, color: { argb: 'FF64748B' } };
   ws.mergeCells(3, 1, 3, Math.max(colSpan, 4));
 
   // Empty spacer row
@@ -65,7 +65,7 @@ export function styleHeaderRow(row: ExcelJS.Row) {
       pattern: 'solid',
       fgColor: { argb: 'FF1E3A8A' },
     };
-    cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.font = { name: 'Nirmala UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     cell.border = {
       top: { style: 'thin', color: { argb: 'FF94A3B8' } },
@@ -79,7 +79,7 @@ export function styleHeaderRow(row: ExcelJS.Row) {
 
 export function styleTotalRow(row: ExcelJS.Row) {
   row.eachCell((cell) => {
-    cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+    cell.font = { name: 'Nirmala UI', size: 10, bold: true, color: { argb: 'FF0F172A' } };
     cell.fill = {
       type: 'pattern',
       pattern: 'solid',
@@ -93,11 +93,16 @@ export function styleTotalRow(row: ExcelJS.Row) {
   row.height = 20;
 }
 
-export function autoFitColumns(ws: ExcelJS.Worksheet, minWidth = 12, maxWidth = 40) {
+export function autoFitColumns(ws: ExcelJS.Worksheet, minWidth = 12, maxWidth = 45) {
   ws.columns.forEach((column) => {
     let maxLen = 0;
     column.eachCell?.({ includeEmpty: false }, (cell, rowNumber) => {
-      if (rowNumber <= 3) return; // skip company title merges
+      // Ensure universal Indic/Gujarati font on all cells
+      if (rowNumber > 3 && !cell.font) {
+        cell.font = { name: 'Nirmala UI', size: 10, color: { argb: 'FF1E293B' } };
+      } else if (cell.font && (cell.font.name === 'Arial' || !cell.font.name)) {
+        cell.font = { ...cell.font, name: 'Nirmala UI' };
+      }
       const val = cell.value ? String(cell.value) : '';
       if (val.length > maxLen) {
         maxLen = val.length;
@@ -186,25 +191,29 @@ export async function exportProductSalesReportToExcel(data: any, query: any): Pr
   let totalQty = 0;
   let totalRev = 0;
 
-  if (Array.isArray(data.products)) {
-    data.products.forEach((p: any, idx: number) => {
-      totalQty += Number(p.quantitySold || 0);
-      totalRev += Number(p.totalRevenue || 0);
+  const productList = Array.isArray(data.data) ? data.data : (data.products || []);
+  productList.forEach((p: any, idx: number) => {
+    const qty = Number(p.quantitySold || 0);
+    const rev = Number(p.salesAmount ?? p.totalRevenue ?? 0);
+    totalQty += qty;
+    totalRev += rev;
 
-      ws.addRow([
-        idx + 1,
-        sanitizeCellValue(p.code || ''),
-        sanitizeCellValue(p.productName || ''),
-        sanitizeCellValue(p.categoryName || '—'),
-        sanitizeCellValue(p.subcategoryName || '—'),
-        sanitizeCellValue(p.primaryUnit || 'pc'),
-        Number(p.quantitySold || 0),
-        Number(p.billsCount || 0),
-        Number(p.totalRevenue || 0),
-        Number(p.averagePrice || 0),
-      ]);
-    });
-  }
+    ws.addRow([
+      idx + 1,
+      sanitizeCellValue(p.productCode || p.code || ''),
+      sanitizeCellValue(p.productName || ''),
+      sanitizeCellValue(p.categoryName || '—'),
+      sanitizeCellValue(p.subcategoryName || '—'),
+      sanitizeCellValue(p.unitSymbol || p.primaryUnit || 'pc'),
+      qty,
+      Number(p.billsCount || 0),
+      rev,
+      Number(p.averageSellingRate ?? p.averagePrice ?? (qty > 0 ? rev / qty : 0)),
+    ]);
+  });
+
+  if (data.summary?.totalQuantitySold !== undefined) totalQty = data.summary.totalQuantitySold;
+  if (data.summary?.totalRevenue !== undefined) totalRev = data.summary.totalRevenue;
 
   const totRow = ws.addRow([
     'TOTAL',
@@ -253,24 +262,25 @@ export async function exportCustomerSalesReportToExcel(data: any, query: any): P
   let totalSpend = 0;
   let totalBills = 0;
 
-  if (Array.isArray(data.customers)) {
-    data.customers.forEach((c: any, idx: number) => {
-      totalSpend += Number(c.totalPurchases || 0);
-      totalBills += Number(c.totalBills || 0);
+  const customerList = Array.isArray(data.data) ? data.data : (data.customers || []);
+  customerList.forEach((c: any, idx: number) => {
+    const purchases = Number(c.totalPurchases || 0);
+    const bills = Number(c.billsCount ?? c.totalBills ?? 0);
+    totalSpend += purchases;
+    totalBills += bills;
 
-      ws.addRow([
-        idx + 1,
-        sanitizeCellValue(c.name || 'Walk-in Customer'),
-        sanitizeCellValue(c.mobile || '—'),
-        sanitizeCellValue(c.city || '—'),
-        sanitizeCellValue(c.customerType || 'INDIAN'),
-        Number(c.totalBills || 0),
-        Number(c.totalPurchases || 0),
-        Number(c.averageBillValue || 0),
-        c.lastPurchaseDate ? new Date(c.lastPurchaseDate).toLocaleDateString('en-IN') : '—',
-      ]);
-    });
-  }
+    ws.addRow([
+      idx + 1,
+      sanitizeCellValue(c.customerName || c.name || 'Walk-in Customer'),
+      sanitizeCellValue(c.mobile || '—'),
+      sanitizeCellValue(c.city || '—'),
+      sanitizeCellValue(c.customerType || 'INDIAN'),
+      bills,
+      purchases,
+      Number(c.averageBillValue ?? (bills > 0 ? purchases / bills : 0)),
+      c.lastPurchaseDate ? new Date(c.lastPurchaseDate).toLocaleDateString('en-IN') : '—',
+    ]);
+  });
 
   const totRow = ws.addRow([
     'TOTAL',
@@ -316,19 +326,22 @@ export async function exportCustomerHistoryToExcel(data: any, query: any): Promi
   styleHeaderRow(headerRow);
 
   let total = 0;
-  if (Array.isArray(data.sales)) {
-    data.sales.forEach((s: any) => {
-      total += Number(s.totalAmount || 0);
-      ws.addRow([
-        sanitizeCellValue(s.billNumber),
-        new Date(s.date).toLocaleString('en-IN'),
-        s.saleType,
-        Array.isArray(s.paymentModes) ? s.paymentModes.join(', ') : 'CASH',
-        Number(s.itemsCount || 0),
-        Number(s.totalAmount || 0),
-      ]);
-    });
-  }
+  const salesList = Array.isArray(data.data) ? data.data : (data.sales || []);
+  salesList.forEach((s: any) => {
+    const amt = Number(s.finalTotalAmount ?? s.totalAmount ?? 0);
+    total += amt;
+    const paymentModesStr = s.payments
+      ? s.payments.map((p: any) => p.paymentMode).join(', ')
+      : (Array.isArray(s.paymentModes) ? s.paymentModes.join(', ') : 'CASH');
+    ws.addRow([
+      sanitizeCellValue(s.billNumber),
+      new Date(s.createdAt || s.date).toLocaleString('en-IN'),
+      s.saleType || 'RETAIL',
+      paymentModesStr,
+      Number(s.totalItemsCount ?? s.itemsCount ?? 0),
+      amt,
+    ]);
+  });
 
   const totRow = ws.addRow(['TOTAL', '', '', '', '', round2(total)]);
   styleTotalRow(totRow);
@@ -362,21 +375,23 @@ export async function exportProductionReportToExcel(data: any, _query: any): Pro
   styleHeaderRow(headerRow);
 
   let totalQty = 0;
-  if (Array.isArray(data.batches)) {
-    data.batches.forEach((b: any) => {
-      totalQty += Number(b.quantity || 0);
-      ws.addRow([
-        sanitizeCellValue(b.batchNumber),
-        new Date(b.date).toLocaleDateString('en-IN'),
-        sanitizeCellValue(b.productCode || ''),
-        sanitizeCellValue(b.productName || ''),
-        Number(b.quantity || 0),
-        sanitizeCellValue(b.unit || 'Kg'),
-        b.status,
-        sanitizeCellValue(b.notes || ''),
-      ]);
-    });
-  }
+  const batchList = Array.isArray(data.productBreakdown)
+    ? data.productBreakdown
+    : (Array.isArray(data.batches) ? data.batches : (data.data || []));
+  batchList.forEach((b: any) => {
+    const qty = Number(b.completedQuantity ?? b.quantity ?? 0);
+    totalQty += qty;
+    ws.addRow([
+      sanitizeCellValue(b.batchNumber || b.productCode || '—'),
+      b.date ? new Date(b.date).toLocaleDateString('en-IN') : (data.summary?.period ? String(data.summary.period) : '—'),
+      sanitizeCellValue(b.productCode || ''),
+      sanitizeCellValue(b.productName || ''),
+      qty,
+      sanitizeCellValue(b.unit || 'Kg'),
+      b.status || 'COMPLETED',
+      sanitizeCellValue(b.notes || ''),
+    ]);
+  });
 
   const totRow = ws.addRow(['TOTAL', '', '', '', round2(totalQty), '', '', '']);
   styleTotalRow(totRow);
@@ -413,25 +428,26 @@ export async function exportStockReportToExcel(data: any, _query: any): Promise<
   let totalVal = 0;
   let totalBal = 0;
 
-  if (Array.isArray(data.stock)) {
-    data.stock.forEach((s: any, idx: number) => {
-      totalBal += Number(s.currentBalance || 0);
-      totalVal += Number(s.stockValue || 0);
+  const stockList = Array.isArray(data.data) ? data.data : (data.stock || []);
+  stockList.forEach((s: any, idx: number) => {
+    const bal = Number(s.currentBalance || 0);
+    const val = Number(s.stockValue || 0);
+    totalBal += bal;
+    totalVal += val;
 
-      ws.addRow([
-        idx + 1,
-        sanitizeCellValue(s.code || ''),
-        sanitizeCellValue(s.productName || ''),
-        sanitizeCellValue(s.categoryName || '—'),
-        sanitizeCellValue(s.subcategoryName || '—'),
-        Number(s.currentBalance || 0),
-        Number(s.minimumThreshold || 0),
-        sanitizeCellValue(s.unit || 'Kg'),
-        s.status,
-        Number(s.stockValue || 0),
-      ]);
-    });
-  }
+    ws.addRow([
+      idx + 1,
+      sanitizeCellValue(s.productCode || s.code || ''),
+      sanitizeCellValue(s.productName || ''),
+      sanitizeCellValue(s.categoryName || '—'),
+      sanitizeCellValue(s.subcategoryName || '—'),
+      bal,
+      Number(s.minimumThreshold ?? 0),
+      sanitizeCellValue(s.unitSymbol || s.unit || 'Kg'),
+      s.stockStatus || s.status || 'IN_STOCK',
+      val,
+    ]);
+  });
 
   const totRow = ws.addRow(['TOTAL', '', '', '', '', round2(totalBal), '', '', '', round2(totalVal)]);
   styleTotalRow(totRow);
@@ -467,23 +483,22 @@ export async function exportStockMovementsToExcel(data: any, _query: any): Promi
   ]);
   styleHeaderRow(headerRow);
 
-  if (Array.isArray(data.movements)) {
-    data.movements.forEach((m: any, idx: number) => {
-      ws.addRow([
-        idx + 1,
-        new Date(m.date).toLocaleString('en-IN'),
-        sanitizeCellValue(m.code || ''),
-        sanitizeCellValue(m.productName || ''),
-        m.movementType,
-        m.referenceType || '—',
-        Number(m.quantityDelta || 0),
-        Number(m.balanceAfter || 0),
-        sanitizeCellValue(m.unit || 'Kg'),
-        sanitizeCellValue(m.notes || ''),
-        sanitizeCellValue(m.user?.fullName || m.user?.username || 'System'),
-      ]);
-    });
-  }
+  const movementList = Array.isArray(data.data) ? data.data : (data.movements || []);
+  movementList.forEach((m: any, idx: number) => {
+    ws.addRow([
+      idx + 1,
+      new Date(m.createdAt || m.date).toLocaleString('en-IN'),
+      sanitizeCellValue(m.product?.code || m.code || ''),
+      sanitizeCellValue(m.product?.name || m.productName || ''),
+      m.movementType,
+      m.referenceType || '—',
+      Number(m.quantityDelta || 0),
+      Number(m.balanceAfter || 0),
+      sanitizeCellValue(m.unit || 'Kg'),
+      sanitizeCellValue(m.notes || ''),
+      sanitizeCellValue(m.user?.fullName || m.user?.username || 'System'),
+    ]);
+  });
 
   autoFitColumns(ws);
   return Buffer.from(await wb.xlsx.writeBuffer());
@@ -514,22 +529,22 @@ export async function exportStockReconciliationToExcel(data: any, _query: any): 
   ]);
   styleHeaderRow(headerRow);
 
-  if (Array.isArray(data.items)) {
-    data.items.forEach((item: any, idx: number) => {
-      ws.addRow([
-        idx + 1,
-        sanitizeCellValue(item.code || ''),
-        sanitizeCellValue(item.productName || ''),
-        sanitizeCellValue(item.categoryName || '—'),
-        Number(item.theoreticalBalance || 0),
-        Number(item.physicalCount ?? item.theoreticalBalance ?? 0),
-        Number(item.discrepancy || 0),
-        sanitizeCellValue(item.unit || 'Kg'),
-        item.discrepancy === 0 ? 'MATCHED' : 'DISCREPANCY',
-        item.lastAuditedAt ? new Date(item.lastAuditedAt).toLocaleDateString('en-IN') : '—',
-      ]);
-    });
-  }
+  const recList = Array.isArray(data.data) ? data.data : (data.items || []);
+  recList.forEach((item: any, idx: number) => {
+    const diff = Number(item.discrepancy ?? item.difference ?? 0);
+    ws.addRow([
+      idx + 1,
+      sanitizeCellValue(item.productCode || item.code || ''),
+      sanitizeCellValue(item.productName || ''),
+      sanitizeCellValue(item.categoryName || '—'),
+      Number(item.cachedBalance ?? item.theoreticalBalance ?? 0),
+      Number(item.ledgerTotal ?? item.physicalCount ?? item.theoreticalBalance ?? 0),
+      diff,
+      sanitizeCellValue(item.unit || 'Kg'),
+      (diff === 0 || item.isConsistent) ? 'MATCHED' : 'DISCREPANCY',
+      item.lastAuditedAt ? new Date(item.lastAuditedAt).toLocaleDateString('en-IN') : '—',
+    ]);
+  });
 
   autoFitColumns(ws);
   return Buffer.from(await wb.xlsx.writeBuffer());
@@ -562,22 +577,24 @@ export async function exportReturnsReportToExcel(data: any, query: any): Promise
   styleHeaderRow(headerRow);
 
   let totalRefund = 0;
-  if (Array.isArray(data.returns)) {
-    data.returns.forEach((r: any) => {
-      totalRefund += Number(r.refundAmount || 0);
-      ws.addRow([
-        sanitizeCellValue(r.returnNumber),
-        new Date(r.date).toLocaleString('en-IN'),
-        sanitizeCellValue(r.billNumber || '—'),
-        sanitizeCellValue(r.customerName || 'Walk-in'),
-        r.saleType || 'RETAIL',
-        Number(r.refundAmount || 0),
-        r.refundMode || 'CASH',
-        sanitizeCellValue(r.reason || '—'),
-        r.status || 'COMPLETED',
-      ]);
-    });
-  }
+  const returnList = Array.isArray(data.returns)
+    ? data.returns
+    : (Array.isArray(data.data) ? data.data : (data.productBreakdown || []));
+  returnList.forEach((r: any) => {
+    const refundAmt = Number(r.refundAmount || 0);
+    totalRefund += refundAmt;
+    ws.addRow([
+      sanitizeCellValue(r.returnNumber || '—'),
+      r.date ? new Date(r.date).toLocaleString('en-IN') : '—',
+      sanitizeCellValue(r.billNumber || '—'),
+      sanitizeCellValue(r.customerName || 'Walk-in'),
+      r.saleType || 'RETAIL',
+      refundAmt,
+      r.refundPaymentMode || r.refundMode || 'CASH',
+      sanitizeCellValue(r.reason || '—'),
+      r.status || 'COMPLETED',
+    ]);
+  });
 
   const totRow = ws.addRow(['TOTAL', '', '', '', '', round2(totalRefund), '', '', '']);
   styleTotalRow(totRow);

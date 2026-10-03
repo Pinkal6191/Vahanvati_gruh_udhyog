@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import PDFDocument from 'pdfkit';
 import { round2 } from './reports.utils.js';
 
@@ -22,6 +24,42 @@ function formatCurrencyVal(val: number): string {
   })}`;
 }
 
+function getGujaratiFonts(): { regular: string | null; bold: string | null } {
+  const candidatesRegular = [
+    path.resolve(process.cwd(), 'assets/fonts/NotoSansGujarati-Regular.ttf'),
+    path.resolve(__dirname, '../../../../assets/fonts/NotoSansGujarati-Regular.ttf'),
+    path.resolve(__dirname, '../../../assets/fonts/NotoSansGujarati-Regular.ttf'),
+    path.resolve(__dirname, '../../assets/fonts/NotoSansGujarati-Regular.ttf'),
+    path.resolve(__dirname, '../assets/fonts/NotoSansGujarati-Regular.ttf'),
+  ];
+
+  const candidatesBold = [
+    path.resolve(process.cwd(), 'assets/fonts/NotoSansGujarati-Bold.ttf'),
+    path.resolve(__dirname, '../../../../assets/fonts/NotoSansGujarati-Bold.ttf'),
+    path.resolve(__dirname, '../../../assets/fonts/NotoSansGujarati-Bold.ttf'),
+    path.resolve(__dirname, '../../assets/fonts/NotoSansGujarati-Bold.ttf'),
+    path.resolve(__dirname, '../assets/fonts/NotoSansGujarati-Bold.ttf'),
+  ];
+
+  let regular: string | null = null;
+  let bold: string | null = null;
+
+  for (const p of candidatesRegular) {
+    if (fs.existsSync(p)) {
+      regular = p;
+      break;
+    }
+  }
+  for (const p of candidatesBold) {
+    if (fs.existsSync(p)) {
+      bold = p;
+      break;
+    }
+  }
+
+  return { regular, bold };
+}
+
 export class PdfBuilder {
   private doc: PDFKit.PDFDocument;
   private chunks: Buffer[] = [];
@@ -29,6 +67,8 @@ export class PdfBuilder {
   private startX: number = 36;
   private currentY: number = 36;
   private maxY: number;
+  public regularFont: string = 'Helvetica';
+  public boldFont: string = 'Helvetica-Bold';
 
   constructor(options: PdfReportOptions) {
     this.landscape = Boolean(options.landscape);
@@ -38,6 +78,26 @@ export class PdfBuilder {
       margin: 36,
       bufferPages: true,
     });
+
+    const fonts = getGujaratiFonts();
+    if (fonts.regular) {
+      try {
+        this.doc.registerFont('GujaratiRegular', fonts.regular);
+        this.regularFont = 'GujaratiRegular';
+      } catch (err) {
+        console.warn('Failed to register regular Gujarati font:', err);
+      }
+    }
+    if (fonts.bold) {
+      try {
+        this.doc.registerFont('GujaratiBold', fonts.bold);
+        this.boldFont = 'GujaratiBold';
+      } catch (err) {
+        console.warn('Failed to register bold Gujarati font:', err);
+      }
+    } else if (this.regularFont !== 'Helvetica') {
+      this.boldFont = this.regularFont;
+    }
 
     this.maxY = this.landscape ? 540 : 770;
     this.doc.on('data', (chunk) => this.chunks.push(chunk));
@@ -53,15 +113,15 @@ export class PdfBuilder {
     this.doc.rect(36, 28, contentWidth, 3).fill('#1e3a8a');
 
     // Title: Vahanvati Gruh Udhyog
-    this.doc.font('Helvetica-Bold').fontSize(16).fillColor('#1e3a8a');
+    this.doc.font(this.boldFont).fontSize(16).fillColor('#1e3a8a');
     this.doc.text('VAHANVATI GRUH UDHYOG', 36, 38);
 
     // Subtitle / Tagline
-    this.doc.font('Helvetica').fontSize(8.5).fillColor('#64748b');
+    this.doc.font(this.regularFont).fontSize(8.5).fillColor('#64748b');
     this.doc.text('Authentic Traditional Taste & Quality  |  Business Management System', 36, 56);
 
     // Report Title
-    this.doc.font('Helvetica-Bold').fontSize(12).fillColor('#0f172a');
+    this.doc.font(this.boldFont).fontSize(12).fillColor('#0f172a');
     this.doc.text(options.title.toUpperCase(), 36, 70);
 
     // Meta: Period, Scope, Timestamp
@@ -75,7 +135,7 @@ export class PdfBuilder {
       }
     }
 
-    this.doc.font('Helvetica').fontSize(8).fillColor('#475569');
+    this.doc.font(this.regularFont).fontSize(8).fillColor('#475569');
     this.doc.text(metaParts.join('   |   '), 36, 85);
 
     // Divider
@@ -96,11 +156,11 @@ export class PdfBuilder {
       }
 
       this.doc.rect(x, this.currentY, cardWidth, cardHeight).fillAndStroke('#f8fafc', '#cbd5e1');
-      this.doc.font('Helvetica').fontSize(7.5).fillColor('#64748b').text(card.label.toUpperCase(), x + 6, this.currentY + 5, {
+      this.doc.font(this.regularFont).fontSize(7.5).fillColor('#64748b').text(card.label.toUpperCase(), x + 6, this.currentY + 5, {
         width: cardWidth - 12,
         align: 'left',
       });
-      this.doc.font('Helvetica-Bold').fontSize(10).fillColor('#0f172a').text(String(card.value), x + 6, this.currentY + 18, {
+      this.doc.font(this.boldFont).fontSize(10).fillColor('#0f172a').text(String(card.value), x + 6, this.currentY + 18, {
         width: cardWidth - 12,
         align: 'left',
       });
@@ -114,14 +174,13 @@ export class PdfBuilder {
   public drawTable(columns: ColumnDef[], rows: any[][], totalRow?: any[]) {
     const contentWidth = (this.landscape ? 841.89 : 595.28) - 72;
     const headerHeight = 20;
-    const rowHeight = 16;
 
     const renderHeaders = () => {
       this.doc.rect(this.startX, this.currentY, contentWidth, headerHeight).fill('#1e3a8a');
       let colX = this.startX;
 
       for (const col of columns) {
-        this.doc.font('Helvetica-Bold').fontSize(8).fillColor('#ffffff').text(
+        this.doc.font(this.boldFont).fontSize(8).fillColor('#ffffff').text(
           col.header,
           colX + 3,
           this.currentY + 6,
@@ -136,7 +195,18 @@ export class PdfBuilder {
 
     // Data rows
     rows.forEach((row, rowIdx) => {
-      if (this.currentY + rowHeight > this.maxY) {
+      this.doc.font(this.regularFont).fontSize(7.5);
+      let maxCellHeight = 12;
+      row.forEach((cellVal, cIdx) => {
+        const col = columns[cIdx];
+        if (!col) return;
+        const text = String(cellVal ?? '—');
+        const h = this.doc.heightOfString(text, { width: col.width - 6 });
+        if (h > maxCellHeight) maxCellHeight = h;
+      });
+      const currentRowHeight = Math.max(16, Math.ceil(maxCellHeight) + 6);
+
+      if (this.currentY + currentRowHeight > this.maxY) {
         this.doc.addPage();
         this.currentY = 40;
         renderHeaders();
@@ -144,7 +214,7 @@ export class PdfBuilder {
 
       const isEven = rowIdx % 2 === 0;
       if (isEven) {
-        this.doc.rect(this.startX, this.currentY, contentWidth, rowHeight).fill('#f8fafc');
+        this.doc.rect(this.startX, this.currentY, contentWidth, currentRowHeight).fill('#f8fafc');
       }
 
       let colX = this.startX;
@@ -152,45 +222,79 @@ export class PdfBuilder {
         const col = columns[cIdx];
         if (!col) return;
 
-        this.doc.font('Helvetica').fontSize(7.5).fillColor('#1e293b').text(
+        this.doc.font(this.regularFont).fontSize(7.5).fillColor('#1e293b').text(
           String(cellVal ?? '—'),
           colX + 3,
           this.currentY + 4,
-          { width: col.width - 6, align: col.align || 'left', lineBreak: false }
+          { width: col.width - 6, align: col.align || 'left' }
         );
         colX += col.width;
       });
 
       // Bottom row divider
-      this.doc.strokeColor('#e2e8f0').lineWidth(0.5).moveTo(this.startX, this.currentY + rowHeight).lineTo(this.startX + contentWidth, this.currentY + rowHeight).stroke();
-      this.currentY += rowHeight;
+      this.doc.strokeColor('#e2e8f0').lineWidth(0.5).moveTo(this.startX, this.currentY + currentRowHeight).lineTo(this.startX + contentWidth, this.currentY + currentRowHeight).stroke();
+      this.currentY += currentRowHeight;
     });
 
     // Optional totals row
     if (totalRow) {
-      if (this.currentY + rowHeight > this.maxY) {
+      this.doc.font(this.boldFont).fontSize(8);
+      let maxTotalHeight = 14;
+      totalRow.forEach((cellVal, cIdx) => {
+        const col = columns[cIdx];
+        if (!col) return;
+        const text = String(cellVal ?? '');
+        const h = this.doc.heightOfString(text, { width: col.width - 6 });
+        if (h > maxTotalHeight) maxTotalHeight = h;
+      });
+      const totHeight = Math.max(18, Math.ceil(maxTotalHeight) + 6);
+
+      if (this.currentY + totHeight > this.maxY) {
         this.doc.addPage();
         this.currentY = 40;
         renderHeaders();
       }
 
-      this.doc.rect(this.startX, this.currentY, contentWidth, rowHeight).fill('#e2e8f0');
+      this.doc.rect(this.startX, this.currentY, contentWidth, totHeight).fill('#e2e8f0');
+
       let colX = this.startX;
-      totalRow.forEach((cellVal, cIdx) => {
-        const col = columns[cIdx];
-        if (!col) return;
+      let i = 0;
 
-        this.doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a').text(
-          String(cellVal ?? ''),
-          colX + 3,
-          this.currentY + 4,
-          { width: col.width - 6, align: col.align || 'left', lineBreak: false }
+      // Span leading columns if totalRow[0] is TOTAL
+      if (String(totalRow[0]).trim().toUpperCase() === 'TOTAL') {
+        let spanWidth = columns[0]?.width || 0;
+        let nextIdx = 1;
+        while (nextIdx < totalRow.length && (totalRow[nextIdx] === '' || totalRow[nextIdx] === undefined || totalRow[nextIdx] === null)) {
+          spanWidth += columns[nextIdx]?.width || 0;
+          nextIdx++;
+        }
+        this.doc.font(this.boldFont).fontSize(8).fillColor('#0f172a').text(
+          'TOTAL',
+          colX + 4,
+          this.currentY + 5,
+          { width: spanWidth - 8, align: 'left' }
         );
-        colX += col.width;
-      });
+        colX += spanWidth;
+        i = nextIdx;
+      }
 
-      this.doc.strokeColor('#0f172a').lineWidth(1).moveTo(this.startX, this.currentY + rowHeight).lineTo(this.startX + contentWidth, this.currentY + rowHeight).stroke();
-      this.currentY += rowHeight + 8;
+      for (; i < totalRow.length; i++) {
+        const col = columns[i];
+        if (!col) continue;
+        const cellVal = totalRow[i];
+        if (cellVal !== '' && cellVal !== undefined && cellVal !== null) {
+          this.doc.font(this.boldFont).fontSize(8).fillColor('#0f172a').text(
+            String(cellVal),
+            colX + 3,
+            this.currentY + 5,
+            { width: col.width - 6, align: col.align || 'left' }
+          );
+        }
+        colX += col.width;
+      }
+
+      this.doc.strokeColor('#0f172a').lineWidth(1).moveTo(this.startX, this.currentY + totHeight).lineTo(this.startX + contentWidth, this.currentY + totHeight).stroke();
+      this.currentY += totHeight + 8;
     }
   }
 
@@ -201,13 +305,16 @@ export class PdfBuilder {
       const pageWidth = this.landscape ? 841.89 : 595.28;
       const pageHeight = this.landscape ? 595.28 : 841.89;
 
-      this.doc.font('Helvetica').fontSize(7.5).fillColor('#94a3b8');
+      const origBottom = this.doc.page.margins.bottom;
+      this.doc.page.margins.bottom = 0;
+      this.doc.font(this.regularFont).fontSize(7.5).fillColor('#94a3b8');
       this.doc.text(
         `Confidential - Internal Business Report  |  Page ${i + 1} of ${range.count}`,
         36,
-        pageHeight - 26,
-        { width: pageWidth - 72, align: 'center' }
+        pageHeight - 20,
+        { width: pageWidth - 72, align: 'center', lineBreak: false }
       );
+      this.doc.page.margins.bottom = origBottom;
     }
 
     this.doc.end();
@@ -272,35 +379,42 @@ export async function exportProductSalesReportToPdf(data: any, query: any): Prom
   });
 
   const columns: ColumnDef[] = [
-    { header: '#', width: 30, align: 'center' },
-    { header: 'Code', width: 60, align: 'left' },
-    { header: 'Product Name', width: 180, align: 'left' },
-    { header: 'Category', width: 100, align: 'left' },
-    { header: 'Unit', width: 50, align: 'center' },
-    { header: 'Qty Sold', width: 70, align: 'right' },
-    { header: 'Bills', width: 60, align: 'center' },
-    { header: 'Avg Rate', width: 80, align: 'right' },
-    { header: 'Total Revenue', width: 130, align: 'right' },
+    { header: '#', width: 25, align: 'center' },
+    { header: 'Code', width: 105, align: 'left' },
+    { header: 'Product Name', width: 175, align: 'left' },
+    { header: 'Category', width: 110, align: 'left' },
+    { header: 'Unit', width: 38, align: 'center' },
+    { header: 'Qty Sold', width: 62, align: 'right' },
+    { header: 'Bills', width: 50, align: 'center' },
+    { header: 'Avg Rate', width: 85, align: 'right' },
+    { header: 'Total Revenue', width: 120, align: 'right' },
   ];
 
   let totalQty = 0;
   let totalRev = 0;
 
-  const rows = (data.products || []).map((p: any, idx: number) => {
-    totalQty += Number(p.quantitySold || 0);
-    totalRev += Number(p.totalRevenue || 0);
+  const productList = Array.isArray(data.data) ? data.data : (data.products || []);
+  const rows = productList.map((p: any, idx: number) => {
+    const qty = Number(p.quantitySold || 0);
+    const rev = Number(p.salesAmount ?? p.totalRevenue ?? 0);
+    const avgRate = Number(p.averageSellingRate ?? p.averagePrice ?? (qty > 0 ? rev / qty : 0));
+    totalQty += qty;
+    totalRev += rev;
     return [
       idx + 1,
-      p.code || '',
+      p.productCode || p.code || '',
       p.productName || '',
       p.categoryName || '—',
-      p.primaryUnit || 'pc',
-      p.quantitySold || 0,
+      p.unitSymbol || p.primaryUnit || 'pc',
+      qty,
       p.billsCount || 0,
-      formatCurrencyVal(p.averagePrice),
-      formatCurrencyVal(p.totalRevenue),
+      formatCurrencyVal(avgRate),
+      formatCurrencyVal(rev),
     ];
   });
+
+  if (data.summary?.totalQuantitySold !== undefined) totalQty = data.summary.totalQuantitySold;
+  if (data.summary?.totalRevenue !== undefined) totalRev = data.summary.totalRevenue;
 
   const totalRow = [
     'TOTAL',
@@ -341,19 +455,22 @@ export async function exportCustomerSalesReportToPdf(data: any, query: any): Pro
   let totalSpend = 0;
   let totalBills = 0;
 
-  const rows = (data.customers || []).map((c: any, idx: number) => {
-    totalSpend += Number(c.totalPurchases || 0);
-    totalBills += Number(c.totalBills || 0);
+  const customerList = Array.isArray(data.data) ? data.data : (data.customers || []);
+  const rows = customerList.map((c: any, idx: number) => {
+    const purchases = Number(c.totalPurchases || 0);
+    const bills = Number(c.billsCount ?? c.totalBills ?? 0);
+    totalSpend += purchases;
+    totalBills += bills;
     return [
       idx + 1,
-      c.name || 'Walk-in Customer',
+      c.customerName || c.name || 'Walk-in Customer',
       c.mobile || '—',
       c.city || '—',
       c.customerType || 'INDIAN',
-      c.totalBills || 0,
-      formatCurrencyVal(c.averageBillValue),
+      bills,
+      formatCurrencyVal(c.averageBillValue ?? (bills > 0 ? purchases / bills : 0)),
       c.lastPurchaseDate ? new Date(c.lastPurchaseDate).toLocaleDateString('en-IN') : '—',
-      formatCurrencyVal(c.totalPurchases),
+      formatCurrencyVal(purchases),
     ];
   });
 
@@ -382,15 +499,20 @@ export async function exportCustomerHistoryToPdf(data: any, _query: any): Promis
   ];
 
   let total = 0;
-  const rows = (data.sales || []).map((s: any) => {
-    total += Number(s.totalAmount || 0);
+  const salesList = Array.isArray(data.data) ? data.data : (data.sales || []);
+  const rows = salesList.map((s: any) => {
+    const amt = Number(s.finalTotalAmount ?? s.totalAmount ?? 0);
+    total += amt;
+    const paymentModesStr = s.payments
+      ? s.payments.map((p: any) => p.paymentMode).join(', ')
+      : (Array.isArray(s.paymentModes) ? s.paymentModes.join(', ') : 'CASH');
     return [
       s.billNumber,
-      new Date(s.date).toLocaleString('en-IN'),
-      s.saleType,
-      Array.isArray(s.paymentModes) ? s.paymentModes.join(', ') : 'CASH',
-      s.itemsCount || 0,
-      formatCurrencyVal(s.totalAmount),
+      new Date(s.createdAt || s.date).toLocaleString('en-IN'),
+      s.saleType || 'RETAIL',
+      paymentModesStr,
+      s.totalItemsCount ?? s.itemsCount ?? 0,
+      formatCurrencyVal(amt),
     ];
   });
 
@@ -416,15 +538,19 @@ export async function exportProductionReportToPdf(data: any, _query: any): Promi
   ];
 
   let totalQty = 0;
-  const rows = (data.batches || []).map((b: any) => {
-    totalQty += Number(b.quantity || 0);
+  const batchList = Array.isArray(data.productBreakdown)
+    ? data.productBreakdown
+    : (Array.isArray(data.batches) ? data.batches : (data.data || []));
+  const rows = batchList.map((b: any) => {
+    const qty = Number(b.completedQuantity ?? b.quantity ?? 0);
+    totalQty += qty;
     return [
-      b.batchNumber,
-      new Date(b.date).toLocaleDateString('en-IN'),
+      b.batchNumber || b.productCode || '—',
+      b.date ? new Date(b.date).toLocaleDateString('en-IN') : (data.summary?.period ? String(data.summary.period) : '—'),
       b.productName || '',
-      b.quantity || 0,
+      qty,
       b.unit || 'Kg',
-      b.status,
+      b.status || 'COMPLETED',
     ];
   });
 
@@ -454,19 +580,22 @@ export async function exportStockReportToPdf(data: any, _query: any): Promise<Bu
   let totalVal = 0;
   let totalBal = 0;
 
-  const rows = (data.stock || []).map((s: any, idx: number) => {
-    totalBal += Number(s.currentBalance || 0);
-    totalVal += Number(s.stockValue || 0);
+  const stockList = Array.isArray(data.data) ? data.data : (data.stock || []);
+  const rows = stockList.map((s: any, idx: number) => {
+    const bal = Number(s.currentBalance || 0);
+    const val = Number(s.stockValue || 0);
+    totalBal += bal;
+    totalVal += val;
     return [
       idx + 1,
-      s.code || '',
+      s.productCode || s.code || '',
       s.productName || '',
       s.categoryName || '—',
-      s.currentBalance || 0,
-      s.minimumThreshold || 0,
-      s.unit || 'Kg',
-      s.status,
-      formatCurrencyVal(s.stockValue),
+      bal,
+      s.minimumThreshold ?? 0,
+      s.unitSymbol || s.unit || 'Kg',
+      s.stockStatus || s.status || 'IN_STOCK',
+      formatCurrencyVal(val),
     ];
   });
 
@@ -494,13 +623,14 @@ export async function exportStockMovementsToPdf(data: any, _query: any): Promise
     { header: 'User', width: 110, align: 'left' },
   ];
 
-  const rows = (data.movements || []).map((m: any, idx: number) => [
+  const movementList = Array.isArray(data.data) ? data.data : (data.movements || []);
+  const rows = movementList.map((m: any, idx: number) => [
     idx + 1,
-    new Date(m.date).toLocaleString('en-IN'),
-    m.productName || '',
+    new Date(m.createdAt || m.date).toLocaleString('en-IN'),
+    m.product?.name || m.productName || '',
     m.movementType,
     m.referenceType || '—',
-    m.quantityDelta > 0 ? `+${m.quantityDelta}` : m.quantityDelta,
+    Number(m.quantityDelta || 0) > 0 ? `+${m.quantityDelta}` : m.quantityDelta,
     m.balanceAfter,
     m.unit || 'Kg',
     m.user?.fullName || m.user?.username || 'System',
@@ -528,16 +658,17 @@ export async function exportStockReconciliationToPdf(data: any, _query: any): Pr
     { header: 'Audit Status', width: 75, align: 'center' },
   ];
 
-  const rows = (data.items || []).map((item: any, idx: number) => [
+  const recList = Array.isArray(data.data) ? data.data : (data.items || []);
+  const rows = recList.map((item: any, idx: number) => [
     idx + 1,
-    item.code || '',
+    item.productCode || item.code || '',
     item.productName || '',
     item.categoryName || '—',
-    item.theoreticalBalance || 0,
-    item.physicalCount ?? item.theoreticalBalance ?? 0,
-    item.discrepancy || 0,
+    item.cachedBalance ?? item.theoreticalBalance ?? 0,
+    item.ledgerTotal ?? item.physicalCount ?? item.theoreticalBalance ?? 0,
+    item.discrepancy ?? item.difference ?? 0,
     item.unit || 'Kg',
-    item.discrepancy === 0 ? 'MATCHED' : 'DISCREPANCY',
+    (item.discrepancy === 0 || item.isConsistent) ? 'MATCHED' : 'DISCREPANCY',
   ]);
 
   builder.drawTable(columns, rows);
@@ -562,15 +693,19 @@ export async function exportReturnsReportToPdf(data: any, query: any): Promise<B
   ];
 
   let total = 0;
-  const rows = (data.returns || []).map((r: any) => {
-    total += Number(r.refundAmount || 0);
+  const returnList = Array.isArray(data.returns)
+    ? data.returns
+    : (Array.isArray(data.data) ? data.data : (data.productBreakdown || []));
+  const rows = returnList.map((r: any) => {
+    const refundAmt = Number(r.refundAmount || 0);
+    total += refundAmt;
     return [
-      r.returnNumber,
-      new Date(r.date).toLocaleDateString('en-IN'),
+      r.returnNumber || '—',
+      r.date ? new Date(r.date).toLocaleDateString('en-IN') : '—',
       r.billNumber || '—',
       r.customerName || 'Walk-in',
-      r.refundMode || 'CASH',
-      formatCurrencyVal(r.refundAmount),
+      r.refundPaymentMode || r.refundMode || 'CASH',
+      formatCurrencyVal(refundAmt),
     ];
   });
 

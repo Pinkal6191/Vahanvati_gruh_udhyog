@@ -42,6 +42,20 @@ export const DailySalesPrintModal: React.FC<DailySalesPrintModalProps> = ({
     };
   }, [isOpen, salesData, paperWidth]);
 
+  // Ensure default is always 80mm standard roll and view starts at top header
+  useEffect(() => {
+    if (isOpen) {
+      setPaperWidth('80mm');
+      if (containerRef.current) {
+        containerRef.current.scrollTop = 0;
+      }
+      const modalBody = containerRef.current?.closest('.modal-body');
+      if (modalBody) {
+        modalBody.scrollTop = 0;
+      }
+    }
+  }, [isOpen]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -165,6 +179,9 @@ export const DailySalesPrintModal: React.FC<DailySalesPrintModalProps> = ({
         <p className="daily-footer-note">End of Sales Report</p>
         <p className="daily-system-tag">Vahanvati Gruh Udhyog BMS</p>
       </div>
+
+      {/* 7. Thermal Paper Cutter Feed Gap: advances blank paper past cutter blade */}
+      <div className="daily-print-cutter-feed" aria-hidden="true" />
     </div>
   );
 
@@ -175,6 +192,7 @@ export const DailySalesPrintModal: React.FC<DailySalesPrintModalProps> = ({
         onClose={onClose}
         title="Print Daily Sales Summary (Thermal)"
         size="md"
+        className="daily-sales-print-modal"
         footer={
           <div className="daily-print-modal-footer">
             <div className="daily-width-toggle">
@@ -182,16 +200,22 @@ export const DailySalesPrintModal: React.FC<DailySalesPrintModalProps> = ({
               <button
                 type="button"
                 className={`daily-toggle-btn ${paperWidth === '80mm' ? 'active' : ''}`}
-                onClick={() => setPaperWidth('80mm')}
+                onClick={() => {
+                  setPaperWidth('80mm');
+                  if (containerRef.current) containerRef.current.scrollTop = 0;
+                }}
               >
-                80mm (3-inch)
+                80mm (Standard Roll - Default)
               </button>
               <button
                 type="button"
                 className={`daily-toggle-btn ${paperWidth === '58mm' ? 'active' : ''}`}
-                onClick={() => setPaperWidth('58mm')}
+                onClick={() => {
+                  setPaperWidth('58mm');
+                  if (containerRef.current) containerRef.current.scrollTop = 0;
+                }}
               >
-                58mm (2-inch)
+                58mm (Small Roll)
               </button>
             </div>
             <div className="daily-footer-actions">
@@ -215,7 +239,7 @@ export const DailySalesPrintModal: React.FC<DailySalesPrintModalProps> = ({
         <div id="daily-sales-print-root" aria-hidden="true">
           <style>{`
             @page {
-              size: portrait;
+              size: ${paperWidth === '58mm' ? '58mm auto' : '80mm auto'};
               margin: 0;
             }
           `}</style>

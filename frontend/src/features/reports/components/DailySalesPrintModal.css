@@ -1,30 +1,48 @@
+/* ==========================================================
+   Daily Sales Summary Thermal Print Modal Styles
+   Optimized for 80mm standard continuous roll
+   ========================================================== */
+
+/* Prevent modal-body double-scrolling trap */
+.daily-sales-print-modal .modal-body {
+  padding: 12px 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Modal Layout and Paper Preview */
 .daily-thermal-preview-wrap {
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   background: #f1f5f9;
-  padding: 20px 10px;
-  max-height: 70vh;
+  padding: 18px 12px 24px;
+  max-height: calc(85vh - 140px);
   overflow-y: auto;
   border-radius: 8px;
 }
 
 .daily-preview-paper {
   background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  padding: 16px 14px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  padding: 18px 16px 24px;
   border-radius: 4px;
   border: 1px solid #e2e8f0;
+  box-sizing: border-box;
 }
 
+/* Screen widths: 80mm roll matches 320px standard receipt */
 .daily-thermal-content.thermal-80mm {
-  width: 72mm;
-  font-size: 11px;
+  width: 320px;
+  font-size: 11.5px;
+  line-height: 1.4;
 }
 
 .daily-thermal-content.thermal-58mm {
-  width: 48mm;
+  width: 230px;
   font-size: 9.5px;
+  line-height: 1.35;
 }
 
 .daily-thermal-header {
@@ -127,6 +145,11 @@
   margin: 0;
 }
 
+/* Hidden on screen; activated in print mode to advance paper past cutter blade */
+.daily-print-cutter-feed {
+  display: none;
+}
+
 .daily-print-modal-footer {
   display: flex;
   justify-content: space-between;
@@ -149,7 +172,7 @@
 }
 
 .daily-toggle-btn {
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
@@ -163,6 +186,7 @@
   background: #1e40af;
   color: #ffffff;
   border-color: #1e40af;
+  font-weight: 600;
 }
 
 .daily-footer-actions {
@@ -171,7 +195,7 @@
 }
 
 /* ==========================================================
-   PRINT MEDIA RULES
+   PRINT MEDIA RULES FOR THERMAL RECEIPT
    ========================================================== */
 #daily-sales-print-root {
   display: none !important;
@@ -199,7 +223,7 @@
 
   body.daily-sales-print-active #daily-sales-print-root .daily-thermal-content {
     margin: 0 !important;
-    padding: 0 1mm 2mm !important;
+    padding: 2mm 2mm 2mm 2mm !important;
     background: transparent !important;
     box-shadow: none !important;
     border: none !important;
@@ -213,11 +237,21 @@
   body.daily-sales-print-active #daily-sales-print-root .daily-thermal-content.thermal-80mm {
     width: 72mm !important;
     max-width: 72mm !important;
+    font-size: 9.5pt !important;
+    line-height: 1.35 !important;
   }
 
   body.daily-sales-print-active.daily-sales-print-58mm #daily-sales-print-root .daily-thermal-content.thermal-58mm {
     width: 48mm !important;
     max-width: 48mm !important;
     font-size: 8pt !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Physical paper cutter feed: advances blank paper ~24mm past the blade before auto-cut */
+  body.daily-sales-print-active #daily-sales-print-root .daily-print-cutter-feed {
+    display: block !important;
+    height: 24mm !important;
+    width: 100% !important;
   }
 }

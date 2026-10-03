@@ -1,4 +1,42 @@
+import path from 'path';
+import fs from 'fs';
 import PDFDocument from 'pdfkit';
+
+function getGujaratiFonts(): { regular: string | null; bold: string | null } {
+  const candidatesRegular = [
+    path.resolve(process.cwd(), 'assets/fonts/NotoSansGujarati-Regular.ttf'),
+    path.resolve(__dirname, '../../../../assets/fonts/NotoSansGujarati-Regular.ttf'),
+    path.resolve(__dirname, '../../../assets/fonts/NotoSansGujarati-Regular.ttf'),
+    path.resolve(__dirname, '../../assets/fonts/NotoSansGujarati-Regular.ttf'),
+    path.resolve(__dirname, '../assets/fonts/NotoSansGujarati-Regular.ttf'),
+  ];
+
+  const candidatesBold = [
+    path.resolve(process.cwd(), 'assets/fonts/NotoSansGujarati-Bold.ttf'),
+    path.resolve(__dirname, '../../../../assets/fonts/NotoSansGujarati-Bold.ttf'),
+    path.resolve(__dirname, '../../../assets/fonts/NotoSansGujarati-Bold.ttf'),
+    path.resolve(__dirname, '../../assets/fonts/NotoSansGujarati-Bold.ttf'),
+    path.resolve(__dirname, '../assets/fonts/NotoSansGujarati-Bold.ttf'),
+  ];
+
+  let regular: string | null = null;
+  let bold: string | null = null;
+
+  for (const p of candidatesRegular) {
+    if (fs.existsSync(p)) {
+      regular = p;
+      break;
+    }
+  }
+  for (const p of candidatesBold) {
+    if (fs.existsSync(p)) {
+      bold = p;
+      break;
+    }
+  }
+
+  return { regular, bold };
+}
 
 export function formatAmountInWords(amount: number): string {
   if (!amount || amount === 0) return 'Rupees Zero Only';
@@ -40,6 +78,25 @@ export function generateWholesaleInvoicePdf(payload: any): Promise<Buffer> {
     bufferPages: true,
   });
 
+  let regularFont = 'Helvetica';
+  let boldFont = 'Helvetica-Bold';
+
+  const fonts = getGujaratiFonts();
+  if (fonts.regular) {
+    try {
+      doc.registerFont('GujaratiRegular', fonts.regular);
+      regularFont = 'GujaratiRegular';
+    } catch (_) {}
+  }
+  if (fonts.bold) {
+    try {
+      doc.registerFont('GujaratiBold', fonts.bold);
+      boldFont = 'GujaratiBold';
+    } catch (_) {}
+  } else if (regularFont !== 'Helvetica') {
+    boldFont = regularFont;
+  }
+
   const chunks: Buffer[] = [];
   doc.on('data', (c) => chunks.push(c));
 
@@ -52,10 +109,10 @@ export function generateWholesaleInvoicePdf(payload: any): Promise<Buffer> {
   currentY += 8;
 
   // 2. Company Details (Left) vs Invoice Details (Right)
-  doc.font('Helvetica-Bold').fontSize(16).fillColor('#1e3a8a').text(payload.company.name.toUpperCase(), startX, currentY);
+  doc.font(boldFont).fontSize(16).fillColor('#1e3a8a').text(payload.company.name.toUpperCase(), startX, currentY);
   currentY += 18;
 
-  doc.font('Helvetica').fontSize(8.5).fillColor('#475569');
+  doc.font(regularFont).fontSize(8.5).fillColor('#475569');
   if (payload.company.tagline) {
     doc.text(payload.company.tagline, startX, currentY);
     currentY += 12;
@@ -74,16 +131,16 @@ export function generateWholesaleInvoicePdf(payload: any): Promise<Buffer> {
   const rightX = 350;
   const docBadgeY = 44;
   doc.rect(rightX, docBadgeY, contentWidth - (rightX - startX), 18).fill('#1e3a8a');
-  doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff').text('WHOLESALE TAX INVOICE', rightX, docBadgeY + 4, {
+  doc.font(boldFont).fontSize(9).fillColor('#ffffff').text('WHOLESALE TAX INVOICE', rightX, docBadgeY + 4, {
     width: contentWidth - (rightX - startX),
     align: 'center',
   });
 
-  doc.font('Helvetica').fontSize(8.5).fillColor('#334155');
+  doc.font(regularFont).fontSize(8.5).fillColor('#334155');
   doc.text(`Invoice No:`, rightX, docBadgeY + 24);
-  doc.font('Helvetica-Bold').text(payload.invoice.billNumber, rightX + 60, docBadgeY + 24);
+  doc.font(boldFont).text(payload.invoice.billNumber, rightX + 60, docBadgeY + 24);
 
-  doc.font('Helvetica').text(`Date:`, rightX, docBadgeY + 36);
+  doc.font(regularFont).text(`Date:`, rightX, docBadgeY + 36);
   doc.text(new Date(payload.invoice.date).toLocaleString('en-IN'), rightX + 60, docBadgeY + 36);
 
   doc.text(`Biller:`, rightX, docBadgeY + 48);
@@ -99,9 +156,9 @@ export function generateWholesaleInvoicePdf(payload: any): Promise<Buffer> {
 
   // Buyer Card
   doc.rect(startX, currentY, cardW, cardH).fillAndStroke('#f8fafc', '#cbd5e1');
-  doc.font('Helvetica-Bold').fontSize(8).fillColor('#1e3a8a').text('BILLED TO (BUYER DETAILS)', startX + 8, currentY + 6);
-  doc.font('Helvetica-Bold').fontSize(9).fillColor('#0f172a').text(payload.invoice.customerName || 'Counter Walk-in Customer', startX + 8, currentY + 18);
-  doc.font('Helvetica').fontSize(8).fillColor('#475569');
+  doc.font(boldFont).fontSize(8).fillColor('#1e3a8a').text('BILLED TO (BUYER DETAILS)', startX + 8, currentY + 6);
+  doc.font(boldFont).fontSize(9).fillColor('#0f172a').text(payload.invoice.customerName || 'Counter Walk-in Customer', startX + 8, currentY + 18);
+  doc.font(regularFont).fontSize(8).fillColor('#475569');
   let buyerSub = '';
   if (payload.invoice.customerAddress) buyerSub += payload.invoice.customerAddress;
   if (payload.invoice.customerCity) buyerSub += `, ${payload.invoice.customerCity}`;
@@ -114,17 +171,17 @@ export function generateWholesaleInvoicePdf(payload: any): Promise<Buffer> {
   // Payment Settlement Card
   const payX = startX + cardW + 12;
   doc.rect(payX, currentY, cardW, cardH).fillAndStroke('#f8fafc', '#cbd5e1');
-  doc.font('Helvetica-Bold').fontSize(8).fillColor('#1e3a8a').text('PAYMENT & SETTLEMENT', payX + 8, currentY + 6);
-  doc.font('Helvetica').fontSize(8).fillColor('#334155');
+  doc.font(boldFont).fontSize(8).fillColor('#1e3a8a').text('PAYMENT & SETTLEMENT', payX + 8, currentY + 6);
+  doc.font(regularFont).fontSize(8).fillColor('#334155');
   const modes = payload.payments.map((p: any) => p.mode).join(', ') || 'CASH';
   doc.text(`Payment Mode:`, payX + 8, currentY + 18);
-  doc.font('Helvetica-Bold').text(modes, payX + 80, currentY + 18);
+  doc.font(boldFont).text(modes, payX + 80, currentY + 18);
 
-  doc.font('Helvetica').text(`Paid Amount:`, payX + 8, currentY + 30);
-  doc.font('Helvetica-Bold').text(formatRs(payload.totals.paid), payX + 80, currentY + 30);
+  doc.font(regularFont).text(`Paid Amount:`, payX + 8, currentY + 30);
+  doc.font(boldFont).text(formatRs(payload.totals.paid), payX + 80, currentY + 30);
 
   if (payload.totals.change > 0) {
-    doc.font('Helvetica').text(`Change Returned:`, payX + 8, currentY + 42);
+    doc.font(regularFont).text(`Change Returned:`, payX + 8, currentY + 42);
     doc.text(formatRs(payload.totals.change), payX + 80, currentY + 42);
   }
 
@@ -145,7 +202,7 @@ export function generateWholesaleInvoicePdf(payload: any): Promise<Buffer> {
   doc.rect(startX, currentY, contentWidth, 18).fill('#1e3a8a');
   let colX = startX;
   for (const c of cols) {
-    doc.font('Helvetica-Bold').fontSize(8).fillColor('#ffffff').text(c.header, colX + 2, currentY + 5, {
+    doc.font(boldFont).fontSize(8).fillColor('#ffffff').text(c.header, colX + 2, currentY + 5, {
       width: c.width - 4,
       align: c.align,
     });
@@ -173,7 +230,7 @@ export function generateWholesaleInvoicePdf(payload: any): Promise<Buffer> {
 
     rowData.forEach((val, i) => {
       const col = cols[i];
-      doc.font('Helvetica').fontSize(7.5).fillColor('#1e293b').text(String(val), cx + 2, currentY + 4, {
+      doc.font(regularFont).fontSize(7.5).fillColor('#1e293b').text(String(val), cx + 2, currentY + 4, {
         width: col.width - 4,
         align: col.align,
         lineBreak: false,
@@ -195,22 +252,23 @@ export function generateWholesaleInvoicePdf(payload: any): Promise<Buffer> {
 
   // Amount in words box
   doc.rect(leftX, currentY, leftW, 36).fillAndStroke('#f8fafc', '#cbd5e1');
-  doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#64748b').text('AMOUNT IN WORDS:', leftX + 6, currentY + 5);
-  doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0f172a').text(formatAmountInWords(payload.totals.total), leftX + 6, currentY + 17, { width: leftW - 12 });
+  doc.font(boldFont).fontSize(7.5).fillColor('#64748b').text('AMOUNT IN WORDS:', leftX + 6, currentY + 5);
+  doc.font(boldFont).fontSize(8.5).fillColor('#0f172a').text(formatAmountInWords(payload.totals.total), leftX + 6, currentY + 17, { width: leftW - 12 });
 
   // Right Totals Table
   const calcY = currentY;
   const calcRowH = 16;
+
   const drawCalcRow = (lbl: string, val: string, isTotal = false) => {
     if (isTotal) {
       doc.rect(summaryRightX, currentY, rightW, 20).fill('#1e3a8a');
-      doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff').text(lbl, summaryRightX + 6, currentY + 5);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff').text(val, summaryRightX + 6, currentY + 5, { width: rightW - 12, align: 'right' });
+      doc.font(boldFont).fontSize(9).fillColor('#ffffff').text(lbl, summaryRightX + 6, currentY + 5);
+      doc.font(boldFont).fontSize(9).fillColor('#ffffff').text(val, summaryRightX + 6, currentY + 5, { width: rightW - 12, align: 'right' });
       currentY += 20;
     } else {
       doc.rect(summaryRightX, currentY, rightW, calcRowH).fillAndStroke('#ffffff', '#cbd5e1');
-      doc.font('Helvetica').fontSize(8).fillColor('#475569').text(lbl, summaryRightX + 6, currentY + 4);
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a').text(val, summaryRightX + 6, currentY + 4, { width: rightW - 12, align: 'right' });
+      doc.font(regularFont).fontSize(8).fillColor('#475569').text(lbl, summaryRightX + 6, currentY + 4);
+      doc.font(boldFont).fontSize(8).fillColor('#0f172a').text(val, summaryRightX + 6, currentY + 4, { width: rightW - 12, align: 'right' });
       currentY += calcRowH;
     }
   };
@@ -228,21 +286,21 @@ export function generateWholesaleInvoicePdf(payload: any): Promise<Buffer> {
   // Terms and Signature Box
   const footerBlockY = Math.max(currentY + 14, calcY + 60);
   if (payload.company.footerNotes) {
-    doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#64748b').text('Terms & Conditions:', leftX, footerBlockY);
-    doc.font('Helvetica').fontSize(7.5).fillColor('#475569').text(payload.company.footerNotes, leftX, footerBlockY + 10, { width: leftW });
+    doc.font(boldFont).fontSize(7.5).fillColor('#64748b').text('Terms & Conditions:', leftX, footerBlockY);
+    doc.font(regularFont).fontSize(7.5).fillColor('#475569').text(payload.company.footerNotes, leftX, footerBlockY + 10, { width: leftW });
   }
 
   // Signatory Box
   const signX = summaryRightX;
-  doc.font('Helvetica').fontSize(8).fillColor('#475569').text(`For, ${payload.company.name}`, signX, footerBlockY + 10, { width: rightW, align: 'center' });
+  doc.font(regularFont).fontSize(8).fillColor('#475569').text(`For, ${payload.company.name}`, signX, footerBlockY + 10, { width: rightW, align: 'center' });
   doc.strokeColor('#94a3b8').lineWidth(0.75).moveTo(signX + 15, footerBlockY + 50).lineTo(signX + rightW - 15, footerBlockY + 50).stroke();
-  doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#0f172a').text('Authorized Signatory', signX, footerBlockY + 54, { width: rightW, align: 'center' });
+  doc.font(boldFont).fontSize(7.5).fillColor('#0f172a').text('Authorized Signatory', signX, footerBlockY + 54, { width: rightW, align: 'center' });
 
   // Page numbering footer
   const pageRange = doc.bufferedPageRange();
   for (let i = pageRange.start; i < pageRange.start + pageRange.count; i++) {
     doc.switchToPage(i);
-    doc.font('Helvetica').fontSize(7.5).fillColor('#94a3b8').text(
+    doc.font(regularFont).fontSize(7.5).fillColor('#94a3b8').text(
       `Tax Invoice - Page ${i + 1} of ${pageRange.count}  |  This is a computer generated invoice`,
       36,
       841.89 - 26,

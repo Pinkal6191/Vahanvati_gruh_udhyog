@@ -91,11 +91,17 @@ export class ReportsController {
    */
   static async getProductSalesReport(req: Request, res: Response, next: NextFunction) {
     try {
+      const format = (req.query as any).format;
+      const isExport = format === 'xlsx' || format === 'pdf';
+      const query: any = { ...req.query };
+      if (isExport) {
+        query.limit = 10000;
+        query.page = 1;
+      }
       const result = await ReportsService.getProductSalesReport(
-        req.query as unknown as ProductReportQuery,
+        query as unknown as ProductReportQuery,
         req.user
       );
-      const format = (req.query as any).format;
       const dateStr = new Date().toISOString().slice(0, 10);
 
       if (format === 'xlsx') {
@@ -118,11 +124,17 @@ export class ReportsController {
    */
   static async getCustomerSalesReport(req: Request, res: Response, next: NextFunction) {
     try {
+      const format = (req.query as any).format;
+      const isExport = format === 'xlsx' || format === 'pdf';
+      const query: any = { ...req.query };
+      if (isExport) {
+        query.limit = 10000;
+        query.page = 1;
+      }
       const result = await ReportsService.getCustomerSalesReport(
-        req.query as unknown as CustomerReportQuery,
+        query as unknown as CustomerReportQuery,
         req.user
       );
-      const format = (req.query as any).format;
       const dateStr = new Date().toISOString().slice(0, 10);
 
       if (format === 'xlsx') {
@@ -199,8 +211,14 @@ export class ReportsController {
    */
   static async getStockReport(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await ReportsService.getStockReport(req.query as unknown as StockReportQuery);
       const format = (req.query as any).format;
+      const isExport = format === 'xlsx' || format === 'pdf';
+      const query: any = { ...req.query };
+      if (isExport) {
+        query.limit = 10000;
+        query.page = 1;
+      }
+      const result = await ReportsService.getStockReport(query as unknown as StockReportQuery);
       const dateStr = new Date().toISOString().slice(0, 10);
 
       if (format === 'xlsx') {
@@ -223,10 +241,16 @@ export class ReportsController {
    */
   static async getStockMovementsReport(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await ReportsService.getStockMovementsReport(
-        req.query as unknown as StockMovementsReportQuery
-      );
       const format = (req.query as any).format;
+      const isExport = format === 'xlsx' || format === 'pdf';
+      const query: any = { ...req.query };
+      if (isExport) {
+        query.limit = 10000;
+        query.page = 1;
+      }
+      const result = await ReportsService.getStockMovementsReport(
+        query as unknown as StockMovementsReportQuery
+      );
       const dateStr = new Date().toISOString().slice(0, 10);
 
       if (format === 'xlsx') {
