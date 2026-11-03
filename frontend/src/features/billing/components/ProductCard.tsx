@@ -32,15 +32,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   // Check if product is Masala category/item
   const isMasala =
     product.subcategory?.category?.code === 'CAT_MASALA' ||
+    product.subcategory?.category?.name?.includes('મસાલા') ||
+    product.subcategory?.category?.name?.toLowerCase().includes('masala') ||
     product.subcategory?.code?.includes('MASALA') ||
     product.subcategory?.name?.includes('મસાલા') ||
+    product.subcategory?.name?.toLowerCase().includes('masala') ||
     product.name?.includes('મસાલો') ||
     product.name?.includes('મસાલા') ||
-    product.code?.startsWith('MASALA');
+    product.name?.toLowerCase().includes('masala') ||
+    product.code?.toUpperCase().startsWith('MASALA') ||
+    product.code?.toUpperCase().includes('MASALA');
 
-  // Fast-touch weight presets
-  const weightOptions = isMasala
+  // Fast-touch weight presets:
+  // For Masala products: 50g, 100g, 200g, 500g, 1 kg
+  // For other products: 500g, 1 kg
+  const basePresets = isMasala
     ? [
+        { label: '50g', grams: 50 },
         { label: '100g', grams: 100 },
         { label: '200g', grams: 200 },
         { label: '500g', grams: 500 },
@@ -51,10 +59,32 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         { label: '1 kg', grams: 1000 },
       ];
 
-  // Default selection: 100g for Masala, 500g for others
-  const [selectedWeightGrams, setSelectedWeightGrams] = useState<number>(
-    isMasala ? 100 : 500
-  );
+  // Packs matching product configuration
+  const packs = product.packConfigurations || [];
+
+  // Build selectable weight options: start with presets, and include explicit packs if defined
+  // without duplicate options for the same weight
+  const weightOptions = [...basePresets];
+  if (packs.length > 0) {
+    for (const pack of packs) {
+      const packGrams = Number(pack.weightInBaseUnits);
+      if (packGrams > 0 && !weightOptions.some((opt) => opt.grams === packGrams)) {
+        weightOptions.push({
+          label: pack.packName || `${packGrams}g`,
+          grams: packGrams,
+        });
+      }
+    }
+    weightOptions.sort((a, b) => a.grams - b.grams);
+  }
+
+  // Default selection: 100g for Masala (or first available option), 500g for others
+  const defaultTarget = isMasala ? 100 : 500;
+  const initialWeight = weightOptions.some((o) => o.grams === defaultTarget)
+    ? defaultTarget
+    : (weightOptions[0]?.grams ?? 500);
+
+  const [selectedWeightGrams, setSelectedWeightGrams] = useState<number>(initialWeight);
 
   // Loose / base per-kg rate resolved according to SaleType (never fall back across sale types)
   const looseRate =
@@ -65,8 +95,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       : (product.retailPrice ?? product.indianPrice ?? 0);
 
   // Packs matching selected weight
-  const packs = product.packConfigurations || [];
-  const matchingPack = packs.find((p) => p.weightInBaseUnits === selectedWeightGrams);
+  const matchingPack = packs.find((p) => Number(p.weightInBaseUnits) === selectedWeightGrams);
 
   // Pack price record resolved according to SaleType
   const packPriceRecord = matchingPack
