@@ -244,6 +244,7 @@ export class ReportsService {
         sale: { select: { id: true } },
         product: {
           include: {
+            primaryUnit: true,
             subcategory: {
               include: { category: true },
             },
@@ -257,9 +258,12 @@ export class ReportsService {
       {
         productId: string;
         productName: string;
+        gujaratiName: string | null;
         productCode: string;
         categoryName: string;
         subcategoryName: string;
+        unitSymbol: string;
+        isWeightBased: boolean;
         quantitySold: number;
         weightSold: number;
         salesAmount: number;
@@ -269,12 +273,19 @@ export class ReportsService {
 
     for (const item of saleItems) {
       const pid = item.productId;
+      const isWeightBased = (item.product as any)?.primaryUnit
+        ? Boolean((item.product as any).primaryUnit.isWeightBased)
+        : ((item.product as any)?.isLooseWeightAllowed ?? true);
+
       const existing = productMap.get(pid) || {
         productId: pid,
         productName: item.productNameSnapshot || item.product.name,
+        gujaratiName: item.product.gujaratiName || null,
         productCode: item.product.code,
-        categoryName: item.product.subcategory.category.name,
-        subcategoryName: item.product.subcategory.name,
+        categoryName: item.product.subcategory?.category?.name || '—',
+        subcategoryName: item.product.subcategory?.name || '—',
+        unitSymbol: (item.product as any)?.primaryUnit?.symbol || (isWeightBased ? 'gm' : 'pc'),
+        isWeightBased,
         quantitySold: 0,
         weightSold: 0,
         salesAmount: 0,
@@ -292,9 +303,12 @@ export class ReportsService {
     let productsList = Array.from(productMap.values()).map((p) => ({
       productId: p.productId,
       productName: p.productName,
+      gujaratiName: p.gujaratiName,
       productCode: p.productCode,
       categoryName: p.categoryName,
       subcategoryName: p.subcategoryName,
+      unitSymbol: p.unitSymbol,
+      isWeightBased: p.isWeightBased,
       quantitySold: p.quantitySold,
       weightSold: p.weightSold,
       salesAmount: p.salesAmount,
@@ -318,6 +332,9 @@ export class ReportsService {
 
     const totalRevenue = round2(productsList.reduce((acc, p) => acc + p.salesAmount, 0));
     const totalQuantitySold = round2(productsList.reduce((acc, p) => acc + p.quantitySold, 0));
+    const totalWeightSold = round2(
+      productsList.reduce((acc, p) => acc + (p.isWeightBased !== false ? p.weightSold : 0), 0)
+    );
     const totalProductsCount = productsList.length;
 
     // Pagination
@@ -331,6 +348,7 @@ export class ReportsService {
         totalProductsCount,
         totalRevenue,
         totalQuantitySold,
+        totalWeightSold,
       },
       data: paginatedProducts,
       pagination: {

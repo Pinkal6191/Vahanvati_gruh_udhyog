@@ -1,7 +1,12 @@
 import path from 'path';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
-import { round2 } from './reports.utils.js';
+import {
+  round2,
+  formatIndianDateTime,
+  formatReportPeriodDisplay,
+  formatWeightVal,
+} from './reports.utils.js';
 
 interface ColumnDef {
   header: string;
@@ -110,10 +115,10 @@ export class PdfBuilder {
     const contentWidth = pageWidth - 72;
 
     // Header Background Accent Bar
-    this.doc.rect(36, 28, contentWidth, 3).fill('#1e3a8a');
+    this.doc.rect(36, 28, contentWidth, 3).fill('#3F438F');
 
     // Title: Vahanvati Gruh Udhyog
-    this.doc.font(this.boldFont).fontSize(16).fillColor('#1e3a8a');
+    this.doc.font(this.boldFont).fontSize(16).fillColor('#292D68');
     this.doc.text('VAHANVATI GRUH UDHYOG', 36, 38);
 
     // Subtitle / Tagline
@@ -121,14 +126,17 @@ export class PdfBuilder {
     this.doc.text('Authentic Traditional Taste & Quality  |  Business Management System', 36, 56);
 
     // Report Title
-    this.doc.font(this.boldFont).fontSize(12).fillColor('#0f172a');
+    this.doc.font(this.boldFont).fontSize(12).fillColor('#292D68');
     this.doc.text(options.title.toUpperCase(), 36, 70);
 
     // Meta: Period, Scope, Timestamp
     const metaParts = [];
-    if (options.period) metaParts.push(`Period: ${options.period}`);
+    const resolvedPeriod = options.period
+      ? formatReportPeriodDisplay(undefined, undefined, undefined, options.period)
+      : undefined;
+    if (resolvedPeriod) metaParts.push(`Period: ${resolvedPeriod}`);
     if (options.scope) metaParts.push(`Scope: ${options.scope}`);
-    metaParts.push(`Generated: ${new Date().toLocaleString('en-IN')}`);
+    metaParts.push(`Generated: ${formatIndianDateTime(new Date())}`);
     if (options.extraMeta) {
       for (const [k, v] of Object.entries(options.extraMeta)) {
         metaParts.push(`${k}: ${v}`);
@@ -176,7 +184,7 @@ export class PdfBuilder {
     const headerHeight = 20;
 
     const renderHeaders = () => {
-      this.doc.rect(this.startX, this.currentY, contentWidth, headerHeight).fill('#1e3a8a');
+      this.doc.rect(this.startX, this.currentY, contentWidth, headerHeight).fill('#3F438F');
       let colX = this.startX;
 
       for (const col of columns) {
@@ -371,42 +379,73 @@ export async function exportSalesReportToPdf(data: any, query: any): Promise<Buf
 }
 
 export async function exportProductSalesReportToPdf(data: any, query: any): Promise<Buffer> {
+  const resolvedPeriod = formatReportPeriodDisplay(
+    query?.period,
+    query?.startDate,
+    query?.endDate,
+    data.summary?.period
+  );
+
   const builder = new PdfBuilder({
     title: 'Product Sales Performance Report',
-    period: data.summary?.period,
-    scope: query.saleType ? `SaleType: ${query.saleType}` : undefined,
+    period: resolvedPeriod,
+    scope: query?.saleType ? `SaleType: ${query.saleType}` : undefined,
     landscape: true,
   });
 
   const columns: ColumnDef[] = [
-    { header: '#', width: 25, align: 'center' },
-    { header: 'Code', width: 105, align: 'left' },
-    { header: 'Product Name', width: 175, align: 'left' },
-    { header: 'Category', width: 110, align: 'left' },
-    { header: 'Unit', width: 38, align: 'center' },
-    { header: 'Qty Sold', width: 62, align: 'right' },
+    { header: '#', width: 35, align: 'center' },
+    { header: 'Product Details', width: 215, align: 'left' },
+    { header: 'Category / Subcategory', width: 130, align: 'left' },
+    { header: 'Quantity Sold', width: 75, align: 'right' },
+    { header: 'Weight Sold', width: 80, align: 'right' },
     { header: 'Bills', width: 50, align: 'center' },
-    { header: 'Avg Rate', width: 85, align: 'right' },
-    { header: 'Total Revenue', width: 120, align: 'right' },
+    { header: 'Avg Rate', width: 80, align: 'right' },
+    { header: 'Total Revenue', width: 104, align: 'right' },
   ];
 
   let totalQty = 0;
+  let totalWeight = 0;
   let totalRev = 0;
 
   const productList = Array.isArray(data.data) ? data.data : (data.products || []);
   const rows = productList.map((p: any, idx: number) => {
     const qty = Number(p.quantitySold || 0);
+    const weightGrams = Number(p.weightSold || 0);
     const rev = Number(p.salesAmount ?? p.totalRevenue ?? 0);
     const avgRate = Number(p.averageSellingRate ?? p.averagePrice ?? (qty > 0 ? rev / qty : 0));
+    const isWeightBased = typeof p.isWeightBased === 'boolean'
+      ? p.isWeightBased
+      : (p.unitSymbol !== 'pc' && p.primaryUnit !== 'pc');
+
     totalQty += qty;
+    if (isWeightBased) {
+      totalWeight += weightGrams;
+    }
     totalRev += rev;
+
+    // Display Gujarati name alongside English name if available and not already included
+    let displayName = p.productName || p.name || '';
+    if (p.gujaratiName && !displayName.includes(p.gujaratiName)) {
+      displayName = `${displayName} (${p.gujaratiName})`;
+    }
+
+    // Product Details: Product Name + Code
+    const code = p.productCode || p.code || '';
+    const productDetails = code ? `${displayName}\nCode: ${code}` : displayName;
+
+    // Category / Subcategory
+    let catSubcat = p.categoryName || '—';
+    if (p.subcategoryName && p.subcategoryName !== p.categoryName && p.subcategoryName !== '—') {
+      catSubcat = `${p.categoryName}\n${p.subcategoryName}`;
+    }
+
     return [
       idx + 1,
-      p.productCode || p.code || '',
-      p.productName || '',
-      p.categoryName || '—',
-      p.unitSymbol || p.primaryUnit || 'pc',
+      productDetails,
+      catSubcat,
       qty,
+      formatWeightVal(weightGrams, isWeightBased),
       p.billsCount || 0,
       formatCurrencyVal(avgRate),
       formatCurrencyVal(rev),
@@ -414,15 +453,15 @@ export async function exportProductSalesReportToPdf(data: any, query: any): Prom
   });
 
   if (data.summary?.totalQuantitySold !== undefined) totalQty = data.summary.totalQuantitySold;
+  if (data.summary?.totalWeightSold !== undefined) totalWeight = data.summary.totalWeightSold;
   if (data.summary?.totalRevenue !== undefined) totalRev = data.summary.totalRevenue;
 
   const totalRow = [
     'TOTAL',
     '',
     '',
-    '',
-    '',
     round2(totalQty),
+    totalWeight > 0 ? formatWeightVal(totalWeight, true) : '—',
     '',
     '',
     formatCurrencyVal(totalRev),

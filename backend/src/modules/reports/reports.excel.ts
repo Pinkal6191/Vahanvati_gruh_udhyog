@@ -1,5 +1,10 @@
 import ExcelJS from 'exceljs';
-import { round2 } from './reports.utils.js';
+import {
+  round2,
+  formatIndianDateTime,
+  formatReportPeriodDisplay,
+  formatWeightVal,
+} from './reports.utils.js';
 
 // Prevent CSV/Excel Formula Injection by prefixing unsafe characters with a single quote
 export function sanitizeCellValue(val: any): any {
@@ -31,19 +36,22 @@ interface ReportHeaderOptions {
 export function addStandardHeader(ws: ExcelJS.Worksheet, options: ReportHeaderOptions, colSpan: number = 6) {
   // Title 1: Company Name
   const row1 = ws.addRow(['VAHANVATI GRUH UDHYOG']);
-  row1.font = { name: 'Nirmala UI', size: 16, bold: true, color: { argb: 'FF1E3A8A' } };
+  row1.font = { name: 'Nirmala UI', size: 16, bold: true, color: { argb: 'FF292D68' } };
   ws.mergeCells(1, 1, 1, Math.max(colSpan, 4));
 
   // Title 2: Report Title
   const row2 = ws.addRow([options.title.toUpperCase()]);
-  row2.font = { name: 'Nirmala UI', size: 12, bold: true, color: { argb: 'FF334155' } };
+  row2.font = { name: 'Nirmala UI', size: 12, bold: true, color: { argb: 'FF3F438F' } };
   ws.mergeCells(2, 1, 2, Math.max(colSpan, 4));
 
   // Title 3: Metadata / Date Range / Scope
   const metaParts: string[] = [];
-  if (options.period) metaParts.push(`Period: ${options.period}`);
+  const resolvedPeriod = options.period
+    ? formatReportPeriodDisplay(undefined, undefined, undefined, options.period)
+    : undefined;
+  if (resolvedPeriod) metaParts.push(`Period: ${resolvedPeriod}`);
   if (options.scope) metaParts.push(`Scope: ${options.scope}`);
-  metaParts.push(`Generated: ${new Date().toLocaleString('en-IN')}`);
+  metaParts.push(`Generated: ${formatIndianDateTime(new Date())}`);
   if (options.extraMeta) {
     for (const [k, v] of Object.entries(options.extraMeta)) {
       metaParts.push(`${k}: ${v}`);
@@ -63,7 +71,7 @@ export function styleHeaderRow(row: ExcelJS.Row) {
     cell.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF1E3A8A' },
+      fgColor: { argb: 'FF3F438F' }, // Vahanvati Blue
     };
     cell.font = { name: 'Nirmala UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -168,68 +176,123 @@ export async function exportProductSalesReportToExcel(data: any, query: any): Pr
   const wb = createBaseWorkbook();
   const ws = wb.addWorksheet('Product_Sales');
 
+  const resolvedPeriod = formatReportPeriodDisplay(
+    query?.period,
+    query?.startDate,
+    query?.endDate,
+    data.summary?.period
+  );
+
   addStandardHeader(ws, {
     title: 'Product Sales Performance Report',
-    period: data.summary?.period,
-    scope: query.saleType ? `SaleType: ${query.saleType}` : undefined,
+    period: resolvedPeriod,
+    scope: query?.saleType ? `SaleType: ${query.saleType}` : undefined,
   }, 8);
 
   const headerRow = ws.addRow([
     '#',
-    'Product Code',
-    'Product Name',
-    'Category',
-    'Subcategory',
-    'Unit',
+    'Product Details',
+    'Category / Subcategory',
     'Quantity Sold',
-    'Bills Count',
-    'Revenue (₹)',
-    'Avg Price (₹)',
+    'Weight Sold',
+    'Bills',
+    'Avg Rate (₹)',
+    'Total Revenue (₹)',
   ]);
   styleHeaderRow(headerRow);
 
   let totalQty = 0;
+  let totalWeight = 0;
   let totalRev = 0;
 
   const productList = Array.isArray(data.data) ? data.data : (data.products || []);
   productList.forEach((p: any, idx: number) => {
     const qty = Number(p.quantitySold || 0);
+    const weightGrams = Number(p.weightSold || 0);
     const rev = Number(p.salesAmount ?? p.totalRevenue ?? 0);
+    const avgRate = Number(p.averageSellingRate ?? p.averagePrice ?? (qty > 0 ? rev / qty : 0));
+    const isWeightBased = typeof p.isWeightBased === 'boolean'
+      ? p.isWeightBased
+      : (p.unitSymbol !== 'pc' && p.primaryUnit !== 'pc');
+
     totalQty += qty;
+    if (isWeightBased) {
+      totalWeight += weightGrams;
+    }
     totalRev += rev;
 
-    ws.addRow([
+    // Display Gujarati name alongside English name if available
+    let displayName = p.productName || p.name || '';
+    if (p.gujaratiName && !displayName.includes(p.gujaratiName)) {
+      displayName = `${displayName} (${p.gujaratiName})`;
+    }
+
+    const code = sanitizeCellValue(p.productCode || p.code || '');
+    const productDetails = code ? `${displayName}\nCode: ${code}` : displayName;
+
+    let catSubcat = p.categoryName || '—';
+    if (p.subcategoryName && p.subcategoryName !== p.categoryName && p.subcategoryName !== '—') {
+      catSubcat = `${p.categoryName}\n${p.subcategoryName}`;
+    }
+
+    const addedRow = ws.addRow([
       idx + 1,
-      sanitizeCellValue(p.productCode || p.code || ''),
-      sanitizeCellValue(p.productName || ''),
-      sanitizeCellValue(p.categoryName || '—'),
-      sanitizeCellValue(p.subcategoryName || '—'),
-      sanitizeCellValue(p.unitSymbol || p.primaryUnit || 'pc'),
+      sanitizeCellValue(productDetails),
+      sanitizeCellValue(catSubcat),
       qty,
+      formatWeightVal(weightGrams, isWeightBased),
       Number(p.billsCount || 0),
+      avgRate,
       rev,
-      Number(p.averageSellingRate ?? p.averagePrice ?? (qty > 0 ? rev / qty : 0)),
     ]);
+
+    // Align and format numeric columns
+    addedRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+    addedRow.getCell(2).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+    addedRow.getCell(3).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+    addedRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };
+    addedRow.getCell(4).numFmt = '#,##0';
+    addedRow.getCell(5).alignment = { horizontal: 'right', vertical: 'middle' };
+    addedRow.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+    addedRow.getCell(6).numFmt = '#,##0';
+    addedRow.getCell(7).alignment = { horizontal: 'right', vertical: 'middle' };
+    addedRow.getCell(7).numFmt = '₹#,##0.00';
+    addedRow.getCell(8).alignment = { horizontal: 'right', vertical: 'middle' };
+    addedRow.getCell(8).numFmt = '₹#,##0.00';
   });
 
   if (data.summary?.totalQuantitySold !== undefined) totalQty = data.summary.totalQuantitySold;
+  if (data.summary?.totalWeightSold !== undefined) totalWeight = data.summary.totalWeightSold;
   if (data.summary?.totalRevenue !== undefined) totalRev = data.summary.totalRevenue;
 
   const totRow = ws.addRow([
     'TOTAL',
     '',
     '',
-    '',
-    '',
-    '',
     round2(totalQty),
+    totalWeight > 0 ? formatWeightVal(totalWeight, true) : '—',
+    '',
     '',
     round2(totalRev),
-    '',
   ]);
   styleTotalRow(totRow);
 
+  // Format total row cells
+  totRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+  totRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };
+  totRow.getCell(4).numFmt = '#,##0';
+  totRow.getCell(5).alignment = { horizontal: 'right', vertical: 'middle' };
+  totRow.getCell(8).alignment = { horizontal: 'right', vertical: 'middle' };
+  totRow.getCell(8).numFmt = '₹#,##0.00';
+
   autoFitColumns(ws);
+
+  // Set minimum generous widths for multiline columns
+  const colDetails = ws.getColumn(2);
+  if (colDetails.width && colDetails.width < 28) colDetails.width = 28;
+  const colCategory = ws.getColumn(3);
+  if (colCategory.width && colCategory.width < 20) colCategory.width = 20;
+
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
