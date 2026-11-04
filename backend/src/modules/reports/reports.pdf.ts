@@ -179,6 +179,15 @@ export class PdfBuilder {
     this.currentY += cardHeight + 14;
   }
 
+  public drawSectionTitle(title: string) {
+    if (this.currentY + 24 > this.maxY) {
+      this.doc.addPage();
+      this.currentY = 40;
+    }
+    this.doc.font(this.boldFont).fontSize(9.5).fillColor('#292D68').text(title.toUpperCase(), this.startX, this.currentY);
+    this.currentY += 14;
+  }
+
   public drawTable(columns: ColumnDef[], rows: any[][], totalRow?: any[]) {
     const contentWidth = (this.landscape ? 841.89 : 595.28) - 72;
     const headerHeight = 20;
@@ -754,36 +763,104 @@ export async function exportReturnsReportToPdf(data: any, query: any): Promise<B
 }
 
 export async function exportBusinessSummaryToPdf(data: any, query: any): Promise<Buffer> {
+  const periodDisplay = formatReportPeriodDisplay(
+    query?.period,
+    query?.startDate || query?.date,
+    query?.endDate || query?.date,
+    data?.period
+  );
+  const scopeDisplay = data?.scope?.scopeLabel || (query?.saleType ? `SaleType: ${query.saleType}` : undefined);
+
   const builder = new PdfBuilder({
     title: 'Executive Business Summary Dashboard',
-    period: query.period || 'today',
-    scope: data.scope?.scopeLabel || (query.saleType ? `SaleType: ${query.saleType}` : undefined),
+    period: periodDisplay,
+    scope: scopeDisplay,
     landscape: false,
   });
 
+  const totalSalesRevenue = Number(data?.sales?.totalSales ?? data?.netSales ?? data?.today?.sales ?? data?.summary?.totalSalesAmount ?? 0);
+  const completedInvoices = Number(data?.sales?.billCount ?? data?.today?.bills ?? data?.summary?.completedBillsCount ?? 0);
+  const salesReturnsAmount = Number(data?.returns?.totalReturnsAmount ?? data?.today?.returns ?? 0);
+  const completedProductionBatches = Number(data?.production?.productionEntriesCount ?? data?.today?.production ?? 0);
+  const netSales = Number(data?.netSales ?? (totalSalesRevenue - salesReturnsAmount));
+  const averageBillValue = Number(data?.sales?.averageBillValue ?? (completedInvoices > 0 ? round2(totalSalesRevenue / completedInvoices) : 0));
+  const totalProductionWeight = Number(data?.production?.totalProductionWeight ?? 0);
+
+  // 1. Primary Executive KPI Cards (Row 1: Revenue, Invoices, Returns, Production Batches; Row 2: Net Sales, ABV, Production Output, Stock)
   builder.drawSummaryCards([
-    { label: 'Total Revenue', value: formatCurrencyVal(data.today?.sales || 0) },
-    { label: 'Total Invoices', value: data.today?.bills || 0 },
-    { label: 'Total Refunds', value: formatCurrencyVal(data.today?.returns || 0) },
-    { label: 'Production Batches', value: data.today?.production || 0 },
+    { label: 'Total Revenue', value: formatCurrencyVal(totalSalesRevenue) },
+    { label: 'Total Invoices', value: completedInvoices },
+    { label: 'Total Refunds', value: formatCurrencyVal(salesReturnsAmount) },
+    { label: 'Production Batches', value: completedProductionBatches },
+    { label: 'Net Sales', value: formatCurrencyVal(netSales) },
+    { label: 'Avg Bill Value', value: formatCurrencyVal(averageBillValue) },
+    { label: 'Production Output', value: formatWeightVal(totalProductionWeight) },
+    { label: 'Catalog Stock', value: `${data?.inventory?.inStockCount ?? 0} / ${data?.inventory?.totalItems ?? 0}` },
   ]);
 
-  // Payment Breakdown Table
-  const columns: ColumnDef[] = [
-    { header: 'Channel / Payment Mode', width: 250, align: 'left' },
-    { header: 'Total Collected (Rs.)', width: 270, align: 'right' },
-  ];
+  // 2. Sales by Customer Channel (Tier Breakdown)
+  if (data?.salesByType) {
+    builder.drawSectionTitle('Sales by Customer Channel (Tier Breakdown)');
+    const saleTypeColumns: ColumnDef[] = [
+      { header: 'Sale Channel / Tier', width: 220, align: 'left' },
+      { header: 'Completed Invoices', width: 140, align: 'center' },
+      { header: 'Revenue (Rs.)', width: 163.28, align: 'right' },
+    ];
 
-  const rows: any[][] = [];
-  const pb = data.paymentModes || data.paymentBreakdown || {};
-  let totalPay = 0;
-  for (const [mode, amt] of Object.entries(pb)) {
-    totalPay += Number(amt || 0);
-    rows.push([mode, formatCurrencyVal(Number(amt || 0))]);
+    const saleTypeLabels: Record<string, string> = {
+      RETAIL: 'Retail Sales',
+      NRI: 'NRI Sales',
+      WHOLESALE: 'Wholesale Sales',
+    };
+
+    const saleTypeRows: any[][] = [];
+    const standardTiers = ['RETAIL', 'NRI', 'WHOLESALE'];
+    for (const key of standardTiers) {
+      const val = data.salesByType[key];
+      const amount = typeof val === 'object' && val !== null
+        ? Number(val.totalSales ?? val.totalSalesAmount ?? 0)
+        : Number(val || 0);
+      const bills = typeof val === 'object' && val !== null
+        ? Number(val.billCount ?? val.completedBillsCount ?? 0)
+        : 0;
+      saleTypeRows.push([
+        saleTypeLabels[key] || key,
+        bills,
+        formatCurrencyVal(amount),
+      ]);
+    }
+
+    const saleTypeTotalRow = ['TOTAL', completedInvoices, formatCurrencyVal(totalSalesRevenue)];
+    builder.drawTable(saleTypeColumns, saleTypeRows, saleTypeTotalRow);
   }
 
-  const totalRow = ['TOTAL', formatCurrencyVal(totalPay)];
-  builder.drawTable(columns, rows, totalRow);
+  // 3. Payment Breakdown Table
+  builder.drawSectionTitle('Payment Breakdown (Authoritative Receipts)');
+  const payColumns: ColumnDef[] = [
+    { header: 'Channel / Payment Mode', width: 260, align: 'left' },
+    { header: 'Total Collected (Rs.)', width: 263.28, align: 'right' },
+  ];
+
+  const payRows: any[][] = [];
+  const pb = data?.paymentSummary || data?.paymentModes || data?.paymentBreakdown || {};
+  let totalPay = 0;
+
+  const standardModes = ['CASH', 'UPI', 'CARD', 'CHEQUE', 'BANK_TRANSFER', 'CREDIT'];
+  const presentKeys = Object.keys(pb);
+  const orderedKeys = Array.from(new Set([...standardModes.filter(m => m in pb), ...presentKeys]));
+
+  for (const mode of orderedKeys) {
+    const amt = Number(pb[mode] || 0);
+    totalPay += amt;
+    payRows.push([mode, formatCurrencyVal(amt)]);
+  }
+
+  if (payRows.length === 0) {
+    payRows.push(['No payments recorded', formatCurrencyVal(0)]);
+  }
+
+  const payTotalRow = ['TOTAL', formatCurrencyVal(totalPay)];
+  builder.drawTable(payColumns, payRows, payTotalRow);
 
   return builder.end();
 }

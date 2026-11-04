@@ -120,6 +120,9 @@ export function round2(value: number): number {
  */
 export function formatIndianDate(d: Date | string | null | undefined): string {
   if (!d) return '';
+  if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d.trim())) {
+    return d.trim();
+  }
   const dateObj = typeof d === 'string' ? new Date(d) : d;
   if (isNaN(dateObj.getTime())) return '';
   return new Intl.DateTimeFormat('en-IN', {
@@ -161,6 +164,12 @@ export function formatReportPeriodDisplay(
   endDate?: string,
   summaryPeriod?: string
 ): string {
+  // If already formatted with ' — ' (e.g. 'Today — 04/11/2026' or 'Custom — 01/11/2026 to 04/11/2026'), preserve directly
+  const candidate = (period || summaryPeriod || '').trim();
+  if (candidate.includes(' — ') && /\d{2}\/\d{2}\/\d{4}/.test(candidate)) {
+    return candidate;
+  }
+
   const now = new Date();
   const raw = (period || summaryPeriod || '').toLowerCase().trim();
   const normalized = raw.replace(/[\s_-]+/g, '');

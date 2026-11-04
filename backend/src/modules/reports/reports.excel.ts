@@ -673,41 +673,82 @@ export async function exportBusinessSummaryToExcel(data: any, query: any): Promi
   const wb = createBaseWorkbook();
   const ws = wb.addWorksheet('Business_Summary');
 
+  const periodDisplay = formatReportPeriodDisplay(
+    query?.period,
+    query?.startDate || query?.date,
+    query?.endDate || query?.date,
+    data?.period
+  );
+  const scopeDisplay = data?.scope?.scopeLabel || (query?.saleType ? `SaleType: ${query.saleType}` : undefined);
+
   addStandardHeader(ws, {
     title: 'Executive Business Summary Dashboard',
-    period: query.period || 'today',
-    scope: data.scope?.scopeLabel || (query.saleType ? `SaleType: ${query.saleType}` : undefined),
+    period: periodDisplay,
+    scope: scopeDisplay,
   }, 4);
 
+  const totalSalesRevenue = Number(data?.sales?.totalSales ?? data?.netSales ?? data?.today?.sales ?? data?.summary?.totalSalesAmount ?? 0);
+  const completedInvoices = Number(data?.sales?.billCount ?? data?.today?.bills ?? data?.summary?.completedBillsCount ?? 0);
+  const salesReturnsAmount = Number(data?.returns?.totalReturnsAmount ?? data?.today?.returns ?? 0);
+  const completedProductionBatches = Number(data?.production?.productionEntriesCount ?? data?.today?.production ?? 0);
+  const netSales = Number(data?.netSales ?? (totalSalesRevenue - salesReturnsAmount));
+  const averageBillValue = Number(data?.sales?.averageBillValue ?? (completedInvoices > 0 ? round2(totalSalesRevenue / completedInvoices) : 0));
+  const totalProductionWeight = Number(data?.production?.totalProductionWeight ?? 0);
+
+  // Section 1: Executive KPI Metrics
   ws.addRow(['KEY BUSINESS METRIC', 'VALUE']);
   styleHeaderRow(ws.lastRow!);
 
-  ws.addRow(['Total Sales Revenue (₹)', Number(data.today?.sales || data.summary?.totalSalesAmount || 0)]);
-  ws.addRow(['Completed Invoices', Number(data.today?.bills || data.summary?.completedBillsCount || 0)]);
-  ws.addRow(['Sales Returns Amount (₹)', Number(data.today?.returns || 0)]);
-  ws.addRow(['Completed Production Batches', Number(data.today?.production || 0)]);
+  ws.addRow(['Net Sales Revenue (₹)', netSales]);
+  ws.addRow(['Total Sales Revenue (₹)', totalSalesRevenue]);
+  ws.addRow(['Completed Invoices', completedInvoices]);
+  ws.addRow(['Average Bill Value (₹)', averageBillValue]);
+  ws.addRow(['Sales Returns Amount (₹)', salesReturnsAmount]);
+  ws.addRow(['Completed Production Batches', completedProductionBatches]);
+  ws.addRow(['Total Production Weight (GM)', totalProductionWeight]);
   ws.addRow([]);
 
-  // SaleType Segment
-  ws.addRow(['SALE TYPE', 'AMOUNT (₹)']);
+  // Section 2: SaleType Breakdown
+  ws.addRow(['SALE TYPE / CHANNEL', 'COMPLETED BILLS', 'AMOUNT (₹)']);
   styleHeaderRow(ws.lastRow!);
-  if (data.salesByType) {
-    for (const [st, val] of Object.entries(data.salesByType)) {
-      const amount = typeof val === 'object' && val !== null ? (val as any).totalSalesAmount : val;
-      ws.addRow([st, Number(amount || 0)]);
-    }
+
+  const salesByType = data?.salesByType || {};
+  const standardTiers = ['RETAIL', 'NRI', 'WHOLESALE'];
+  const presentTiers = Object.keys(salesByType);
+  const orderedTiers = Array.from(new Set([...standardTiers, ...presentTiers]));
+
+  for (const st of orderedTiers) {
+    const val = salesByType[st];
+    const amount = typeof val === 'object' && val !== null
+      ? Number(val.totalSales ?? val.totalSalesAmount ?? 0)
+      : Number(val || 0);
+    const bills = typeof val === 'object' && val !== null
+      ? Number(val.billCount ?? val.completedBillsCount ?? 0)
+      : 0;
+    ws.addRow([st, bills, amount]);
   }
+  const tierTotalRow = ws.addRow(['TOTAL', completedInvoices, totalSalesRevenue]);
+  styleTotalRow(tierTotalRow);
   ws.addRow([]);
 
-  // Payment Breakdown
+  // Section 3: Payment Breakdown
   ws.addRow(['PAYMENT CHANNEL', 'TOTAL (₹)']);
   styleHeaderRow(ws.lastRow!);
-  if (data.paymentModes || data.paymentBreakdown) {
-    const pb = data.paymentModes || data.paymentBreakdown;
-    for (const [mode, amt] of Object.entries(pb)) {
-      ws.addRow([mode, Number(amt || 0)]);
-    }
+
+  const pb = data?.paymentSummary || data?.paymentModes || data?.paymentBreakdown || {};
+  let totalPay = 0;
+  const standardModes = ['CASH', 'UPI', 'CARD', 'CHEQUE', 'BANK_TRANSFER', 'CREDIT'];
+  const presentKeys = Object.keys(pb);
+  const orderedKeys = Array.from(new Set([...standardModes.filter(m => m in pb), ...presentKeys]));
+
+  for (const mode of orderedKeys) {
+    const amt = Number(pb[mode] || 0);
+    totalPay += amt;
+    ws.addRow([mode, amt]);
   }
+
+  const payTotalRow = ws.addRow(['TOTAL', totalPay]);
+  styleTotalRow(payTotalRow);
 
   autoFitColumns(ws);
   return Buffer.from(await wb.xlsx.writeBuffer());
