@@ -138,12 +138,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const handleOptionClick = (grams: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (selectedWeightGrams === grams) {
-      // Tap again on active weight adds directly to cart!
-      handleAddToCart();
-    } else {
-      setSelectedWeightGrams(grams);
-    }
+    setSelectedWeightGrams(grams);
   };
 
   return (
@@ -153,7 +148,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           handleAddToCart();
         }
@@ -189,7 +184,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               type="button"
               className={`pos-weight-chip-btn ${isActive ? 'active' : ''}`}
               onClick={(e) => handleOptionClick(opt.grams, e)}
-              title={isActive ? `Selected ${opt.label} (tap again to add)` : `Select ${opt.label}`}
+              title={isActive ? `Selected ${opt.label}` : `Select ${opt.label}`}
               aria-pressed={isActive}
             >
               {opt.label}
