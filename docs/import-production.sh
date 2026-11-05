@@ -27,6 +27,12 @@ fi
 
 echo "📁 Using master data SQL file: $SQL_FILE"
 
+# Pre-scan SQL file for dangerous destructive operations
+if grep -Ei '\b(DROP\s+DATABASE|DROP\s+TABLE|TRUNCATE\s+sales|DELETE\s+FROM\s+sales|TRUNCATE\s+users|DELETE\s+FROM\s+users)\b' "$SQL_FILE" >/dev/null 2>&1; then
+  echo "❌ CRITICAL STOP: $SQL_FILE contains forbidden destructive operations (DROP/TRUNCATE sales/users)!"
+  exit 1
+fi
+
 # 2. Extract database connection parameters safely from .env
 ENV_FILE=""
 for candidate in \
@@ -41,28 +47,52 @@ for candidate in \
   fi
 done
 
-export PGHOST="${PGHOST:-localhost}"
-export PGPORT="${PGPORT:-5432}"
-export PGUSER="${PGUSER:-vahanvati_user}"
-export PGDATABASE="${PGDATABASE:-vahanvati_db}"
+export PGHOST="localhost"
+export PGPORT="5432"
+export PGUSER="vahanvati_user"
+export PGDATABASE="vahanvati_db"
+export PGPASSWORD=""
 
 if [ -n "$ENV_FILE" ]; then
   echo "📁 Detected backend environment file: $ENV_FILE"
   RAW_URL=$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -n 1 | cut -d '=' -f2- | sed -e 's/^["'\'' ]*//' -e 's/["'\'' ]*$//')
   
-  # Extract password using node if available, with bash fallback
   if [ -n "${RAW_URL:-}" ]; then
     if command -v node >/dev/null 2>&1; then
-      PGPASSWORD=$(node -e '
+      while IFS='=' read -r key val; do
+        case "$key" in
+          PGHOST) export PGHOST="$val" ;;
+          PGPORT) export PGPORT="$val" ;;
+          PGUSER) export PGUSER="$val" ;;
+          PGDATABASE) export PGDATABASE="$val" ;;
+          PGPASSWORD) export PGPASSWORD="$val" ;;
+        esac
+      done < <(node -e '
         const url = process.argv[1];
-        const prefixMatch = url.match(/^(?:postgresql|postgres):\/\/[^:]+:/);
+        if (!url) process.exit(1);
+        const prefixMatch = url.match(/^(?:postgresql|postgres):\/\/([^:]+):/);
         if (!prefixMatch) process.exit(1);
+        const user = prefixMatch[1];
         const rest = url.slice(prefixMatch[0].length);
-        let idx = rest.lastIndexOf("@localhost");
-        if (idx === -1) idx = rest.lastIndexOf("@127.0.0.1");
-        if (idx === -1) idx = rest.lastIndexOf("@");
-        if (idx === -1) process.exit(1);
-        process.stdout.write(rest.slice(0, idx));
+        let atIdx = rest.lastIndexOf("@localhost");
+        if (atIdx === -1) atIdx = rest.lastIndexOf("@127.0.0.1");
+        if (atIdx === -1) atIdx = rest.lastIndexOf("@");
+        if (atIdx === -1) process.exit(1);
+        let pass = rest.slice(0, atIdx);
+        if (pass.includes("%")) {
+          try { pass = decodeURIComponent(pass); } catch(e){}
+        }
+        const hostAndRest = rest.slice(atIdx + 1);
+        const hostMatch = hostAndRest.match(/^([^:/]+)(?::(\d+))?\/([^?]+)/);
+        if (!hostMatch) process.exit(1);
+        const host = hostMatch[1];
+        const port = hostMatch[2] || "5432";
+        const db = hostMatch[3];
+        console.log(`PGHOST=${host}`);
+        console.log(`PGPORT=${port}`);
+        console.log(`PGUSER=${user}`);
+        console.log(`PGDATABASE=${db}`);
+        console.log(`PGPASSWORD=${pass}`);
       ' "$RAW_URL" 2>/dev/null || true)
     fi
     
@@ -74,8 +104,8 @@ if [ -n "$ENV_FILE" ]; then
       if [[ "$PGPASSWORD" == *"@127.0.0.1"* ]]; then
         PGPASSWORD="${PGPASSWORD%@127.0.0.1*}"
       fi
+      export PGPASSWORD
     fi
-    export PGPASSWORD
   fi
 fi
 
@@ -100,8 +130,18 @@ if [ "${1:-}" = "--test-connection" ]; then
   exit 0
 fi
 
-# 3. Create Backup Directory
-mkdir -p "$BACKUP_DIR"
+# 3. Create Backup Directory & Disk Check
+mkdir -p "$BACKUP_DIR" 2>/dev/null || true
+chmod 700 "$BACKUP_DIR" 2>/dev/null || true
+
+MIN_REQUIRED_MB=500
+AVAILABLE_MB=$(df -m "$BACKUP_DIR" 2>/dev/null | awk 'NR==2 {print $4}' || echo "0")
+if [ -n "$AVAILABLE_MB" ] && [ "$AVAILABLE_MB" -ne 0 ] 2>/dev/null; then
+  if [ "$AVAILABLE_MB" -lt "$MIN_REQUIRED_MB" ]; then
+    echo "❌ CRITICAL STOP: Insufficient free disk space in ${BACKUP_DIR}! Required: ${MIN_REQUIRED_MB}MB, Available: ${AVAILABLE_MB}MB."
+    exit 1
+  fi
+fi
 
 echo ""
 echo "--------------------------------------------------"
@@ -123,13 +163,35 @@ echo ""
 echo "--------------------------------------------------"
 echo "STEP 2: Creating Pre-Import PostgreSQL Backup"
 echo "--------------------------------------------------"
-pg_dump -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" > "$BACKUP_FILE"
+if [ -e "$BACKUP_FILE" ]; then
+  echo "❌ Error: Backup destination $BACKUP_FILE already exists. Refusing to overwrite!"
+  exit 1
+fi
+
+(
+  umask 077
+  pg_dump -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" > "$BACKUP_FILE"
+)
+chmod 600 "$BACKUP_FILE" 2>/dev/null || true
 
 if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
-  BACKUP_SIZE=$(ls -lh "$BACKUP_FILE" | awk '{print $5}')
-  echo "✅ Production backup created successfully!"
+  if ! head -n 30 "$BACKUP_FILE" | grep -qi "PostgreSQL database dump"; then
+    echo "❌ CRITICAL STOP: Backup header verification failed! Invalid dump file."
+    exit 1
+  fi
+  if ! tail -n 30 "$BACKUP_FILE" | grep -qi "PostgreSQL database dump complete"; then
+    echo "❌ CRITICAL STOP: Backup footer verification failed! Incomplete or truncated dump."
+    exit 1
+  fi
+  if ! grep -q "CREATE TABLE" "$BACKUP_FILE"; then
+    echo "❌ CRITICAL STOP: Backup structural verification failed! No table definitions found."
+    exit 1
+  fi
+  BACKUP_SIZE=$(du -h "$BACKUP_FILE" 2>/dev/null | awk '{print $1}' || echo "unknown")
+  echo "✅ Production backup created and verified successfully!"
   echo "   Path: $BACKUP_FILE"
   echo "   Size: $BACKUP_SIZE"
+  echo "   Permissions: 0600 (owner-only)"
 else
   echo "❌ Backup failed or produced empty file! ABORTING IMPORT."
   exit 1
@@ -173,6 +235,22 @@ SELECT 'pack -> prod orphans', COUNT(*) FROM product_pack_configurations pc WHER
 UNION ALL
 SELECT 'price -> prod orphans', COUNT(*) FROM product_prices pr WHERE NOT EXISTS (SELECT 1 FROM products p WHERE p.id = pr.product_id);
 "
+
+ORPHAN_COUNT=$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -t -A -c "
+SELECT COALESCE(SUM(cnt), 0) FROM (
+  SELECT COUNT(*) AS cnt FROM subcategories s WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE c.id = s.category_id)
+  UNION ALL SELECT COUNT(*) FROM products p WHERE NOT EXISTS (SELECT 1 FROM subcategories s WHERE s.id = p.subcategory_id)
+  UNION ALL SELECT COUNT(*) FROM products p WHERE NOT EXISTS (SELECT 1 FROM units u WHERE u.id = p.primary_unit_id)
+  UNION ALL SELECT COUNT(*) FROM product_pack_configurations pc WHERE NOT EXISTS (SELECT 1 FROM products p WHERE p.id = pc.product_id)
+  UNION ALL SELECT COUNT(*) FROM product_prices pr WHERE NOT EXISTS (SELECT 1 FROM products p WHERE p.id = pr.product_id)
+) t;
+" 2>/dev/null || echo "0")
+
+if [ "$ORPHAN_COUNT" -gt 0 ] 2>/dev/null; then
+  echo "⚠️ WARNING: Detected $ORPHAN_COUNT foreign key orphan rows after import! Review table above."
+else
+  echo "✅ Zero foreign key orphans detected. Referential integrity verified!"
+fi
 
 echo ""
 echo "--------------------------------------------------"
