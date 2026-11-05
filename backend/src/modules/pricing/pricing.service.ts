@@ -350,7 +350,7 @@ export class PricingService {
     const pricingTier = mapSaleTypeToPricingTier(resolvedSaleType);
 
     // 2. Query applicable price matching pricing tier & target date
-    const priceRecord = await prisma.productPrice.findFirst({
+    let priceRecord = await prisma.productPrice.findFirst({
       where: {
         productId: product.id,
         packConfigId: input.packConfigId ?? null,
@@ -361,6 +361,31 @@ export class PricingService {
       },
       orderBy: { effectiveFrom: 'desc' },
     });
+
+    if (!priceRecord && input.packConfigId && packConfig) {
+      // Check if another active pack configuration with the exact same weight has an active price record
+      const alternativePacks = product.packConfigurations.filter(
+        (p) => p.id !== input.packConfigId && Number(p.weightInBaseUnits) === Number(packConfig.weightInBaseUnits) && p.isActive
+      );
+      for (const altPack of alternativePacks) {
+        const altPrice = await prisma.productPrice.findFirst({
+          where: {
+            productId: product.id,
+            packConfigId: altPack.id,
+            pricingTier,
+            isActive: true,
+            effectiveFrom: { lte: targetDate },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: targetDate } }],
+          },
+          orderBy: { effectiveFrom: 'desc' },
+        });
+        if (altPrice) {
+          priceRecord = altPrice;
+          packConfig = altPack;
+          break;
+        }
+      }
+    }
 
     // 3. STRICT RULE: NO FALLBACK TO ANOTHER TIER!
     if (!priceRecord) {
@@ -376,7 +401,7 @@ export class PricingService {
     const unitRate = Number(priceRecord.rate);
     let totalAmount = 0;
 
-    if (input.looseWeightInGrams) {
+    if (input.looseWeightInGrams && !input.packConfigId) {
       // Loose calculation: (grams / 1000) * base per-kg rate * quantity
       totalAmount = Math.round(((input.looseWeightInGrams / 1000) * unitRate * quantity) * 100) / 100;
     } else {

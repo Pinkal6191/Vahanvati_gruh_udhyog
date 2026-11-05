@@ -4,6 +4,7 @@ import { Product } from '../../products/products.api';
 import { CustomerType } from '../../../types/common.types';
 import { SaleType } from '../../../types/auth.types';
 import { formatGramsToKg } from '../../../utils/formatters';
+import { resolveApplicablePackPrice, resolveApplicableBasePrice } from '../utils/pricingUtils';
 
 export interface ProductCardProps {
   product: Product;
@@ -87,38 +88,40 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [selectedWeightGrams, setSelectedWeightGrams] = useState<number>(initialWeight);
 
   // Loose / base per-kg rate resolved according to SaleType (never fall back across sale types)
+  const basePriceRecord = resolveApplicableBasePrice((product as any).prices, saleType);
   const looseRate =
-    saleType === 'WHOLESALE'
+    basePriceRecord
+      ? Number(basePriceRecord.rate)
+      : saleType === 'WHOLESALE'
       ? (product.wholesalePrice ?? 0)
       : saleType === 'NRI'
       ? (product.nriPrice ?? 0)
       : (product.retailPrice ?? product.indianPrice ?? 0);
 
-  // Packs matching selected weight
-  const matchingPack = packs.find((p) => Number(p.weightInBaseUnits) === selectedWeightGrams);
+  // Packs matching selected weight: find all matching packs, prioritizing any pack with an active, effective price for the active saleType
+  const matchingPacks = packs.filter((p) => Number(p.weightInBaseUnits) === selectedWeightGrams);
+  const matchingPackWithPrice = matchingPacks.find(
+    (p) => resolveApplicablePackPrice((product as any).prices, p.id, saleType) !== null
+  );
+  const matchingPack = matchingPackWithPrice || matchingPacks[0] || null;
 
-  // Pack price record resolved according to SaleType
+  // Pack price record resolved according to SaleType and effective date
   const packPriceRecord = matchingPack
-    ? ((product as any).prices || []).find(
-        (pr: any) =>
-          pr.packConfigId === matchingPack.id &&
-          (pr.pricingTier === saleType ||
-            pr.customerType === saleType ||
-            (saleType === 'RETAIL' && (pr.pricingTier === 'INDIAN' || pr.customerType === 'INDIAN'))) &&
-          pr.isActive
-      )
+    ? resolveApplicablePackPrice((product as any).prices, matchingPack.id, saleType)
     : null;
 
   // Calculated rate for current selected weight
   const packRate = packPriceRecord ? Number(packPriceRecord.rate) : null;
+  const isPackPriced = packRate !== null && packRate > 0;
+  const isLooseAllowed = product.isLooseWeightAllowed ?? true;
   const applicableRate =
-    packRate !== null && packRate > 0
+    isPackPriced
       ? packRate
-      : looseRate > 0
+      : isLooseAllowed && looseRate > 0
       ? (selectedWeightGrams / 1000) * looseRate
       : 0;
 
-  const hasConfiguredPrice = (packRate !== null && packRate > 0) || looseRate > 0;
+  const hasConfiguredPrice = isPackPriced || (isLooseAllowed && looseRate > 0);
 
   const selectedOpt = weightOptions.find((o) => o.grams === selectedWeightGrams);
 
@@ -129,9 +132,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     const label = selectedOpt ? selectedOpt.label : `${selectedWeightGrams}g`;
 
     onAddToCart(product, {
-      packConfigId: matchingPack?.id || null,
+      packConfigId: isPackPriced ? matchingPack?.id : null,
       packName: label,
-      looseWeightInGrams: selectedWeightGrams,
+      looseWeightInGrams: isPackPriced ? null : selectedWeightGrams,
       quantity: 1,
     });
   };

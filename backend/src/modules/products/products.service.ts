@@ -404,19 +404,49 @@ export class ProductsService {
               pricingTier: true,
               rate: true,
               isActive: true,
+              effectiveFrom: true,
+              effectiveTo: true,
             },
+            orderBy: { effectiveFrom: 'desc' },
           },
         },
       }),
       prisma.product.count({ where }),
     ]);
 
+    const now = new Date();
     const mappedItems = items.map((p: any) => {
-      const baseRetail = p.prices?.find((pr: any) => (pr.pricingTier === 'RETAIL' || pr.pricingTier === 'INDIAN') && !pr.packConfigId);
-      const baseNri = p.prices?.find((pr: any) => pr.pricingTier === 'NRI' && !pr.packConfigId);
-      const baseWholesale = p.prices?.find((pr: any) => pr.pricingTier === 'WHOLESALE' && !pr.packConfigId);
+      const isPriceApplicableForList = (pr: any) => {
+        if (!pr.isActive) return false;
+        if (pr.effectiveFrom && new Date(pr.effectiveFrom) > now) return false;
+        if (pr.effectiveTo && new Date(pr.effectiveTo) < now) return false;
+        return true;
+      };
+
+      // Ensure pack configurations with active, effective prices precede unpriced duplicates of the same weight
+      const sortedPacks = [...(p.packConfigurations || [])].sort((a: any, b: any) => {
+        if (a.displayOrder !== b.displayOrder) return a.displayOrder - b.displayOrder;
+        const aHasPrice = (p.prices || []).some((pr: any) => pr.packConfigId === a.id && isPriceApplicableForList(pr));
+        const bHasPrice = (p.prices || []).some((pr: any) => pr.packConfigId === b.id && isPriceApplicableForList(pr));
+        if (aHasPrice && !bHasPrice) return -1;
+        if (!aHasPrice && bHasPrice) return 1;
+        return 0;
+      });
+
+      const filterBasePrice = (tierMatch: (tier: string) => boolean) => {
+        const matching = (p.prices || []).filter(
+          (pr: any) => !pr.packConfigId && tierMatch(pr.pricingTier) && isPriceApplicableForList(pr)
+        );
+        matching.sort((a: any, b: any) => new Date(b.effectiveFrom || 0).getTime() - new Date(a.effectiveFrom || 0).getTime());
+        return matching[0];
+      };
+
+      const baseRetail = filterBasePrice((t) => t === 'RETAIL' || t === 'INDIAN');
+      const baseNri = filterBasePrice((t) => t === 'NRI');
+      const baseWholesale = filterBasePrice((t) => t === 'WHOLESALE');
       return {
         ...p,
+        packConfigurations: sortedPacks,
         // Legacy backward compatibility for existing frontend
         indianPrice: baseRetail ? Number(baseRetail.rate) : null,
         retailPrice: baseRetail ? Number(baseRetail.rate) : null,

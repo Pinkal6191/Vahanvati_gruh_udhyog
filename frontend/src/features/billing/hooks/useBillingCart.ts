@@ -9,6 +9,7 @@ import {
   CreateSalePayload,
   SaleType,
 } from '../billing.api';
+import { resolveApplicablePackPrice, resolveApplicableBasePrice } from '../utils/pricingUtils';
 
 export interface CartItem {
   id: string; // Unique key for list: `${productId}_${packConfigId || 'loose'}`
@@ -253,35 +254,102 @@ export function useBillingCart(): UseBillingCartReturn {
           return it;
         });
       } else {
-        // Resolve initial rate from product's pricing for current saleType (pack rate or base rate)
+        // Resolve initial rate and price authority based on explicit pack vs loose weight configuration
         let defaultRate = 0;
+        let singleItemPrice = 0;
+        let isMissingPrice = false;
+        let priceErrorMessage: string | undefined = undefined;
+        let resolvedPackConfigId: string | null = null;
+        let resolvedLooseWeight: number | null = null;
+
         if (packId) {
-          const packPriceObj = ((product as any).prices || []).find(
-            (pr: any) =>
-              pr.packConfigId === packId &&
-              (pr.pricingTier === saleType ||
-                pr.customerType === saleType ||
-                (saleType === 'RETAIL' && (pr.pricingTier === 'INDIAN' || pr.customerType === 'INDIAN'))) &&
-              pr.isActive
-          );
+          // 1. Pack-based pricing: exact active, effective pack price for current sale type
+          let packPriceObj = resolveApplicablePackPrice((product as any).prices, packId, saleType);
+          let targetPackId = packId;
+
+          if (!packPriceObj) {
+            // Check if there is an alternative active pack configuration with the exact same weight that has an active, effective price
+            const passedPack = (product.packConfigurations || []).find((p: any) => p.id === packId);
+            if (passedPack) {
+              const altPacks = (product.packConfigurations || []).filter(
+                (p: any) => p.id !== packId && Number(p.weightInBaseUnits) === Number(passedPack.weightInBaseUnits) && p.isActive
+              );
+              for (const altPack of altPacks) {
+                const altPrice = resolveApplicablePackPrice((product as any).prices, altPack.id, saleType);
+                if (altPrice) {
+                  targetPackId = altPack.id;
+                  packPriceObj = altPrice;
+                  break;
+                }
+              }
+            }
+          }
+
           if (packPriceObj) {
             defaultRate = Number(packPriceObj.rate);
+            singleItemPrice = defaultRate;
+            resolvedPackConfigId = targetPackId;
+            resolvedLooseWeight = null;
+          } else {
+            // A pack was requested, but NO active, effective pack price is configured for this sale type.
+            // Do NOT silently substitute a per-kg loose price! Return a clear pricing error.
+            isMissingPrice = true;
+            priceErrorMessage = `No active ${saleType} price configured for this pack`;
+            defaultRate = 0;
+            singleItemPrice = 0;
+            resolvedPackConfigId = packId;
+            resolvedLooseWeight = null;
           }
-        }
-        if (defaultRate <= 0) {
-          if (saleType === 'WHOLESALE') {
+        } else if (weightGrams) {
+          // 2. Loose-weight pricing: only allowed if product explicitly allows loose weight
+          const isLooseAllowed = product.isLooseWeightAllowed ?? true;
+          if (!isLooseAllowed) {
+            isMissingPrice = true;
+            priceErrorMessage = `Loose weight selling is not allowed for ${product.name}`;
+            defaultRate = 0;
+            singleItemPrice = 0;
+          } else {
+            const basePriceObj = resolveApplicableBasePrice((product as any).prices, saleType);
+            if (basePriceObj) {
+              defaultRate = Number(basePriceObj.rate);
+            } else if (saleType === 'WHOLESALE') {
+              defaultRate = product.wholesalePrice ?? 0;
+            } else if (saleType === 'NRI') {
+              defaultRate = product.nriPrice ?? 0;
+            } else {
+              defaultRate = product.retailPrice ?? product.indianPrice ?? 0;
+            }
+
+            if (defaultRate <= 0) {
+              isMissingPrice = true;
+              priceErrorMessage = `No active ${saleType} price configured for ${product.name}`;
+              singleItemPrice = 0;
+            } else {
+              singleItemPrice = Math.round(((weightGrams / 1000) * defaultRate) * 100) / 100;
+              resolvedLooseWeight = weightGrams;
+            }
+          }
+        } else {
+          // 3. Standard unit pricing
+          const basePriceObj = resolveApplicableBasePrice((product as any).prices, saleType);
+          if (basePriceObj) {
+            defaultRate = Number(basePriceObj.rate);
+          } else if (saleType === 'WHOLESALE') {
             defaultRate = product.wholesalePrice ?? 0;
           } else if (saleType === 'NRI') {
             defaultRate = product.nriPrice ?? 0;
           } else {
             defaultRate = product.retailPrice ?? product.indianPrice ?? 0;
           }
-        }
 
-        const isMissingPrice = defaultRate <= 0;
-        const singleItemPrice = weightGrams && !packId
-          ? Math.round(((weightGrams / 1000) * defaultRate) * 100) / 100
-          : defaultRate;
+          if (defaultRate <= 0) {
+            isMissingPrice = true;
+            priceErrorMessage = `No active ${saleType} price configured for ${product.name}`;
+            singleItemPrice = 0;
+          } else {
+            singleItemPrice = defaultRate;
+          }
+        }
 
         const newItem: CartItem = {
           id: itemId,
@@ -289,16 +357,16 @@ export function useBillingCart(): UseBillingCartReturn {
           productName: product.name,
           gujaratiName: product.gujaratiName,
           productCode: product.code,
-          packConfigId: packId,
-          packName: options?.packName || (packId ? 'Pack' : weightGrams ? (weightGrams >= 1000 ? `${weightGrams / 1000} kg` : `${weightGrams}g`) : 'Standard'),
+          packConfigId: resolvedPackConfigId,
+          packName: options?.packName || (resolvedPackConfigId ? 'Pack' : resolvedLooseWeight ? (resolvedLooseWeight >= 1000 ? `${resolvedLooseWeight / 1000} kg` : `${resolvedLooseWeight}g`) : 'Standard'),
           unitName: product.primaryUnit?.symbol || 'kg',
           quantity: qtyToAdd,
-          looseWeightInGrams: weightGrams,
+          looseWeightInGrams: resolvedLooseWeight,
           unitRate: defaultRate,
           totalAmount: Math.round(singleItemPrice * qtyToAdd * 100) / 100,
           stockBalance: product.stock?.currentBalance,
           hasPriceError: isMissingPrice,
-          priceErrorMessage: isMissingPrice ? `No active ${saleType} price configured` : undefined,
+          priceErrorMessage,
         };
         nextItems = [...items, newItem];
       }
